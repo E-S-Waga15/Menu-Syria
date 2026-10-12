@@ -7,6 +7,7 @@ import {
   restaurants,
 } from "@/lib/mock/data";
 import type {
+  CatalogOptionGroup,
   LocalizedText,
   MenuCategory,
   MenuItem,
@@ -19,6 +20,59 @@ export interface PublicMenu {
   items: MenuItem[];
   governorateName: LocalizedText;
   regionName: LocalizedText;
+}
+
+// ---------------------------------------------------------------------------
+// `GET /menu/:slug` response normalization
+// ---------------------------------------------------------------------------
+//
+// `public.service.ts`'s `getPublicMenu` (backend) sends categories/items
+// keyed by `businessId`, not `restaurantId`, and — critically — nests option
+// groups inside `attributes.optionGroups` rather than at the item's top
+// level (`attributes: i.attributes ?? { optionGroups: [] }`). Reading
+// `item.optionGroups` directly, which is what `dish-modal.tsx` does, was
+// always `undefined` against the real backend: every option/add-on picker
+// on the live public menu silently never rendered. This mirrors the same
+// unwrap `restaurant-dashboard/services.ts`'s `normalizeItem` already does
+// for the owner-facing `/me/menu` and `/items` endpoints.
+
+interface RawRecord {
+  [key: string]: unknown;
+}
+
+function normalizePublicCategory(
+  raw: RawRecord,
+  restaurantId: string,
+): MenuCategory {
+  return {
+    id: String(raw.id),
+    restaurantId: String(raw.businessId ?? raw.restaurantId ?? restaurantId),
+    name: raw.name as LocalizedText,
+    sortOrder: Number(raw.sortOrder ?? 0),
+  };
+}
+
+function normalizePublicItem(raw: RawRecord, restaurantId: string): MenuItem {
+  const attributes = (raw.attributes ?? {}) as RawRecord;
+  const optionGroups =
+    (attributes.optionGroups as CatalogOptionGroup[] | undefined) ??
+    (raw.optionGroups as CatalogOptionGroup[] | undefined);
+  const images = Array.isArray(raw.images) ? (raw.images as string[]) : [];
+
+  return {
+    id: String(raw.id),
+    categoryId: String(raw.categoryId),
+    restaurantId: String(raw.businessId ?? raw.restaurantId ?? restaurantId),
+    name: raw.name as LocalizedText,
+    description: raw.description as LocalizedText,
+    price: Number(raw.price ?? 0),
+    currency: raw.currency === "USD" ? "USD" : "SYP",
+    imageUrl: String(raw.imageUrl ?? images[0] ?? ""),
+    images: images.length ? images : undefined,
+    optionGroups: optionGroups?.length ? optionGroups : undefined,
+    isAvailable: raw.isAvailable !== false,
+    sortOrder: Number(raw.sortOrder ?? 0),
+  };
 }
 
 export async function getPublicMenu(
@@ -48,7 +102,22 @@ export async function getPublicMenu(
       regionName,
     });
   }
-  return apiGetOrUndefined(`/menu/${slug}`);
+  const raw = await apiGetOrUndefined<{
+    restaurant: Restaurant;
+    categories: RawRecord[];
+    items: RawRecord[];
+    governorateName: LocalizedText;
+    regionName: LocalizedText;
+  }>(`/menu/${slug}`);
+  if (!raw) return undefined;
+  const restaurantId = raw.restaurant.id;
+  return {
+    restaurant: raw.restaurant,
+    categories: raw.categories.map((c) => normalizePublicCategory(c, restaurantId)),
+    items: raw.items.map((i) => normalizePublicItem(i, restaurantId)),
+    governorateName: raw.governorateName,
+    regionName: raw.regionName,
+  };
 }
 
 // ---------------------------------------------------------------------------

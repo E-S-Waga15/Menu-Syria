@@ -7,6 +7,7 @@ import {
   stores,
 } from "@/lib/mock/data";
 import type {
+  CatalogOptionGroup,
   LocalizedText,
   Store,
   StoreCategory,
@@ -19,6 +20,56 @@ export interface PublicStoreCatalog {
   products: StoreProduct[];
   governorateName: LocalizedText;
   regionName: LocalizedText;
+}
+
+// ---------------------------------------------------------------------------
+// `GET /store-catalog/:slug` response normalization — same mismatch as
+// `features/public-menu/services.ts`'s `getPublicMenu`: the backend
+// (`public.service.ts`'s `getPublicStoreCatalog`) keys rows by `businessId`
+// and nests option groups under `attributes.optionGroups`, not at the
+// product's top level. Unwrapped here the same way, so the product modal's
+// `item.optionGroups` read (shared with `public-menu`'s `dish-modal.tsx` —
+// stores route through the same storefront machinery per AGENTS.md) is
+// never silently empty for a real product with size/add-on options.
+// ---------------------------------------------------------------------------
+
+interface RawRecord {
+  [key: string]: unknown;
+}
+
+function normalizePublicCategory(
+  raw: RawRecord,
+  storeId: string,
+): StoreCategory {
+  return {
+    id: String(raw.id),
+    storeId: String(raw.businessId ?? raw.storeId ?? storeId),
+    name: raw.name as LocalizedText,
+    sortOrder: Number(raw.sortOrder ?? 0),
+  };
+}
+
+function normalizePublicProduct(raw: RawRecord, storeId: string): StoreProduct {
+  const attributes = (raw.attributes ?? {}) as RawRecord;
+  const optionGroups =
+    (attributes.optionGroups as CatalogOptionGroup[] | undefined) ??
+    (raw.optionGroups as CatalogOptionGroup[] | undefined);
+  const images = Array.isArray(raw.images) ? (raw.images as string[]) : [];
+
+  return {
+    id: String(raw.id),
+    categoryId: String(raw.categoryId),
+    storeId: String(raw.businessId ?? raw.storeId ?? storeId),
+    name: raw.name as LocalizedText,
+    description: raw.description as LocalizedText,
+    price: Number(raw.price ?? 0),
+    currency: raw.currency === "USD" ? "USD" : "SYP",
+    imageUrl: String(raw.imageUrl ?? images[0] ?? ""),
+    images: images.length ? images : undefined,
+    optionGroups: optionGroups?.length ? optionGroups : undefined,
+    isAvailable: raw.isAvailable !== false,
+    sortOrder: Number(raw.sortOrder ?? 0),
+  };
 }
 
 export async function getStores(): Promise<Store[]> {
@@ -59,5 +110,20 @@ export async function getPublicStoreCatalog(
       regionName,
     });
   }
-  return apiGetOrUndefined(`/store-catalog/${slug}`);
+  const raw = await apiGetOrUndefined<{
+    store: Store;
+    categories: RawRecord[];
+    products: RawRecord[];
+    governorateName: LocalizedText;
+    regionName: LocalizedText;
+  }>(`/store-catalog/${slug}`);
+  if (!raw) return undefined;
+  const storeId = raw.store.id;
+  return {
+    store: raw.store,
+    categories: raw.categories.map((c) => normalizePublicCategory(c, storeId)),
+    products: raw.products.map((p) => normalizePublicProduct(p, storeId)),
+    governorateName: raw.governorateName,
+    regionName: raw.regionName,
+  };
 }

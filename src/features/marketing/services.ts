@@ -1,5 +1,4 @@
 import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
-import { getMyBranches } from "@/features/restaurant-dashboard/services";
 import {
   agents,
   businessSubTypes,
@@ -21,17 +20,23 @@ import type {
 
 /**
  * A business's branches, for the public details page's location switcher.
- * `/branches?businessId=` was built for the owner's dashboard — if it ever
- * turns out to need auth for an anonymous visitor, the page still works
- * fine with just the business's own single address, so the failure is
- * swallowed here rather than surfaced.
+ *
+ * Confirmed against the live spec and `branches.controller.ts` in the
+ * backend: `GET /branches` is `@Roles(SUPER_ADMIN, RESTAURANT, STAFF)` and
+ * there is no public equivalent — `GET /public/businesses/{slug}`,
+ * `GET /restaurants/{slug}` and `GET /stores/{slug}` never include a
+ * `branches` field either (checked `public.service.ts`'s
+ * `formatStorefrontBusiness` and `mapToResponse`). An anonymous visitor on
+ * this page can never authenticate, so calling the owner-only endpoint here
+ * would just be a guaranteed 401/403 on every page load. Short-circuiting
+ * to `[]` keeps `branch-location-panel.tsx`'s `branches.length > 0` guard
+ * doing its job (hide the switcher) without the wasted round trip.
+ * Backend fix needed: either add `branches` to one of the public business
+ * DTOs, or add a genuinely public `GET /public/businesses/{slug}/branches`.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for call-site compatibility
 export async function getBusinessBranches(businessId: string): Promise<Branch[]> {
-  try {
-    return await getMyBranches(businessId);
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 export interface SubscriptionPlanOption {
