@@ -15,12 +15,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { PendingChangesBar } from "@/components/shared/pending-changes-bar";
 import { useAuthStore } from "@/features/auth/store";
 import {
   ALL_CATEGORIES,
   MenuCategoryBar,
 } from "@/features/restaurant-dashboard/components/menu-category-bar";
 import { MenuDishDialog } from "@/features/restaurant-dashboard/components/menu-dish-dialog";
+import { ItemStatsModal } from "@/features/restaurant-dashboard/components/item-stats-modal";
 import {
   MenuItemCard,
   MenuItemRow,
@@ -64,8 +66,26 @@ export function MenuManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<MenuItem | null>(null);
+  const [statsItem, setStatsItem] = useState<MenuItem | null>(null);
+  // staged item order, within the single category being reordered — only
+  // written once the owner confirms, never on the drag/click that drew it
+  const [stagedOrderIds, setStagedOrderIds] = useState<string[] | null>(null);
+  const [confirmOrderAction, setConfirmOrderAction] = useState<
+    "save" | "discard" | null
+  >(null);
   const view = useUiStore((s) => s.catalogView);
   const setView = useUiStore((s) => s.setCatalogView);
+
+  // Leaving the category (or filtering) makes a staged order meaningless —
+  // it was positions within a list that no longer matches what's on screen.
+  const changeCategory = (id: string) => {
+    setStagedOrderIds(null);
+    setActiveCategory(id);
+  };
+  const changeQuery = (value: string) => {
+    setStagedOrderIds(null);
+    setQuery(value);
+  };
 
   // The cached list is now the single source of truth: every write patches it
   // optimistically and refetches behind itself, so keeping a second editable
@@ -85,7 +105,7 @@ export function MenuManager() {
     items.filter((i) => i.categoryId === categoryId).length;
 
   const normalisedQuery = query.trim().toLowerCase();
-  const visibleItems = items
+  const baseVisibleItems = items
     .filter(
       (i) =>
         activeCategory === ALL_CATEGORIES || i.categoryId === activeCategory,
@@ -103,6 +123,21 @@ export function MenuManager() {
   // the user cannot see the consequences of.
   const canReorder = activeCategory !== ALL_CATEGORIES && !normalisedQuery;
 
+  const savedOrderIds = baseVisibleItems.map((i) => i.id);
+  // every drag/arrow move only ever touches this local order — nothing is
+  // written until the owner confirms it from the pending-changes bar below
+  const displayOrderIds =
+    canReorder && stagedOrderIds ? stagedOrderIds : savedOrderIds;
+  const visibleItems = canReorder
+    ? (displayOrderIds
+        .map((id) => baseVisibleItems.find((i) => i.id === id))
+        .filter((i): i is MenuItem => i !== undefined))
+    : baseVisibleItems;
+  const isOrderDirty =
+    canReorder &&
+    stagedOrderIds !== null &&
+    stagedOrderIds.some((id, index) => id !== savedOrderIds[index]);
+
   const toggleAvailability = (id: string, value: boolean) =>
     itemMutations.setAvailability(id, value);
 
@@ -112,25 +147,34 @@ export function MenuManager() {
     setDeletingItem(null);
   };
 
+  const moveItemLocal = (id: string, direction: "up" | "down") => {
+    const order = stagedOrderIds ?? savedOrderIds;
+    const index = order.indexOf(id);
+    const swapWith = direction === "up" ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= order.length) return;
+    const next = [...order];
+    [next[index], next[swapWith]] = [next[swapWith], next[index]];
+    setStagedOrderIds(next);
+  };
+
+  const commitOrder = () => {
+    if (!stagedOrderIds) return;
+    itemMutations.reorder(
+      stagedOrderIds.map((id, index) => ({ id, sortOrder: index + 1 })),
+    );
+    setStagedOrderIds(null);
+  };
+
   const onDropOn = (targetId: string) => {
     if (!dragId || dragId === targetId || !canReorder) return;
-    const inCategory = [...items]
-      .filter((i) => i.categoryId === activeCategory)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const from = inCategory.findIndex((i) => i.id === dragId);
-    const to = inCategory.findIndex((i) => i.id === targetId);
+    const order = stagedOrderIds ?? savedOrderIds;
+    const from = order.indexOf(dragId);
+    const to = order.indexOf(targetId);
     if (from !== -1 && to !== -1) {
-      const reordered = [...inCategory];
-      const [moved] = reordered.splice(from, 1);
-      if (moved) reordered.splice(to, 0, moved);
-      // positions are 1-based so a brand-new item (whose order is "after the
-      // last one") sorts alongside the ones that were dragged
-      itemMutations.reorder(
-        reordered.map((item, index) => ({
-          id: item.id,
-          sortOrder: index + 1,
-        })),
-      );
+      const next = [...order];
+      const [moved] = next.splice(from, 1);
+      if (moved) next.splice(to, 0, moved);
+      setStagedOrderIds(next);
     }
     setDragId(null);
   };
@@ -152,35 +196,43 @@ export function MenuManager() {
       return;
     }
     categoryMutations.remove(id);
-    if (activeCategory === id) setActiveCategory(ALL_CATEGORIES);
+    if (activeCategory === id) changeCategory(ALL_CATEGORIES);
   };
 
-  const viewProps = (item: MenuItem) => ({
-    item,
-    draggable: canReorder,
-    isDragging: dragId === item.id,
-    onDragStart: () => setDragId(item.id),
-    onDrop: () => onDropOn(item.id),
-    onToggleAvailability: (value: boolean) =>
-      toggleAvailability(item.id, value),
-    onEdit: () => openEdit(item),
-    onDelete: () => setDeletingItem(item),
-  });
+  const viewProps = (item: MenuItem) => {
+    const index = displayOrderIds.indexOf(item.id);
+    return {
+      item,
+      draggable: canReorder,
+      isDragging: dragId === item.id,
+      onDragStart: () => setDragId(item.id),
+      onDrop: () => onDropOn(item.id),
+      canMoveUp: canReorder && index > 0,
+      canMoveDown: canReorder && index !== -1 && index < displayOrderIds.length - 1,
+      onMoveUp: () => moveItemLocal(item.id, "up"),
+      onMoveDown: () => moveItemLocal(item.id, "down"),
+      onToggleAvailability: (value: boolean) =>
+        toggleAvailability(item.id, value),
+      onEdit: () => openEdit(item),
+      onDelete: () => setDeletingItem(item),
+      onShowStats: () => setStatsItem(item),
+    };
+  };
 
   return (
     <div className="space-y-6">
       <MenuCategoryBar
         categories={categories}
         activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
+        onCategoryChange={changeCategory}
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={changeQuery}
         itemCountFor={itemCountFor}
         totalCount={items.length}
         onAddCategory={categoryMutations.create}
         onRenameCategory={categoryMutations.rename}
         onDeleteCategory={deleteCategory}
-        onReorderCategory={categoryMutations.reorder}
+        onReorderCategoryCommit={categoryMutations.reorderAll}
       />
 
       <section className="space-y-4 border-t border-border/60 pt-6">
@@ -216,6 +268,61 @@ export function MenuManager() {
           </div>
         )}
       </section>
+
+      {isOrderDirty && (
+        <PendingChangesBar
+          message={t.dashboard.unsavedOrderChanges}
+          saveLabel={t.dashboard.saveOrder}
+          discardLabel={t.dashboard.discardOrder}
+          onSave={() => setConfirmOrderAction("save")}
+          onDiscard={() => setConfirmOrderAction("discard")}
+          pending={itemMutations.isPending}
+        />
+      )}
+
+      <ItemStatsModal
+        item={statsItem}
+        open={statsItem !== null}
+        onOpenChange={(open) => !open && setStatsItem(null)}
+      />
+
+      <AlertDialog
+        open={confirmOrderAction !== null}
+        onOpenChange={(open) => !open && setConfirmOrderAction(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmOrderAction === "save"
+                ? t.dashboard.confirmSaveOrderTitle
+                : t.dashboard.confirmDiscardOrderTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmOrderAction === "save"
+                ? t.dashboard.confirmSaveOrderBody
+                : t.dashboard.confirmDiscardOrderBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmOrderAction(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={confirmOrderAction === "discard" ? "destructive" : "default"}
+              loading={confirmOrderAction === "save" && itemMutations.isPending}
+              onClick={() => {
+                if (confirmOrderAction === "save") commitOrder();
+                else setStagedOrderIds(null);
+                setConfirmOrderAction(null);
+              }}
+            >
+              {confirmOrderAction === "save"
+                ? t.common.save
+                : t.dashboard.discardOrder}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <MenuDishDialog
         open={dialogOpen}

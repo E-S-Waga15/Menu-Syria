@@ -31,7 +31,7 @@ export function MenuCategoryBar({
   onAddCategory,
   onRenameCategory,
   onDeleteCategory,
-  onReorderCategory,
+  onReorderCategoryCommit,
 }: {
   categories: MenuCategory[];
   activeCategory: string;
@@ -43,7 +43,7 @@ export function MenuCategoryBar({
   onAddCategory: (name: string) => void;
   onRenameCategory: (id: string, name: string) => void;
   onDeleteCategory: (id: string) => void;
-  onReorderCategory: (id: string, direction: "up" | "down") => void;
+  onReorderCategoryCommit: (orderedIds: string[]) => void;
 }) {
   const { t, lang } = useI18n();
 
@@ -71,7 +71,7 @@ export function MenuCategoryBar({
           onAdd={onAddCategory}
           onRename={onRenameCategory}
           onDelete={onDeleteCategory}
-          onReorder={onReorderCategory}
+          onReorderCommit={onReorderCategoryCommit}
         />
       </div>
 

@@ -4,6 +4,16 @@ import { useState } from "react";
 
 import { ArrowDown, ArrowUp, Plus, Settings2, Trash2 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,6 +30,10 @@ import type { MenuCategory } from "@/lib/types";
  * Category CRUD for the dashboard's catalog manager — create, rename,
  * reorder, and delete (blocked while the category still holds items, so
  * nothing disappears silently).
+ *
+ * Reordering is staged locally: the arrows only move rows on screen, and the
+ * owner has to confirm before anything is written — so a slipped click on a
+ * live menu can never change what customers see.
  */
 export function CategoryManager({
   labelled = false,
@@ -28,7 +42,7 @@ export function CategoryManager({
   onAdd,
   onRename,
   onDelete,
-  onReorder,
+  onReorderCommit,
 }: {
   /** show the action as a full labelled button (beside a section heading)
    * rather than the icon-only trigger used inside a crowded toolbar */
@@ -38,14 +52,36 @@ export function CategoryManager({
   onAdd: (name: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
-  onReorder: (id: string, direction: "up" | "down") => void;
+  onReorderCommit: (orderedIds: string[]) => void;
 }) {
   const { t, lang } = useI18n();
   const [newName, setNewName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [stagedOrder, setStagedOrder] = useState<string[] | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
+    null,
+  );
 
-  const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+  const savedOrder = [...categories]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((c) => c.id);
+  const order = stagedOrder ?? savedOrder;
+  const sorted = order
+    .map((id) => categories.find((c) => c.id === id))
+    .filter((c): c is MenuCategory => c !== undefined);
+  const isDirty =
+    stagedOrder !== null &&
+    stagedOrder.some((id, index) => id !== savedOrder[index]);
+
+  const moveLocal = (id: string, direction: "up" | "down") => {
+    const index = order.indexOf(id);
+    const swapWith = direction === "up" ? index - 1 : index + 1;
+    if (swapWith < 0 || swapWith >= order.length) return;
+    const next = [...order];
+    [next[index], next[swapWith]] = [next[swapWith], next[index]];
+    setStagedOrder(next);
+  };
 
   const submitAdd = () => {
     const name = newName.trim();
@@ -121,7 +157,7 @@ export function CategoryManager({
                   size="icon-sm"
                   disabled={index === 0}
                   aria-label={t.dashboard.moveUp}
-                  onClick={() => onReorder(category.id, "up")}
+                  onClick={() => moveLocal(category.id, "up")}
                 >
                   <ArrowUp className="size-3.5" />
                 </Button>
@@ -130,7 +166,7 @@ export function CategoryManager({
                   size="icon-sm"
                   disabled={index === sorted.length - 1}
                   aria-label={t.dashboard.moveDown}
-                  onClick={() => onReorder(category.id, "down")}
+                  onClick={() => moveLocal(category.id, "down")}
                 >
                   <ArrowDown className="size-3.5" />
                 </Button>
@@ -152,6 +188,31 @@ export function CategoryManager({
           })}
         </div>
 
+        {isDirty && (
+          <div className="flex items-center justify-between gap-2 border-t border-border/60 px-4 py-3">
+            <p className="text-xs font-semibold text-muted-foreground">
+              {t.dashboard.unsavedOrderChanges}
+            </p>
+            <div className="flex shrink-0 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmAction("discard")}
+              >
+                {t.dashboard.discardOrder}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setConfirmAction("save")}
+              >
+                {t.dashboard.saveOrder}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 px-4 pb-4">
           <Input
             value={newName}
@@ -170,6 +231,43 @@ export function CategoryManager({
           </Button>
         </div>
       </DialogContent>
+
+      <AlertDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "save"
+                ? t.dashboard.confirmSaveOrderTitle
+                : t.dashboard.confirmDiscardOrderTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "save"
+                ? t.dashboard.confirmSaveOrderBody
+                : t.dashboard.confirmDiscardOrderBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmAction(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={confirmAction === "discard" ? "destructive" : "default"}
+              onClick={() => {
+                if (confirmAction === "save" && stagedOrder) {
+                  onReorderCommit(stagedOrder);
+                }
+                setStagedOrder(null);
+                setConfirmAction(null);
+              }}
+            >
+              {confirmAction === "save" ? t.common.save : t.dashboard.discardOrder}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

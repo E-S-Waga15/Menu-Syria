@@ -403,6 +403,29 @@ export interface PeakTimesStats {
   bestMonth: { label: string; cartAddCount: number } | null;
 }
 
+/**
+ * `GET /statistics/items/:id` — one product's own performance, for the
+ * per-item stats modal in the dashboard. Not yet implemented by the backend;
+ * see the API spec handed to the backend team alongside this type.
+ */
+export interface ItemStatistics {
+  itemId: string;
+  /** times the item's detail view/modal was opened by a customer */
+  viewCount: number;
+  /** times the item was added to a cart (re-adds count again) */
+  cartAddCount: number;
+  /** units sold across completed orders */
+  quantitySold: number;
+  /** revenue from this item across completed orders, in the item's currency */
+  revenue: number;
+  /** times a customer favourited the item, if favourites are enabled */
+  favoriteCount: number;
+  /** cartAddCount that actually became an order, 0–100 */
+  conversionRate: number;
+  /** the window these numbers cover */
+  period: { from: string; to: string };
+}
+
 /** `GET /statistics/live-activity` — a rough, explicitly approximate count. */
 export interface LiveActivityStats {
   activeCount: number;

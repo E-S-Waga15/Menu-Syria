@@ -120,6 +120,36 @@ export function useCategoryMutations(businessId: string) {
     onSettled,
   });
 
+  /**
+   * Writes a whole new order at once, once the owner has confirmed it — the
+   * list on screen is already showing the staged order, so the cache is set
+   * first and the requests only have to catch up.
+   */
+  const reorderAll = useMutation({
+    mutationFn: (order: { id: string; sortOrder: number }[]) =>
+      Promise.all(
+        order.map(({ id, sortOrder }) =>
+          updateCategory({ businessId, id, sortOrder }),
+        ),
+      ),
+    onMutate: (order) => {
+      const positions = new Map(
+        order.map(({ id, sortOrder }) => [id, sortOrder]),
+      );
+      return cache.patch((current) => ({
+        ...current,
+        categories: current.categories.map((category) =>
+          positions.has(category.id)
+            ? { ...category, sortOrder: positions.get(category.id)! }
+            : category,
+        ),
+      }));
+    },
+    onSuccess: () => toast.success(t.dashboard.orderSaved),
+    onError,
+    onSettled,
+  });
+
   return {
     /** places a new category after the owner's current last one */
     create: (name: string) =>
@@ -128,21 +158,11 @@ export function useCategoryMutations(businessId: string) {
         sortOrder: (cache.read()?.categories.length ?? 0) + 1,
       }),
     rename: (id: string, name: string) => rename.mutate({ id, name }),
-    /**
-     * Swaps a category past its neighbour. Only the moving row is written —
-     * the neighbour keeps its position, so the two can never end up claiming
-     * the same slot.
-     */
-    reorder: (id: string, direction: "up" | "down") => {
-      const sorted = [...(cache.read()?.categories ?? [])].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      const index = sorted.findIndex((category) => category.id === id);
-      const moving = sorted[index];
-      const neighbour = sorted[direction === "up" ? index - 1 : index + 1];
-      if (!moving || !neighbour) return;
-      rename.mutate({ id: moving.id, sortOrder: neighbour.sortOrder });
-    },
+    /** Commits a full ordered list of category ids as the new 1-based order. */
+    reorderAll: (orderedIds: string[]) =>
+      reorderAll.mutate(
+        orderedIds.map((id, index) => ({ id, sortOrder: index + 1 })),
+      ),
     remove: (id: string) => remove.mutate(id),
     isPending: add.isPending || rename.isPending || remove.isPending,
   };

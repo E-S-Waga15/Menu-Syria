@@ -1,6 +1,14 @@
 "use client";
 
-import { GripVertical, ImageOff, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  GripVertical,
+  ImageOff,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 import { SafeImage } from "@/components/shared/safe-image";
 import { Button } from "@/components/ui/button";
@@ -14,14 +22,20 @@ import { cn } from "@/lib/utils";
 export interface MenuItemViewProps {
   item: MenuItem;
   /** false while the list is filtered — order is only meaningful in one
-   * category, so the handle is hidden rather than lying about what it does */
+   * category, so the handle and arrows are hidden rather than lying about
+   * what they do */
   draggable: boolean;
   isDragging: boolean;
   onDragStart: () => void;
   onDrop: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   onToggleAvailability: (value: boolean) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onShowStats: () => void;
 }
 
 /** shared drag wiring, so the row and the card cannot drift apart */
@@ -93,6 +107,36 @@ export function MenuItemRow(props: MenuItemViewProps) {
             className="data-[checked]:bg-success"
           />
         </label>
+        {props.draggable && (
+          <div className="hidden items-center sm:flex">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={!props.canMoveUp}
+              aria-label={t.dashboard.moveUp}
+              onClick={props.onMoveUp}
+            >
+              <ArrowUp className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={!props.canMoveDown}
+              aria-label={t.dashboard.moveDown}
+              onClick={props.onMoveDown}
+            >
+              <ArrowDown className="size-3.5" />
+            </Button>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t.dashboard.productStats}
+          onClick={props.onShowStats}
+        >
+          <BarChart3 className="size-4" />
+        </Button>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -161,6 +205,36 @@ export function MenuItemCard(props: MenuItemViewProps) {
             className="data-[checked]:bg-success"
           />
           <div className="flex items-center gap-1">
+            {props.draggable && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!props.canMoveUp}
+                  aria-label={t.dashboard.moveUp}
+                  onClick={props.onMoveUp}
+                >
+                  <ArrowUp className="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!props.canMoveDown}
+                  aria-label={t.dashboard.moveDown}
+                  onClick={props.onMoveDown}
+                >
+                  <ArrowDown className="size-3.5" />
+                </Button>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t.dashboard.productStats}
+              onClick={props.onShowStats}
+            >
+              <BarChart3 className="size-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon-sm"

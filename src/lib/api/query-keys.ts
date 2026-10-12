@@ -36,6 +36,7 @@ export const queryKeys = {
     peakTimes: ["statistics", "peak-times"] as const,
     liveActivity: ["statistics", "live-activity"] as const,
     insights: ["statistics", "insights"] as const,
+    item: (itemId: string) => ["statistics", "items", itemId] as const,
   },
   offers: {
     /** everything a business has published, dashboard view */

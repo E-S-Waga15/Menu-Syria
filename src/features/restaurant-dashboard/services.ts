@@ -1,4 +1,4 @@
-import { apiFetch, IS_MOCK, mockDelay } from "@/lib/api/client";
+import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
 import {
   branches,
   bestSellingItems,
@@ -25,6 +25,7 @@ import type {
   CategoriesAnalytics,
   CurrencyCode,
   DiningTable,
+  ItemStatistics,
   LiveActivityStats,
   LocalizedText,
   MenuCategory,
@@ -211,6 +212,20 @@ export async function getLiveActivity(): Promise<LiveActivityStats> {
 export async function getBusinessInsights(): Promise<BusinessInsight[]> {
   if (IS_MOCK) return mockDelay(businessInsights);
   return apiFetch("/statistics/insights");
+}
+
+/**
+ * `GET /statistics/items/:id` — one product's own performance (views,
+ * cart-adds, units sold, revenue…), for the per-item stats modal. This
+ * endpoint does not exist on the backend yet — see the API spec written for
+ * it — so a 404 here is expected and surfaces as "not available yet" rather
+ * than an error; a 403 still means the plan itself has no statistics.
+ */
+export async function getItemStatistics(
+  itemId: string,
+): Promise<ItemStatistics | undefined> {
+  if (IS_MOCK) return mockDelay(undefined);
+  return apiGetOrUndefined(`/statistics/items/${itemId}`);
 }
 
 // ---------------------------------------------------------------------------

@@ -18,7 +18,6 @@ import {
   Plus,
   Printer,
   QrCode,
-  Save,
   Share2,
   Truck,
   User,
@@ -27,10 +26,22 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
 
+import { ColorField } from "@/components/shared/color-field";
 import { GoogleLocationPicker } from "@/components/shared/google-location-picker";
 import { GovernorateRegionSelect } from "@/components/shared/governorate-region-select";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { PendingChangesBar } from "@/components/shared/pending-changes-bar";
 import { SafeImage } from "@/components/shared/safe-image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +78,25 @@ import { cn } from "@/lib/utils";
 
 type I18n = ReturnType<typeof useI18n>;
 
+/** A handful of menu-friendly starting points — picking one is faster than
+ * dialing in a hex value, and nothing stops typing a custom one instead. */
+const PRIMARY_COLOR_PRESETS = [
+  "#850036",
+  "#b5121b",
+  "#0f766e",
+  "#1d4ed8",
+  "#7c3aed",
+  "#15803d",
+];
+const SECONDARY_COLOR_PRESETS = [
+  "#f4c430",
+  "#f59e0b",
+  "#fb923c",
+  "#facc15",
+  "#eab308",
+  "#fde68a",
+];
+
 /** What a section calls to write its own fields. */
 type SaveProfile = (input: BusinessProfileInput) => void;
 
@@ -83,10 +113,13 @@ function phoneRows(phone: string, whatsapp: string) {
   ].filter((row): row is { type: string; number: string } => row !== null);
 }
 
-/** Card wrapper every section shares: a title, and a "⋯" menu that shows
- * "Edit" while at rest and swaps to "Save changes" / "Cancel" once the
- * section is being edited — the same three-dot chrome throughout, only its
- * menu contents change with the section's own edit state. */
+/**
+ * Card wrapper every section shares: a title, an "Edit" trigger while at
+ * rest, and — once the section is being edited — a floating save/discard bar
+ * (the same fixed pill the storefront cart uses) instead of a quiet dropdown
+ * item, because an edit here changes what customers see the moment it's
+ * saved. Both Save and Discard go through their own confirm dialog first.
+ */
 function ProfileSection({
   title,
   icon: Icon,
@@ -108,6 +141,10 @@ function ProfileSection({
   children: React.ReactNode;
   t: I18n["t"];
 }) {
+  const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
+    null,
+  );
+
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <div className="flex items-center justify-between gap-3">
@@ -115,36 +152,63 @@ function ProfileSection({
           <Icon className="size-5 text-primary" />
           {title}
         </h2>
-        {editable && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button variant="ghost" size="icon-sm" aria-label="⋯" />}
-            >
-              <MoreVertical className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {editing ? (
-                <>
-                  <DropdownMenuItem onClick={onSave}>
-                    <Save className="size-4" />
-                    {t.common.save}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onClick={onCancel}>
-                    <X className="size-4" />
-                    {t.common.cancel}
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <DropdownMenuItem onClick={onEdit}>
-                  <Pencil className="size-4" />
-                  {t.common.edit}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {editable && !editing && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t.common.edit}
+            onClick={onEdit}
+          >
+            <Pencil className="size-4" />
+          </Button>
         )}
       </div>
       <div className="mt-5">{children}</div>
+
+      {editable && editing && (
+        <PendingChangesBar
+          message={t.dashboard.unsavedChanges}
+          saveLabel={t.dashboard.saveChanges}
+          discardLabel={t.dashboard.discardChanges}
+          onSave={() => setConfirmAction("save")}
+          onDiscard={() => setConfirmAction("discard")}
+        />
+      )}
+
+      <AlertDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "save"
+                ? t.dashboard.confirmSaveChangesTitle
+                : t.dashboard.confirmDiscardChangesTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "save"
+                ? t.dashboard.confirmSaveChangesBody
+                : t.dashboard.confirmDiscardChangesBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmAction(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={confirmAction === "discard" ? "destructive" : "default"}
+              onClick={() => {
+                if (confirmAction === "save") onSave();
+                else onCancel();
+                setConfirmAction(null);
+              }}
+            >
+              {confirmAction === "save" ? t.common.save : t.dashboard.discardChanges}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
@@ -895,65 +959,56 @@ function AppearanceSection({
         setEditing(false);
       }}
     >
-      <div className="grid grid-cols-2 gap-5">
-        <div className="space-y-2">
-          <Label htmlFor="p-primary">{t.auth.primaryColorLabel}</Label>
-          <div className="flex items-center gap-2">
-            <input
-              id="p-primary"
-              type="color"
-              disabled={!editing}
-              value={primary}
-              onChange={(e) => setPrimary(e.target.value)}
-              className="size-11 cursor-pointer rounded-lg border border-input bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-60"
-            />
-            <span className="font-mono text-sm" dir="ltr">
-              {primary}
-            </span>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="p-secondary">{t.auth.secondaryColorLabel}</Label>
-          <div className="flex items-center gap-2">
-            <input
-              id="p-secondary"
-              type="color"
-              disabled={!editing}
-              value={secondary}
-              onChange={(e) => setSecondary(e.target.value)}
-              className="size-11 cursor-pointer rounded-lg border border-input bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-60"
-            />
-            <span className="font-mono text-sm" dir="ltr">
-              {secondary}
-            </span>
-          </div>
-        </div>
-      </div>
+      <div className="grid gap-6 md:grid-cols-[1fr_1fr_auto] md:items-start">
+        <ColorField
+          id="p-primary"
+          label={t.auth.primaryColorLabel}
+          value={primary}
+          onChange={setPrimary}
+          disabled={!editing}
+          presets={PRIMARY_COLOR_PRESETS}
+        />
+        <ColorField
+          id="p-secondary"
+          label={t.auth.secondaryColorLabel}
+          value={secondary}
+          onChange={setSecondary}
+          disabled={!editing}
+          presets={SECONDARY_COLOR_PRESETS}
+        />
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border/60">
-        <div
-          className="flex items-center justify-between px-5 py-4 text-white"
-          style={{ backgroundColor: primary }}
-        >
-          <span className="font-heading font-bold">{restaurant.name.ar}</span>
-          <span
-            className="rounded-full px-3 py-1 text-xs font-bold"
-            style={{ backgroundColor: secondary, color: "#2c1600" }}
-          >
-            {t.menu.popular}
-          </span>
-        </div>
-        <div className="flex items-center justify-between bg-background px-5 py-3.5">
-          <span className="text-sm font-semibold">
+        <div className="md:row-span-2 md:w-56">
+          <p className="text-xs font-semibold text-muted-foreground">
             {t.auth.previewDishName}
-          </span>
-          <span
-            className="text-sm font-bold"
-            style={{ color: primary }}
-            dir="ltr"
-          >
-            45,000 {t.common.currency}
-          </span>
+          </p>
+          <div className="mt-2 overflow-hidden rounded-xl border border-border/60">
+            <div
+              className="flex items-center justify-between px-4 py-3.5 text-white"
+              style={{ backgroundColor: primary }}
+            >
+              <span className="truncate font-heading text-sm font-bold">
+                {restaurant.name.ar}
+              </span>
+              <span
+                className="shrink-0 rounded-full px-2.5 py-1 text-[0.65rem] font-bold"
+                style={{ backgroundColor: secondary, color: "#2c1600" }}
+              >
+                {t.menu.popular}
+              </span>
+            </div>
+            <div className="flex items-center justify-between bg-background px-4 py-3">
+              <span className="text-xs font-semibold">
+                {t.auth.previewDishName}
+              </span>
+              <span
+                className="text-xs font-bold"
+                style={{ color: primary }}
+                dir="ltr"
+              >
+                45,000 {t.common.currency}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </ProfileSection>

@@ -4,6 +4,8 @@
  * swapping to the real API is a matter of setting the env variable.
  */
 
+import { useAuthStore } from "@/features/auth/store";
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export const IS_MOCK = API_BASE_URL === "";
@@ -99,9 +101,54 @@ export function getStoredAccessToken(): string | null {
  */
 const PUBLIC_GET_REVALIDATE_SECONDS = 60;
 
+/**
+ * The access token is deliberately short-lived (15 minutes) — that's correct
+ * backend design, not a bug. What was missing on this side was ever calling
+ * `/auth/refresh` with the 7-day refresh token to get a new one: every
+ * request just kept using the same token until it expired, at which point
+ * every call failed with 401 and the app looked logged out while the session
+ * was, underneath, still perfectly valid. This refreshes once and lets every
+ * in-flight 401 ride the same attempt, instead of each firing its own.
+ */
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const { refreshToken, setTokens, logout } = useAuthStore.getState();
+  if (!refreshToken) return null;
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (!response.ok) throw new Error("refresh failed");
+        const data = (await response.json()) as {
+          accessToken: string;
+          refreshToken?: string;
+        };
+        setTokens(data.accessToken, data.refreshToken ?? refreshToken);
+        return data.accessToken;
+      } catch {
+        // the refresh token itself is gone or expired — there is no way back
+        // short of logging in again, so the session is cleared for real here
+        logout();
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+  return refreshPromise;
+}
+
 export async function apiFetch<T>(
   path: string,
   { body, headers, ...init }: RequestOptions = {},
+  _isRetry = false,
 ): Promise<T> {
   const authHeaders: HeadersInit = {};
   const accessToken = getStoredAccessToken();
@@ -138,6 +185,15 @@ export async function apiFetch<T>(
     headers: mergedHeaders,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
+  // An expired access token, not an invalid session — retried once with a
+  // fresh token before giving up and surfacing it as a real auth failure.
+  if (response.status === 401 && accessToken && !_isRetry) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return apiFetch<T>(path, { body, headers, ...init }, true);
+    }
+  }
 
   if (!response.ok) {
     const { message, details } = extractErrorMessage(
