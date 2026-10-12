@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { RestaurantDetailsBody } from "@/features/marketing/components/restaurant-details-body";
 import { RestaurantGallery } from "@/features/marketing/components/restaurant-gallery";
 import {
+  getBusinessBranches,
   getGovernorates,
   getRegions,
   getRestaurantBySlug,
@@ -70,10 +71,11 @@ export default async function BusinessDetailsPage({
   if (!resolved) notFound();
   const { kind, business } = resolved;
 
-  const [reviews, governorates, regions] = await Promise.all([
+  const [reviews, governorates, regions, branches] = await Promise.all([
     kind === "restaurant" ? getRestaurantReviews(business.id) : Promise.resolve([]),
     getGovernorates(),
     getRegions(),
+    getBusinessBranches(business.id),
   ]);
 
   const governorateName =
@@ -108,6 +110,8 @@ export default async function BusinessDetailsPage({
         reviews={reviews}
         governorateName={governorateName}
         regionName={regionName}
+        branches={branches}
+        regions={regions}
         lang={lang}
         t={t}
         menuHref={`/${lang}/${slug}/menu`}

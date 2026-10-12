@@ -322,6 +322,9 @@
     "hoursNotSet": "لم تُضف ساعات العمل بعد",
     "closedDay": "مغلق",
     "today": "اليوم",
+    "mainBranch": "الفرع الرئيسي",
+    "selectBranch": "اختر الفرع",
+    "branchPhone": "هاتف الفرع",
     "dayNames": [
       "الأحد",
       "الاثنين",

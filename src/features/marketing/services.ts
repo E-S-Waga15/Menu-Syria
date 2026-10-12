@@ -1,4 +1,5 @@
 import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
+import { getMyBranches } from "@/features/restaurant-dashboard/services";
 import {
   agents,
   businessSubTypes,
@@ -9,12 +10,28 @@ import {
 } from "@/lib/mock/data";
 import type {
   Agent,
+  Branch,
   BusinessSubType,
   Governorate,
   Region,
   Restaurant,
   Review,
 } from "@/lib/types";
+
+/**
+ * A business's branches, for the public details page's location switcher.
+ * `/branches?businessId=` was built for the owner's dashboard — if it ever
+ * turns out to need auth for an anonymous visitor, the page still works
+ * fine with just the business's own single address, so the failure is
+ * swallowed here rather than surfaced.
+ */
+export async function getBusinessBranches(businessId: string): Promise<Branch[]> {
+  try {
+    return await getMyBranches(businessId);
+  } catch {
+    return [];
+  }
+}
 
 export interface SubscriptionPlanOption {
   id: string;

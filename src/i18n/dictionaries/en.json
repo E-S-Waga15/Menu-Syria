@@ -322,6 +322,9 @@
     "hoursNotSet": "Opening hours have not been added yet",
     "closedDay": "Closed",
     "today": "Today",
+    "mainBranch": "Main branch",
+    "selectBranch": "Choose a branch",
+    "branchPhone": "Branch phone",
     "dayNames": [
       "Sunday",
       "Monday",

@@ -1,13 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  ExternalLink,
-  MapPin,
-  Phone,
-  Star,
-  UtensilsCrossed,
-} from "lucide-react";
+import { MapPin, Phone, Star, UtensilsCrossed } from "lucide-react";
 
 import {
   FacebookIcon,
@@ -15,13 +9,13 @@ import {
   WhatsAppIcon,
 } from "@/components/shared/brand-icons";
 import { Badge } from "@/components/ui/badge";
-import { MapEmbed } from "@/features/marketing/components/map-embed";
+import { BranchLocationPanel } from "@/features/marketing/components/branch-location-panel";
 import { OpeningHours } from "@/features/marketing/components/opening-hours";
 import { ReviewsSection } from "@/features/marketing/components/reviews-section";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { recoverBusinessFields } from "@/lib/business-text";
-import type { Business, Review } from "@/lib/types";
+import type { Branch, Business, Region, Review } from "@/lib/types";
 
 /** one card shell for every block on this page, so nothing drifts */
 function Panel({
@@ -50,6 +44,8 @@ export function RestaurantDetailsBody({
   reviews,
   governorateName,
   regionName,
+  branches,
+  regions,
   lang,
   t,
   showMenuCta = true,
@@ -59,6 +55,9 @@ export function RestaurantDetailsBody({
   reviews: Review[];
   governorateName: string;
   regionName: string;
+  /** other locations this business has, for the location panel's switcher */
+  branches: Branch[];
+  regions: Region[];
   lang: Locale;
   t: Dictionary;
   showMenuCta?: boolean;
@@ -260,30 +259,16 @@ export function RestaurantDetailsBody({
         </div>
 
         <div className="space-y-6">
-          <Panel
-            title={t.restaurant.location}
-            action={
-              <a
-                href={`https://maps.google.com/?q=${location.lat},${location.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-              >
-                {t.restaurant.openInMaps}
-                <ExternalLink className="size-3.5" />
-              </a>
-            }
-          >
-            {address && (
-              <p className="text-sm text-muted-foreground">{address}</p>
-            )}
-            <div className="mt-4">
-              <MapEmbed
-                lat={location.lat}
-                lng={location.lng}
-                label={t.restaurant.location}
-              />
-            </div>
+          <Panel title={t.restaurant.location}>
+            <BranchLocationPanel
+              mainAddress={address}
+              mainLocation={location}
+              mainPhone={restaurant.phone}
+              branches={branches}
+              regions={regions}
+              lang={lang}
+              t={t}
+            />
           </Panel>
 
           <Panel title={t.restaurant.workingHours}>
