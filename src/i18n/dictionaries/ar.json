@@ -20,6 +20,7 @@
     "currency": "ل.س",
     "optional": "اختياري",
     "required": "مطلوب",
+    "selectRequiredOption": "الرجاء اختيار \"{group}\" قبل الإضافة للسلة",
     "comingSoon": "قريباً",
     "notFoundTitle": "الصفحة غير موجودة",
     "notFoundBody": "يبدو أن هذا الطبق ليس على قائمتنا. عد إلى الصفحة الرئيسية.",
@@ -633,7 +634,6 @@
     "tableFree": "شاغرة",
     "tableOccupied": "مشغولة",
     "assignWaiter": "تعيين نادل",
-    "assignWaiterUnavailable": "تعيين النادل للطاولة غير متاح حالياً من الخادم",
     "waiters": "النوادل",
     "addWaiter": "أضف نادلاً",
     "revenueGrowth": "نمو الإيرادات",
@@ -751,9 +751,7 @@
     "favoriteCount": "مرات الإضافة للمفضلة",
     "productStatsHint": "أداء هذا المنتج بين زبائنك خلال آخر 30 يوماً",
     "productStatsUnavailable": "لا تتوفر إحصائيات تفصيلية لهذا المنتج بعد — ستظهر هنا بعد ربط الخادم بهذه الميزة",
-    "productStatsLocked": "إحصائيات المنتجات غير متاحة في خطتك الحالية",
-    "phoneRegionEditUnavailable": "تعديل رقم الهاتف والمحافظة/المنطقة غير متاح حالياً من الخادم — للتعديل تواصل مع الدعم",
-    "socialMediaEditUnavailable": "تعديل واتساب وصفحات التواصل الاجتماعي غير متاح حالياً من الخادم — للتعديل تواصل مع الدعم"
+    "productStatsLocked": "إحصائيات المنتجات غير متاحة في خطتك الحالية"
   },
   "agent": {
     "dashboard": "لوحة الوكيل",

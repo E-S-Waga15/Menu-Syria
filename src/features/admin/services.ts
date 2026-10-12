@@ -320,6 +320,30 @@ export async function updateAdminAgent(
   });
 }
 
+export async function updateAdminAgentStatus(
+  id: string,
+  status: "active" | "inactive",
+  auth: AdminAuth = {},
+): Promise<{ message?: string }> {
+  return apiFetch(`/agents/${id}/status`, {
+    method: "PATCH",
+    headers: authHeaders(auth),
+    body: { status },
+  });
+}
+
+/** "تجديد الاشتراك" — extends a subscription another billing cycle on the
+ * same plan, amount and dates computed server-side. */
+export async function renewSubscription(
+  subscriptionId: string,
+  auth: AdminAuth = {},
+): Promise<{ message?: string }> {
+  return apiFetch(`/subscriptions/${subscriptionId}/renew`, {
+    method: "POST",
+    headers: authHeaders(auth),
+  });
+}
+
 export interface AdminPlanWriteInput {
   name: string;
   price: number;

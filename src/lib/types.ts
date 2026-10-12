@@ -273,13 +273,10 @@ export interface OrderLine {
   name: LocalizedText;
   quantity: number;
   price: number;
-  /**
-   * The options the customer picked for this line (e.g. "Large", "Red").
-   * Not sent by the backend yet — see the order-options API note handed to
-   * the backend team — so this stays optional and simply doesn't render
-   * until an order actually carries it.
-   */
-  options?: { id: string; priceDelta: number }[];
+  /** The options the customer picked for this line (e.g. "Large", "Red"),
+   * exactly as `GET /orders/:id` names the field. `null`/absent means none
+   * were picked (or the item has no option groups). */
+  selectedOptions?: { id: string; priceDelta: number }[] | null;
 }
 
 export interface Order {

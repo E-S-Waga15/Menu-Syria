@@ -60,11 +60,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuthStore } from "@/features/auth/store";
-import { getGovernorates, getRegions, getSubscriptionPlans } from "@/features/marketing/services";
+import {
+  getBusinessSubTypes,
+  getGovernorates,
+  getRegions,
+  getSubscriptionPlans,
+} from "@/features/marketing/services";
 import { createSubscriptionRequest } from "@/features/subscription-requests/services";
 import { useBusinessProfileMutations } from "@/features/restaurant-dashboard/hooks/use-business-profile";
 import { getMyRestaurant } from "@/features/restaurant-dashboard/services";
@@ -268,6 +280,10 @@ function AccountInfoSection({
     queryKey: queryKeys.regions,
     queryFn: getRegions,
   });
+  const { data: subTypes } = useQuery({
+    queryKey: queryKeys.businessSubTypes(isStore ? "STORE" : "RESTAURANT"),
+    queryFn: () => getBusinessSubTypes(isStore ? "STORE" : "RESTAURANT"),
+  });
 
   // a request approved before the backend had dedicated columns for these
   // left its logo/colors/address/location dumped as text inside
@@ -279,6 +295,10 @@ function AccountInfoSection({
   const [name, setName] = useState(restaurant.name[lang]);
   const [description, setDescription] = useState(recovered.description);
   const [specialty, setSpecialty] = useState(restaurant.cuisine[lang]);
+  // the structured subtype isn't part of `GET /me/business`'s response, so
+  // there's no "current value" to preselect — same blank start as the
+  // registration form until the owner actively picks one
+  const [subTypeId, setSubTypeId] = useState("");
   const [phone, setPhone] = useState(restaurant.phone);
   const [address, setAddress] = useState(
     restaurant.address[lang] || recovered.address || "",
@@ -296,6 +316,7 @@ function AccountInfoSection({
     name,
     description,
     specialty,
+    subTypeId,
     phone,
     address,
     governorateId,
@@ -319,6 +340,7 @@ function AccountInfoSection({
           name,
           description,
           specialty,
+          subTypeId,
           phone,
           address,
           governorateId,
@@ -335,14 +357,15 @@ function AccountInfoSection({
           // a store's "specialty" is its business type, which the platform
           // assigns — only a food business has an editable cuisine
           ...(isStore ? {} : { cuisineType: specialty }),
+          ...(subTypeId ? { subTypeId } : {}),
           address,
-          // NOTE: `districtId` and `phones` are deliberately NOT sent here.
-          // `UpdateBusinessDto` on the backend has no `districtId` field and
-          // no field/endpoint for updating `BusinessPhone` rows post-
-          // registration — with `forbidNonWhitelisted: true`, including
-          // either one made the ENTIRE PATCH /businesses/:id request 400,
-          // which is why even the plain `description` edit above appeared to
-          // "silently fail". Backend gap — see audit report.
+          districtId: regionId || undefined,
+          phones: [
+            { numberType: "mobile", number: phone },
+            ...(restaurant.whatsapp
+              ? [{ numberType: "whatsapp" as const, number: restaurant.whatsapp }]
+              : []),
+          ],
           latitude: lat,
           longitude: lng,
         });
@@ -352,6 +375,7 @@ function AccountInfoSection({
         setName(snapshot.current.name);
         setDescription(snapshot.current.description);
         setSpecialty(snapshot.current.specialty);
+        setSubTypeId(snapshot.current.subTypeId);
         setPhone(snapshot.current.phone);
         setAddress(snapshot.current.address);
         setGovernorateId(snapshot.current.governorateId);
@@ -387,6 +411,30 @@ function AccountInfoSection({
           />
         </div>
       </div>
+
+      <div className="mt-5 space-y-2">
+        <Label htmlFor="p-subtype">{t.auth.restaurantTypeLabel}</Label>
+        <Select
+          value={subTypeId || null}
+          onValueChange={(v) => v && setSubTypeId(v)}
+          items={Object.fromEntries(
+            (subTypes ?? []).map((st) => [st.id, st.name]),
+          )}
+          disabled={!editing}
+        >
+          <SelectTrigger id="p-subtype" className="h-11! w-full">
+            <SelectValue placeholder={t.auth.businessTypePlaceholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {(subTypes ?? []).map((st) => (
+              <SelectItem key={st.id} value={st.id}>
+                {st.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="mt-5 space-y-2">
         <Label htmlFor="p-desc">{t.auth.descriptionLabel}</Label>
         <Textarea
@@ -398,13 +446,17 @@ function AccountInfoSection({
         />
       </div>
 
-      <p className="mt-5 text-xs font-semibold text-muted-foreground">
-        {t.dashboard.phoneRegionEditUnavailable}
-      </p>
-      <div className="mt-2 grid gap-5 md:grid-cols-2">
+      <div className="mt-5 grid gap-5 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="p-phone">{t.auth.phoneLabel}</Label>
-          <Input id="p-phone" dir="ltr" className="h-11" disabled value={phone} />
+          <Input
+            id="p-phone"
+            dir="ltr"
+            className="h-11"
+            disabled={!editing}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
         </div>
         <div className="space-y-2">
           <Label>{t.auth.governorateLabel}</Label>
@@ -412,19 +464,22 @@ function AccountInfoSection({
             triggerClassName="h-11"
             className="grid gap-2 sm:grid-cols-2"
             governorateValue={governorateId}
-            onGovernorateChange={() => {}}
+            onGovernorateChange={(v) => {
+              setGovernorateId(v);
+              setRegionId("");
+            }}
             governorateItems={Object.fromEntries(
               (governorates ?? []).map((g) => [g.id, g.name[lang]]),
             )}
             governorateAriaLabel={t.auth.governorateLabel}
             regionValue={regionId}
-            onRegionChange={() => {}}
+            onRegionChange={setRegionId}
             regionItems={Object.fromEntries(
               regionChoices.map((r) => [r.id, r.name[lang]]),
             )}
             regionAriaLabel={t.restaurantsPage.regionLabel}
-            regionDisabled
-            governorateDisabled
+            regionDisabled={!editing || !governorateId}
+            governorateDisabled={!editing}
           />
         </div>
       </div>
@@ -509,36 +564,58 @@ function AccountInfoSection({
   );
 }
 
-/**
- * View-only until the backend can actually persist these: `phones` and
- * `socialLinks` have no backing field on `UpdateBusinessDto` and no
- * dedicated endpoint of their own — `BusinessPhone`/`BusinessLink` rows are
- * only ever written once, at registration approval. Letting the owner edit
- * and "save" this section used to just 400 every time, with no indication
- * why — showing it read-only with a plain explanation is more honest than a
- * save button that can never work.
- */
 function SocialMediaSection({
   restaurant,
   t,
+  save,
 }: {
   restaurant: Restaurant;
   t: I18n["t"];
+  save: SaveProfile;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [whatsapp, setWhatsapp] = useState(restaurant.whatsapp);
+  const [instagram, setInstagram] = useState(restaurant.instagram ?? "");
+  const [facebook, setFacebook] = useState(restaurant.facebook ?? "");
+  const snapshot = useRef({ whatsapp, instagram, facebook });
+
   return (
     <ProfileSection
       title={t.dashboard.socialMediaTab}
       icon={Globe}
-      editing={false}
-      editable={false}
+      editing={editing}
       t={t}
-      onEdit={() => {}}
-      onSave={() => {}}
-      onCancel={() => {}}
+      onEdit={() => {
+        snapshot.current = { whatsapp, instagram, facebook };
+        setEditing(true);
+      }}
+      onSave={() => {
+        save({
+          // the contact section owns the primary phone, so it rides along
+          phones: [
+            { numberType: "mobile", number: restaurant.phone },
+            ...(whatsapp
+              ? [{ numberType: "whatsapp" as const, number: whatsapp }]
+              : []),
+          ],
+          // an emptied field removes the link rather than storing a blank one
+          socialLinks: [
+            instagram ? { socialPlatform: "instagram", url: instagram } : null,
+            facebook ? { socialPlatform: "facebook", url: facebook } : null,
+          ].filter(
+            (link): link is { socialPlatform: string; url: string } =>
+              link !== null,
+          ),
+        });
+        setEditing(false);
+      }}
+      onCancel={() => {
+        setWhatsapp(snapshot.current.whatsapp);
+        setInstagram(snapshot.current.instagram);
+        setFacebook(snapshot.current.facebook);
+        setEditing(false);
+      }}
     >
-      <p className="mb-5 text-sm text-muted-foreground">
-        {t.dashboard.socialMediaEditUnavailable}
-      </p>
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="p-wa">{t.auth.whatsappLabel}</Label>
@@ -546,8 +623,9 @@ function SocialMediaSection({
             id="p-wa"
             dir="ltr"
             className="h-11"
-            disabled
-            value={restaurant.whatsapp}
+            disabled={!editing}
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
           />
         </div>
         <div className="space-y-2">
@@ -556,8 +634,9 @@ function SocialMediaSection({
             id="p-ig"
             dir="ltr"
             className="h-11"
-            disabled
-            value={restaurant.instagram ?? ""}
+            disabled={!editing}
+            value={instagram}
+            onChange={(e) => setInstagram(e.target.value)}
           />
         </div>
       </div>
@@ -567,8 +646,9 @@ function SocialMediaSection({
           id="p-fb"
           dir="ltr"
           className="h-11"
-          disabled
-          value={restaurant.facebook ?? ""}
+          disabled={!editing}
+          value={facebook}
+          onChange={(e) => setFacebook(e.target.value)}
         />
       </div>
     </ProfileSection>
@@ -1305,7 +1385,7 @@ export function BusinessProfile() {
           <DeliveryFeeSection restaurant={restaurant} t={t} save={save} />
         </TabsContent>
         <TabsContent value="social">
-          <SocialMediaSection restaurant={restaurant} t={t} />
+          <SocialMediaSection restaurant={restaurant} t={t} save={save} />
         </TabsContent>
         <TabsContent value="gallery">
           <GallerySection restaurant={restaurant} t={t} save={save} />

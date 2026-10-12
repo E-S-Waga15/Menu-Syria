@@ -437,14 +437,6 @@ export async function updateOrderStatus(
 export interface TableWriteInput {
   tableNumber?: string;
   status?: "available" | "occupied" | "reserved";
-  /**
-   * NOT accepted by `UpdateTableDto` — `RestaurantTable` has no waiter/staff
-   * column at all, so there is nowhere on the backend to persist this.
-   * Stripped before the request below rather than sent, since
-   * `forbidNonWhitelisted` would 400 the WHOLE request (including the
-   * `status` change riding alongside it) over this one unknown field.
-   * Backend gap — see audit report.
-   */
   waiterId?: string | null;
   seats?: number;
   shape?: string;
@@ -457,11 +449,9 @@ export async function updateTable(
   input: TableWriteInput,
 ): Promise<WithMessage<DiningTable>> {
   if (IS_MOCK) return mockDelay({ id, ...input } as unknown as DiningTable);
-  const body: Record<string, unknown> = { ...input };
-  delete body.waiterId;
   const raw = await apiFetch<Raw>(`/tables/${id}`, {
     method: "PATCH",
-    body,
+    body: input,
   });
   return normalizeTable(raw);
 }
@@ -474,29 +464,20 @@ export interface BusinessProfileInput {
   name?: string;
   description?: string;
   address?: string;
-  /**
-   * NOT accepted by `UpdateBusinessDto` on the backend (only `CreateBusinessDto`
-   * has it) — sending it 400s the whole request under `forbidNonWhitelisted`.
-   * No caller sends it; kept typed here only so a backend fix (add
-   * `districtId` to `UpdateBusinessDto`) doesn't require touching this type.
-   * Backend gap — see audit report.
-   */
   districtId?: string;
+  /** the structured subtype (e.g. "Fast Food") — same list `/business-sub-types`
+   * feeds the registration form's picker with, now editable after signup too */
+  subTypeId?: string;
   latitude?: number;
   longitude?: number;
   primaryColor?: string;
   secondaryColor?: string;
   logo?: string;
-  /** food_beverage only — sent as `restaurantProfile.cuisineType` */
+  /** food_beverage only — free-text display label, sent as
+   * `restaurantProfile.cuisineType`; distinct from `subTypeId` */
   cuisineType?: string;
-  /**
-   * NOT accepted by `UpdateBusinessDto` — `BusinessPhone`/`BusinessLink` rows
-   * have no update endpoint at all, only ever written once at registration
-   * approval. Sending these 400s the whole request. Backend gap — see audit
-   * report.
-   */
-  phones?: { type: string; number: string }[];
-  socialLinks?: { platform: string; url: string }[];
+  phones?: { numberType: "mobile" | "landline" | "whatsapp"; number: string }[];
+  socialLinks?: { socialPlatform: string; url: string }[];
   images?: string[];
   /** Sham Cash QR — a data URL, an already-uploaded image URL, or "" to clear it */
   paymentQrCode?: string;

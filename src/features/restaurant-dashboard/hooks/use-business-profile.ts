@@ -87,16 +87,16 @@ function applyInput(business: Restaurant, input: BusinessProfileInput): Restaura
   if (input.paymentQrCode !== undefined) next.paymentQrCode = input.paymentQrCode;
   if (input.deliveryFee !== undefined) next.deliveryFee = input.deliveryFee;
 
-  const whatsapp = input.phones?.find((phone) => phone.type === "whatsapp");
-  const primary = input.phones?.find((phone) => phone.type !== "whatsapp");
+  const whatsapp = input.phones?.find((phone) => phone.numberType === "whatsapp");
+  const primary = input.phones?.find((phone) => phone.numberType !== "whatsapp");
   if (whatsapp) next.whatsapp = whatsapp.number;
   if (primary) next.phone = primary.number;
 
   const instagram = input.socialLinks?.find(
-    (link) => link.platform.toLowerCase() === "instagram",
+    (link) => link.socialPlatform.toLowerCase() === "instagram",
   );
   const facebook = input.socialLinks?.find(
-    (link) => link.platform.toLowerCase() === "facebook",
+    (link) => link.socialPlatform.toLowerCase() === "facebook",
   );
   if (instagram) next.instagram = instagram.url;
   if (facebook) next.facebook = facebook.url;

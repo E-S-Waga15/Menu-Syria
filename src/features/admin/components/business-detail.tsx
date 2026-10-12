@@ -32,6 +32,7 @@ import {
   changeBusinessPlan,
   getAdminPlans,
   getBusinessSubscriptions,
+  renewSubscription,
   updateAdminBusinessStatus,
 } from "@/features/admin/services";
 import { daysUntil } from "@/features/notifications/services";
@@ -63,6 +64,7 @@ export function AdminBusinessDetail({
   const [enabled, setEnabled] = useState(business.status === "active");
   const [savingStatus, setSavingStatus] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [renewing, setRenewing] = useState(false);
   const { data: plans = [] } = useQuery({
     queryKey: ["admin", "plans"],
     queryFn: () => getAdminPlans(),
@@ -103,6 +105,19 @@ export function AdminBusinessDetail({
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  const renew = async () => {
+    if (!currentSubscription) return;
+    setRenewing(true);
+    try {
+      const result = await renewSubscription(currentSubscription.id);
+      toast.success(result?.message ?? t.admin.renewDone);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setRenewing(false);
     }
   };
 
@@ -240,9 +255,10 @@ export function AdminBusinessDetail({
         <div className="mt-5 flex flex-col gap-2 sm:flex-row">
           <Button
             className="h-11 flex-1"
-            onClick={() => toast.success(t.admin.renewDone)}
+            onClick={() => void renew()}
+            disabled={renewing || !currentSubscription}
           >
-            <RefreshCw className="size-4" />
+            {renewing ? <Spinner size="xs" tone="current" /> : <RefreshCw className="size-4" />}
             {t.admin.renewSubscription}
           </Button>
           <Button

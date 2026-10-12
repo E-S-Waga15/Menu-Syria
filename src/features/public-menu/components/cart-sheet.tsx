@@ -211,6 +211,9 @@ export function CartSheet({
         items: lines.map((line) => ({
           itemId: line.item.id,
           quantity: line.quantity,
+          options: line.options.length
+            ? line.options.map((o) => ({ id: o.id }))
+            : undefined,
         })),
       });
 

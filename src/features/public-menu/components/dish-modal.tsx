@@ -26,6 +26,8 @@ import {
 } from "@/features/public-menu/lib/format";
 import { trackItemCartAdd, trackItemView } from "@/features/public-menu/services";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/fmt";
+import { toast } from "@/lib/toast";
 import type {
   RestaurantTheme,
   CatalogItem,
@@ -65,19 +67,14 @@ export function DishModal({
   const [slide, setSlide] = useState(0);
 
   // Reset selections whenever a different dish opens (during render, no
-  // effect) — required single-select groups (e.g. Size) start pre-picked
-  // on their first option, matching how delivery apps handle a mandatory
-  // choice without a separate blocking validation step.
+  // effect). Nothing starts pre-picked, required or not — a customer must
+  // actively choose every option themselves, including a mandatory
+  // single-select group with only one choice; `addToCart` below blocks and
+  // points out whichever required group was left empty.
   const [seededFor, setSeededFor] = useState<string | null>(null);
   if (item && item.id !== seededFor) {
     setSeededFor(item.id);
-    setSelected(
-      (item.optionGroups ?? []).flatMap((group) =>
-        group.required && group.selectionType === "single" && group.options[0]
-          ? [group.options[0]]
-          : [],
-      ),
-    );
+    setSelected([]);
     setQuantity(1);
     setSlide(0);
     // this branch runs exactly once per distinct item opened — the same
@@ -129,6 +126,19 @@ export function DishModal({
           : null;
 
   const addToCart = () => {
+    const missingGroup = (item.optionGroups ?? []).find(
+      (group) =>
+        group.required &&
+        !group.options.some((option) =>
+          selected.some((o) => o.id === option.id),
+        ),
+    );
+    if (missingGroup) {
+      toast.error(
+        fmt(t.common.selectRequiredOption, { group: missingGroup.id }),
+      );
+      return;
+    }
     trackItemCartAdd(item.id);
     addItem(businessId, item, selected, quantity);
     onClose();

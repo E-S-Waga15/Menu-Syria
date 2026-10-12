@@ -153,9 +153,17 @@ export interface ExternalOrderInput {
   customerName: string;
   customerPhone: string;
   notes?: string;
+  /** routes the WhatsApp order link to that branch's own phone instead of
+   * the business's main number */
+  branchId?: string;
   /** real menu/catalog item UUIDs — offer bundles use synthetic `offer-` ids
    * and cannot be submitted through this endpoint yet */
-  items: { itemId: string; quantity: number }[];
+  items: {
+    itemId: string;
+    quantity: number;
+    /** the options the customer picked, by id within their group */
+    options?: { id: string }[];
+  }[];
 }
 
 /** Place a guest order through the platform. */

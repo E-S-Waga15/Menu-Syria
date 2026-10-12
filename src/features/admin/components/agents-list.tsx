@@ -12,7 +12,9 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { AdminSelect } from "@/features/admin/components/admin-select";
 import { AdminViewToggle } from "@/features/admin/components/admin-view-toggle";
+import { updateAdminAgentStatus } from "@/features/admin/services";
 import { useI18n } from "@/i18n/client";
+import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
 import type { Agent, Governorate, Region } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -38,7 +40,7 @@ export function AdminAgentsList({
   const [query, setQuery] = useState("");
   const [governorateId, setGovernorateId] = useState(ALL);
   const [regionId, setRegionId] = useState(ALL);
-  const [disabled, setDisabled] = useState<string[]>([]);
+  const [agentRows, setAgentRows] = useState(agents);
 
   const base = `/${lang}/admin`;
 
@@ -61,7 +63,7 @@ export function AdminAgentsList({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return agents.filter((agent) => {
+    return agentRows.filter((agent) => {
       if (governorateId !== ALL && agent.governorateId !== governorateId)
         return false;
       if (regionId !== ALL && agent.regionId !== regionId) return false;
@@ -73,7 +75,7 @@ export function AdminAgentsList({
         return false;
       return true;
     });
-  }, [agents, query, governorateId, regionId]);
+  }, [agentRows, query, governorateId, regionId]);
 
   const placeOf = (agent: Agent) =>
     [
@@ -83,12 +85,24 @@ export function AdminAgentsList({
       .filter(Boolean)
       .join(lang === "ar" ? "، " : ", ");
 
-  const toggleAccount = (agent: Agent) => {
-    const isOff = disabled.includes(agent.id);
-    setDisabled((prev) =>
-      isOff ? prev.filter((id) => id !== agent.id) : [...prev, agent.id],
-    );
-    toast.success(isOff ? t.admin.accountEnabled : t.admin.accountDisabled);
+  const toggleAccount = async (agent: Agent) => {
+    const nextStatus = agent.status === "active" ? "inactive" : "active";
+    try {
+      const result = await updateAdminAgentStatus(agent.id, nextStatus);
+      setAgentRows((current) =>
+        current.map((row) =>
+          row.id === agent.id ? { ...row, status: nextStatus } : row,
+        ),
+      );
+      toast.success(
+        result?.message ??
+          (nextStatus === "active"
+            ? t.admin.accountEnabled
+            : t.admin.accountDisabled),
+      );
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    }
   };
 
   const actionsFor = (agent: Agent): RowAction[] => [
@@ -98,12 +112,13 @@ export function AdminAgentsList({
       render: <Link href={`${base}/agents/${agent.id}`} />,
     },
     {
-      label: disabled.includes(agent.id)
-        ? t.admin.enableAccount
-        : t.admin.disableAccount,
+      label:
+        agent.status === "active"
+          ? t.admin.disableAccount
+          : t.admin.enableAccount,
       icon: Power,
-      onSelect: () => toggleAccount(agent),
-      danger: !disabled.includes(agent.id),
+      onSelect: () => void toggleAccount(agent),
+      danger: agent.status === "active",
     },
   ];
 
@@ -192,7 +207,7 @@ export function AdminAgentsList({
                   {placeOf(agent)}
                 </p>
                 <div className="mt-1.5">{projects(agent)}</div>
-                {disabled.includes(agent.id) && (
+                {agent.status !== "active" && (
                   <Badge className="mt-2 bg-destructive/10 text-destructive">
                     {t.admin.statusBanned}
                   </Badge>
@@ -231,12 +246,12 @@ export function AdminAgentsList({
               <Badge
                 className={cn(
                   "shrink-0",
-                  disabled.includes(agent.id)
+                  agent.status !== "active"
                     ? "bg-destructive/10 text-destructive"
                     : "bg-success/10 text-success",
                 )}
               >
-                {disabled.includes(agent.id)
+                {agent.status !== "active"
                   ? t.admin.statusBanned
                   : t.admin.statusActive}
               </Badge>

@@ -117,9 +117,9 @@ export function OrdersKanban() {
                             )}
                           </span>
                         </div>
-                        {line.options && line.options.length > 0 && (
+                        {line.selectedOptions && line.selectedOptions.length > 0 && (
                           <p className="truncate text-xs text-muted-foreground">
-                            {line.options.map((o) => o.id).join("، ")}
+                            {line.selectedOptions.map((o) => o.id).join("، ")}
                           </p>
                         )}
                       </li>
