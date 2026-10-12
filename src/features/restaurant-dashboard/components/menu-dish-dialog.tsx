@@ -77,11 +77,21 @@ function toDraftGroups(groups: CatalogOptionGroup[] | undefined): DraftGroup[] {
   }));
 }
 
+/**
+ * Drops any group or option the owner left blank before it ever reaches the
+ * server. `id` doubles as the label here, so an empty one isn't a valid row
+ * to save — sending it anyway is what used to come back as an
+ * auto-generated placeholder like "og1791734539202" instead of real text.
+ */
 function toOptionGroups(groups: DraftGroup[]): CatalogOptionGroup[] {
-  return groups.map(({ key: _key, options, ...g }) => ({
-    ...g,
-    options: options.map(({ key: _optKey, ...o }) => o),
-  }));
+  return groups
+    .filter((g) => g.id.trim() !== "")
+    .map(({ key: _key, options, ...g }) => ({
+      ...g,
+      options: options
+        .filter((o) => o.id.trim() !== "")
+        .map(({ key: _optKey, ...o }) => o),
+    }));
 }
 
 /**
