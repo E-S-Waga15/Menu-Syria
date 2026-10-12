@@ -243,10 +243,10 @@ export default async function AgentDetailsPage({
       </section>
 
       <AgentRestaurants
-        restaurants={agentRestaurants}
+        businesses={agentRestaurants}
         governorates={governorates}
         regions={regions}
-        restaurantsCount={agent.restaurantsCount}
+        businessesCount={agent.restaurantsCount}
         lang={lang}
         t={t}
       />

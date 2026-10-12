@@ -102,22 +102,26 @@ export function OrdersKanban() {
 
                   <ul className="mt-3 space-y-1 border-t border-dashed border-border pt-3 text-sm">
                     {order.lines.map((line) => (
-                      <li
-                        key={line.itemId}
-                        className="flex justify-between gap-2"
-                      >
-                        <span className="truncate">
-                          {line.quantity}× {line.name[lang]}
-                        </span>
-                        <span
-                          className="shrink-0 text-muted-foreground"
-                          dir="ltr"
-                        >
-                          {formatPrice(
-                            line.price * line.quantity,
-                            t.common.currency,
-                          )}
-                        </span>
+                      <li key={line.itemId} className="flex flex-col gap-0.5">
+                        <div className="flex justify-between gap-2">
+                          <span className="truncate">
+                            {line.quantity}× {line.name[lang]}
+                          </span>
+                          <span
+                            className="shrink-0 text-muted-foreground"
+                            dir="ltr"
+                          >
+                            {formatPrice(
+                              line.price * line.quantity,
+                              t.common.currency,
+                            )}
+                          </span>
+                        </div>
+                        {line.options && line.options.length > 0 && (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {line.options.map((o) => o.id).join("، ")}
+                          </p>
+                        )}
                       </li>
                     ))}
                   </ul>

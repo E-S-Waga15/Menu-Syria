@@ -7,24 +7,29 @@ import { RestaurantCard } from "@/features/marketing/components/restaurant-card"
 import type { Locale } from "@/i18n/config";
 import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import type { Governorate, Region, Restaurant } from "@/lib/types";
+import type { Business, Governorate, Region } from "@/lib/types";
 
 /**
- * Server component — the agent's partner restaurants ship as crawlable HTML.
- * Only the favorite button inside each card hydrates on the client.
+ * Server component — the agent's registered businesses ship as crawlable
+ * HTML. Only the favorite button inside each card hydrates on the client.
+ *
+ * The backend's list mixes restaurants and stores, so this takes the shared
+ * `Business` shape and uses neutral wording instead of restaurant-specific
+ * copy — showing a store under a "restaurants" heading used to be wrong
+ * whenever an agent's list included one.
  */
 export function AgentRestaurants({
-  restaurants,
+  businesses,
   governorates,
   regions,
-  restaurantsCount,
+  businessesCount,
   lang,
   t,
 }: {
-  restaurants: Restaurant[];
+  businesses: Business[];
   governorates: Governorate[];
   regions: Region[];
-  restaurantsCount: number;
+  businessesCount: number;
   lang: Locale;
   t: Dictionary;
 }) {
@@ -36,36 +41,47 @@ export function AgentRestaurants({
   };
 
   const ViewAllArrow = lang === "ar" ? ArrowLeft : ArrowRight;
+  // a mixed list has no single matching directory to send "view all" to —
+  // only offer the button when every business shown is the same kind
+  const allRestaurants = businesses.every((b) => "cuisine" in b);
+  const allStores = businesses.every((b) => "category" in b);
+  const viewAllHref = allRestaurants
+    ? `/${lang}/restaurants`
+    : allStores
+      ? `/${lang}/stores`
+      : null;
 
   return (
     <section className="mt-14 border-t border-border/60 pt-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="font-heading text-2xl font-bold">
-            {t.agentPage.partnerRestaurants}
+            {t.agentPage.partnerBusinesses}
           </h2>
           <p className="mt-1.5 text-sm font-semibold text-muted-foreground">
-            {fmt(t.agentPage.restaurantsCount, { count: restaurantsCount })}
+            {fmt(t.agentPage.businessesCount, { count: businessesCount })}
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="rounded-full"
-          render={<Link href={`/${lang}/restaurants`} />}
-        >
-          {t.agentPage.viewAllRestaurants}
-          <ViewAllArrow className="size-4" />
-        </Button>
+        {viewAllHref && (
+          <Button
+            variant="outline"
+            className="rounded-full"
+            render={<Link href={viewAllHref} />}
+          >
+            {t.agentPage.viewAllBusinesses}
+            <ViewAllArrow className="size-4" />
+          </Button>
+        )}
       </div>
 
       <div className="mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {restaurants.slice(0, 4).map((restaurant) => (
+        {businesses.slice(0, 4).map((business) => (
           <RestaurantCard
-            key={restaurant.id}
-            restaurant={restaurant}
+            key={business.id}
+            restaurant={business}
             locationLabel={locationLabel(
-              restaurant.governorateId,
-              restaurant.regionId,
+              business.governorateId,
+              business.regionId,
             )}
           />
         ))}

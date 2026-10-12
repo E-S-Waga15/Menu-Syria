@@ -11,6 +11,7 @@ import {
 import type {
   Agent,
   Branch,
+  Business,
   BusinessSubType,
   Governorate,
   Region,
@@ -123,10 +124,15 @@ export async function getAgentByCode(code: string): Promise<Agent | undefined> {
   return apiGetOrUndefined(`/public/agents/${code}`);
 }
 
-/** Restaurants subscribed through this agent — looked up by the same public code. */
+/**
+ * Every business (restaurant or store alike) signed up through this agent —
+ * looked up by the same public code. The endpoint mixes both kinds, so this
+ * returns the shared `Business` shape rather than narrowing to `Restaurant`,
+ * which used to silently mistype any store in the list.
+ */
 export async function getAgentRestaurants(
   referralCode: string,
-): Promise<Restaurant[]> {
+): Promise<Business[]> {
   if (IS_MOCK) {
     const agent = agents.find((a) => a.referralCode === referralCode);
     if (!agent) return mockDelay([]);
