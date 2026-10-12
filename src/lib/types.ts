@@ -43,6 +43,24 @@ export interface Branch {
 }
 
 /**
+ * A branch as the public storefront endpoints embed it (`GET /restaurants/
+ * :slug`, `/stores/:slug`, `/public/businesses/:slug`, and nested under
+ * `restaurant` in `/menu/:slug`) — lighter than the owner-facing `Branch`:
+ * no `businessId` (implicit — it's always this business) and no
+ * `createdAt`/`updatedAt`.
+ */
+export interface PublicBranch {
+  id: string;
+  name: string;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string;
+  governorateId: string | null;
+  districtId: string;
+}
+
+/**
  * The backend only returns an Arabic `name` and a coarse `category` — no
  * English translation and no direct RESTAURANT/STORE flag. The slug is
  * stable, so the frontend maps it to an English label and to our own
@@ -102,6 +120,14 @@ export interface Business {
   /** flat delivery charge added to the cart total for delivery orders.
    * `0`/`null`/absent all mean delivery is free. */
   deliveryFee?: number | null;
+  /**
+   * Other physical locations of this business, for the storefront's branch
+   * switcher. Only populated by the public storefront endpoints (never
+   * missing there — `[]` means genuinely no other branches); absent
+   * entirely from owner-facing shapes like `/me/business`, which still use
+   * the authenticated `/branches?businessId=` read instead.
+   */
+  branches?: PublicBranch[];
 }
 
 export interface DayHours {

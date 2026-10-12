@@ -15,7 +15,7 @@ import { ReviewsSection } from "@/features/marketing/components/reviews-section"
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { recoverBusinessFields } from "@/lib/business-text";
-import type { Branch, Business, Region, Review } from "@/lib/types";
+import type { Business, PublicBranch, Region, Review } from "@/lib/types";
 
 /** one card shell for every block on this page, so nothing drifts */
 function Panel({
@@ -56,7 +56,7 @@ export function RestaurantDetailsBody({
   governorateName: string;
   regionName: string;
   /** other locations this business has, for the location panel's switcher */
-  branches: Branch[];
+  branches: PublicBranch[];
   regions: Region[];
   lang: Locale;
   t: Dictionary;

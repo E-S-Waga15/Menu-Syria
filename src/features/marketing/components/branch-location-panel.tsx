@@ -14,7 +14,7 @@ import {
 import { MapEmbed } from "@/features/marketing/components/map-embed";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import type { Branch, Region } from "@/lib/types";
+import type { PublicBranch, Region } from "@/lib/types";
 
 const MAIN = "main";
 
@@ -35,7 +35,7 @@ export function BranchLocationPanel({
   mainAddress: string;
   mainLocation: { lat: number; lng: number };
   mainPhone: string;
-  branches: Branch[];
+  branches: PublicBranch[];
   regions: Region[];
   lang: Locale;
   t: Dictionary;

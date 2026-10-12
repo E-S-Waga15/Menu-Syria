@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { RestaurantDetailsBody } from "@/features/marketing/components/restaurant-details-body";
 import { RestaurantGallery } from "@/features/marketing/components/restaurant-gallery";
 import {
-  getBusinessBranches,
   getGovernorates,
   getRegions,
   getRestaurantBySlug,
@@ -71,12 +70,13 @@ export default async function BusinessDetailsPage({
   if (!resolved) notFound();
   const { kind, business } = resolved;
 
-  const [reviews, governorates, regions, branches] = await Promise.all([
+  const [reviews, governorates, regions] = await Promise.all([
     kind === "restaurant" ? getRestaurantReviews(business.id) : Promise.resolve([]),
     getGovernorates(),
     getRegions(),
-    getBusinessBranches(business.id),
   ]);
+  // the storefront endpoints now embed branches directly — no extra call
+  const branches = business.branches ?? [];
 
   const governorateName =
     governorates.find((g) => g.id === business.governorateId)?.name[lang] ?? "";
