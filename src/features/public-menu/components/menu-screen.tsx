@@ -225,10 +225,8 @@ export function MenuScreen({
         <div className="mx-auto max-w-5xl px-4">
           <div
             className={cn(
-              "overflow-hidden transition-[max-height,opacity,translate] duration-400 ease-smooth",
-              compact
-                ? "max-h-0 -translate-y-3 opacity-0"
-                : "max-h-44 translate-y-0 opacity-100",
+              "overflow-hidden transition-[max-height,opacity] duration-300 ease-smooth",
+              compact ? "max-h-0 opacity-0" : "max-h-44 opacity-100",
             )}
           >
             {/* identity row */}
