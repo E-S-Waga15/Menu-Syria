@@ -61,7 +61,10 @@ export async function uploadImage(
     throw new ApiError(response.status, message, details);
   }
 
-  return response.json() as Promise<UploadFileResponse>;
+  const payload = (await response.json()) as
+    | UploadFileResponse
+    | { data: UploadFileResponse };
+  return "data" in payload ? payload.data : payload;
 }
 
 /**
@@ -94,10 +97,11 @@ export async function uploadImages(
     throw new ApiError(response.status, message, details);
   }
 
-  return response.json() as Promise<{
-    urls: string[];
-    files: UploadFileResponse[];
-  }>;
+  type MultiUploadResult = { urls: string[]; files: UploadFileResponse[] };
+  const payload = (await response.json()) as
+    | MultiUploadResult
+    | { data: MultiUploadResult };
+  return "data" in payload ? payload.data : payload;
 }
 
 /**
@@ -127,6 +131,8 @@ export async function uploadBase64Image(
     throw new ApiError(response.status, message, details);
   }
 
-  const data = (await response.json()) as { url: string };
-  return data.url;
+  const payload = (await response.json()) as
+    | { url: string }
+    | { data: { url: string } };
+  return "data" in payload ? payload.data.url : payload.url;
 }

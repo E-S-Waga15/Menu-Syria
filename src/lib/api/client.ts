@@ -203,15 +203,51 @@ export async function apiFetch<T>(
     throw new ApiError(response.status, message, details);
   }
 
-  // Every DELETE in the API answers 204/205 with no body. `response.json()`
-  // rejects on an empty body, which would surface a successful delete as a
-  // failed mutation, so the empty cases return early instead of parsing.
+  // A handful of endpoints (204 No Content, or an old route never migrated
+  // to the envelope below) still answer with no body at all.
   if (response.status === 204 || response.status === 205) {
     return undefined as T;
   }
 
   const raw = await response.text();
-  return (raw === "" ? undefined : JSON.parse(raw)) as T;
+  if (raw === "") return undefined as T;
+  return unwrapEnvelope(JSON.parse(raw)) as T;
+}
+
+/**
+ * Most write endpoints now answer `{ success, message, data }` instead of
+ * the entity directly — including deletes, which moved from 204 to 200 with
+ * `data: null` so they could carry a message at all. A handful of routes
+ * (login, OTP, refresh, analytics pings, the public WhatsApp-order endpoint)
+ * were deliberately left unwrapped because the frontend's session handling
+ * depends on their exact shape — those simply don't have a `data` key and
+ * pass through untouched below.
+ *
+ * `data` is returned merged with `message` rather than bare: a delete or a
+ * dynamic-message route (forgot/reset password, WhatsApp unlink…) has
+ * `data: null` and nothing but the message worth returning, while an entity
+ * route gains a harmless extra `message` field callers that only destructure
+ * known columns never notice.
+ */
+function unwrapEnvelope(parsed: unknown): unknown {
+  if (
+    parsed === null ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    !("success" in parsed) ||
+    !("data" in parsed)
+  ) {
+    return parsed;
+  }
+  const envelope = parsed as { message?: string; data: unknown };
+  if (
+    envelope.data !== null &&
+    typeof envelope.data === "object" &&
+    !Array.isArray(envelope.data)
+  ) {
+    return { ...envelope.data, message: envelope.message };
+  }
+  return envelope.data ?? { message: envelope.message };
 }
 
 /** Keeps mock mode asynchronous without adding noticeable artificial latency. */
