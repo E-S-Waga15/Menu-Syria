@@ -1,20 +1,26 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { Download, FileText } from "lucide-react";
+import { Check, Copy, Download, FileText } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { useAuthStore } from "@/features/auth/store";
 import { getMyRestaurant } from "@/features/restaurant-dashboard/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { toast } from "@/lib/toast";
 
 export function QrPanel() {
   const { t, lang } = useI18n();
   const qrWrapRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+  const isStore = useAuthStore(
+    (s) => (s.session?.businessType ?? "restaurant") === "store",
+  );
 
   const { data: restaurant } = useQuery({
     queryKey: queryKeys.me.business,
@@ -23,7 +29,14 @@ export function QrPanel() {
 
   if (!restaurant) return <LoadingSpinner />;
 
-  const menuUrl = `${window.location.origin}/${lang}/menu/${restaurant.slug}`;
+  const menuUrl = `${window.location.origin}/${lang}/${isStore ? "store" : "menu"}/${restaurant.slug}`;
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(menuUrl);
+    setCopied(true);
+    toast.success(t.common.copied);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const getCanvas = () =>
     qrWrapRef.current?.querySelector("canvas") as HTMLCanvasElement | null;
@@ -94,24 +107,48 @@ export function QrPanel() {
             />
           </div>
 
-          <p
-            className="max-w-full truncate rounded-full bg-surface-container px-4 py-2 text-xs font-semibold text-muted-foreground"
-            dir="ltr"
-          >
-            {menuUrl}
-          </p>
+          <div className="w-full">
+            <p className="mb-2 text-sm font-semibold text-muted-foreground">
+              {t.dashboard.qrLinkLabel}
+            </p>
+            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-surface-container-low px-3 py-2.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label={t.common.copy}
+                onClick={() => void copyLink()}
+              >
+                {copied ? (
+                  <Check className="size-4.5 text-success" />
+                ) : (
+                  <Copy className="size-4.5" />
+                )}
+              </Button>
+              <p
+                className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground/80"
+                dir="ltr"
+              >
+                {menuUrl}
+              </p>
+            </div>
+          </div>
 
-          <div className="flex w-full flex-col gap-2 sm:flex-row">
-            <Button className="h-11 flex-1" onClick={downloadPng}>
-              <Download className="size-4" />
+          <div className="flex w-full flex-col gap-3 sm:flex-row">
+            <Button
+              className="h-13 flex-1 gap-2 rounded-xl text-base font-bold"
+              onClick={downloadPng}
+            >
+              <Download className="size-5" />
               {t.dashboard.downloadPng}
             </Button>
             <Button
               variant="outline"
-              className="h-11 flex-1"
+              className="h-13 flex-1 gap-2 rounded-xl text-base font-bold"
               onClick={downloadPdf}
             >
-              <FileText className="size-4" />
+              <FileText className="size-5" />
               {t.dashboard.downloadPdf}
             </Button>
           </div>

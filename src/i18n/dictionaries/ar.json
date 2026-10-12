@@ -667,6 +667,7 @@
     "liveActivityApprox": "تقديري — آخر {minutes} دقائق",
     "qrTitle": "رمز مطعمك",
     "qrBody": "اطبعه على الطاولات وسيصل زبائنك لمنيوك خلال ثانية",
+    "qrLinkLabel": "رابط صفحتك:",
     "downloadPng": "تحميل PNG",
     "downloadPdf": "تحميل PDF",
     "profileTab": "البروفايل",

@@ -667,6 +667,7 @@
     "liveActivityApprox": "Approximate — last {minutes} minutes",
     "qrTitle": "Your restaurant's code",
     "qrBody": "Print it on your tables and guests reach your menu in a second",
+    "qrLinkLabel": "Your page link:",
     "downloadPng": "Download PNG",
     "downloadPdf": "Download PDF",
     "profileTab": "Profile",
