@@ -104,14 +104,16 @@ export function DishModal({
 
   const toggleOption = (group: CatalogOptionGroup, option: CatalogOption) =>
     setSelected((prev) => {
+      const withoutGroup = prev.filter(
+        (o) => !group.options.some((go) => go.id === o.id),
+      );
+      const wasSelected = prev.some((o) => o.id === option.id);
       if (group.selectionType === "single") {
-        // exclusive within this group — swap out whatever this group had picked
-        const withoutGroup = prev.filter(
-          (o) => !group.options.some((go) => go.id === o.id),
-        );
-        return [...withoutGroup, option];
+        // exclusive within this group — tapping the already-picked option
+        // clears the group back to nothing, same as any other option
+        return wasSelected ? withoutGroup : [...withoutGroup, option];
       }
-      return prev.some((o) => o.id === option.id)
+      return wasSelected
         ? prev.filter((o) => o.id !== option.id)
         : [...prev, option];
     });

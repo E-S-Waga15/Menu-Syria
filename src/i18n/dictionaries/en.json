@@ -327,8 +327,8 @@
     "closedDay": "Closed",
     "today": "Today",
     "mainBranch": "Main branch",
-    "selectBranch": "Choose a branch",
     "branchPhone": "Branch phone",
+    "orderFromBranch": "Order from branch",
     "dayNames": [
       "Sunday",
       "Monday",

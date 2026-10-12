@@ -327,8 +327,8 @@
     "closedDay": "مغلق",
     "today": "اليوم",
     "mainBranch": "الفرع الرئيسي",
-    "selectBranch": "اختر الفرع",
     "branchPhone": "هاتف الفرع",
+    "orderFromBranch": "اطلب من فرع",
     "dayNames": [
       "الأحد",
       "الاثنين",

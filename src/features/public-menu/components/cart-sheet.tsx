@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Building2, MapPin, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { toast } from "@/lib/toast";
@@ -43,6 +44,7 @@ import {
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/fmt";
 import type { Business, CatalogItem, FulfillmentMode } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
   lineUnitPrice,
   selectCartTotal,
@@ -81,6 +83,9 @@ export function CartSheet({
   const subtotal = useCartStore(selectCartTotal);
 
   const supportedModes = getSupportedFulfillment(business);
+  const branches = business.branches ?? [];
+  const [branchId, setBranchId] = useState<string | null>(null);
+  const selectedBranch = branches.find((b) => b.id === branchId) ?? null;
 
   // no submit handler here — the WhatsApp link is the action, so the form
   // validates live and the URL recomputes from watched values
@@ -130,7 +135,11 @@ export function CartSheet({
   const total = subtotal + deliveryFee;
 
   const whatsappUrl = buildWhatsAppOrderUrl({
-    business,
+    // a selected branch's own number receives the order instead of the
+    // business's main WhatsApp — nothing else about the order changes
+    business: selectedBranch
+      ? { ...business, whatsapp: selectedBranch.phone }
+      : business,
     lines,
     lang,
     copy,
@@ -208,6 +217,7 @@ export function CartSheet({
         customerName,
         customerPhone,
         notes: values.notes.trim() || undefined,
+        branchId: branchId ?? undefined,
         items: lines.map((line) => ({
           itemId: line.item.id,
           quantity: line.quantity,
@@ -352,6 +362,45 @@ export function CartSheet({
                 {...register("notes")}
               />
             </div>
+
+            {branches.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>{t.restaurant.orderFromBranch}</Label>
+                <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setBranchId(null)}
+                    aria-pressed={branchId === null}
+                    className={cn(
+                      "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+                      branchId === null
+                        ? "bg-[var(--menu-primary)] text-white"
+                        : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
+                    )}
+                  >
+                    <Building2 className="size-3.5" />
+                    {t.restaurant.mainBranch}
+                  </button>
+                  {branches.map((branch) => (
+                    <button
+                      key={branch.id}
+                      type="button"
+                      onClick={() => setBranchId(branch.id)}
+                      aria-pressed={branchId === branch.id}
+                      className={cn(
+                        "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+                        branchId === branch.id
+                          ? "bg-[var(--menu-primary)] text-white"
+                          : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
+                      )}
+                    >
+                      <MapPin className="size-3.5" />
+                      {branch.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {supportedModes.length > 1 && (
               <Controller

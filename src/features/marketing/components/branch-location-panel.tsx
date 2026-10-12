@@ -2,19 +2,13 @@
 
 import { useState } from "react";
 
-import { ExternalLink, MapPin, Phone } from "lucide-react";
+import { Building2, ExternalLink, MapPin, Phone } from "lucide-react";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { MapEmbed } from "@/features/marketing/components/map-embed";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { PublicBranch, Region } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const MAIN = "main";
 
@@ -58,22 +52,39 @@ export function BranchLocationPanel({
   return (
     <div className="space-y-4">
       {branches.length > 0 && (
-        <Select
-          value={selectedId}
-          onValueChange={(value) => setSelectedId(value ?? MAIN)}
-        >
-          <SelectTrigger className="h-11! w-full" aria-label={t.restaurant.selectBranch}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={MAIN}>{t.restaurant.mainBranch}</SelectItem>
-            {branches.map((branch) => (
-              <SelectItem key={branch.id} value={branch.id}>
-                {branch.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button
+            type="button"
+            onClick={() => setSelectedId(MAIN)}
+            aria-pressed={selectedId === MAIN}
+            className={cn(
+              "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+              selectedId === MAIN
+                ? "bg-primary text-primary-foreground"
+                : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
+            )}
+          >
+            <Building2 className="size-3.5" />
+            {t.restaurant.mainBranch}
+          </button>
+          {branches.map((branch) => (
+            <button
+              key={branch.id}
+              type="button"
+              onClick={() => setSelectedId(branch.id)}
+              aria-pressed={selectedId === branch.id}
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+                selectedId === branch.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
+              )}
+            >
+              <MapPin className="size-3.5" />
+              {branch.name}
+            </button>
+          ))}
+        </div>
       )}
 
       {address && (
