@@ -76,8 +76,8 @@ export function OfferBanner({ offers }: { offers: FeaturedOffer[] }) {
         onPointerDown={() => setPaused(true)}
       >
         <CarouselContent className="-ms-4">
-          {offers.map(({ offer, business, kind }) => {
-            const href = `/${lang}/${kind === "restaurant" ? "menu" : "store"}/${business.slug}`;
+          {offers.map(({ offer, business }) => {
+            const href = `/${lang}/${business.slug}/menu`;
 
             return (
               <CarouselItem

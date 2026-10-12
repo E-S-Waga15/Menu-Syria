@@ -57,7 +57,6 @@ export default async function StoresPage({ params }: PageProps<"/[lang]">) {
             regions={regions}
             lang={lang}
             copy={t.storesPage}
-            basePath="stores"
           />
         )}
       </div>

@@ -54,7 +54,7 @@ export function RestaurantDashboardShell({
     enabled: hydrated && !!session,
   });
   const previewHref = restaurant
-    ? `/${lang}/${isStore ? "store" : "menu"}/${restaurant.slug}`
+    ? `/${lang}/${restaurant.slug}/menu`
     : undefined;
 
   const navItems: DashboardNavItem[] = [

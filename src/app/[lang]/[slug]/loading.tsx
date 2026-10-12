@@ -1,8 +1,9 @@
 import { MenuSyriaLoader } from "@/components/shared/menu-syria-loader";
 
 /**
- * The storefront, waiting — a QR visitor lands here cold, often on a phone
- * network, with nothing prefetched.
+ * The storefront or its details page, waiting — a QR visitor lands here
+ * cold, often on a phone network, with nothing prefetched. Covers `/:slug`,
+ * `/:slug/menu` and `/:slug/offers` alike since none of them override it.
  *
  * This is the platform's own loader, not the business's: the whole point of
  * `loading.tsx` is to appear the instant navigation starts, before any data

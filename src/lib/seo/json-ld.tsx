@@ -87,7 +87,7 @@ export function restaurantJsonLd(
     "@id": url,
     url,
     servesCuisine: restaurant.cuisine[lang],
-    hasMenu: `${SITE_URL}/${lang}/menu/${restaurant.slug}`,
+    hasMenu: `${SITE_URL}/${lang}/${restaurant.slug}/menu`,
     ...businessBaseJsonLd(restaurant, lang),
   };
 }

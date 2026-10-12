@@ -75,7 +75,7 @@ export function AdminBusinessDetail({
 
   const days = daysUntil(business.planExpiresAt);
   const expired = days < 0;
-  const storefront = `/${lang}/${kind === "restaurant" ? "menu" : "store"}/${business.slug}`;
+  const storefront = `/${lang}/${business.slug}/menu`;
 
   const dateFormat = new Intl.DateTimeFormat(
     lang === "ar" ? "ar-SY" : "en-GB",

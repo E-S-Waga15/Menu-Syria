@@ -1120,10 +1120,9 @@ export function BusinessProfile() {
 
   if (!restaurant) return <LoadingSpinner />;
 
-  const basePath = isStore ? "store" : "menu";
   const publicUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/${lang}/${basePath}/${restaurant.slug}`
+      ? `${window.location.origin}/${lang}/${restaurant.slug}/menu`
       : "";
 
   const locationLabel = [

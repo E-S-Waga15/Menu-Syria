@@ -30,7 +30,7 @@ export function RestaurantCard({
   return (
     <article className="group relative transform-gpu overflow-hidden rounded-2xl border border-border/60 bg-card transition-[translate,scale,border-color] duration-300 ease-smooth hover:-translate-y-1 hover:border-primary/35">
       <Link
-        href={href ?? `/${lang}/restaurants/${restaurant.slug}`}
+        href={href ?? `/${lang}/${restaurant.slug}`}
         className="block outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <div className="relative aspect-[8/3] overflow-hidden">

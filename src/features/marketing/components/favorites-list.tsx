@@ -69,12 +69,10 @@ export function FavoritesList({
     return category ? `${base} · ${category[lang]}` : base;
   };
 
-  const favoriteRestaurants = restaurants
-    .filter((r) => favoriteIds.includes(r.id))
-    .map((r) => ({ item: r, basePath: "restaurants" as const }));
-  const favoriteStores = stores
-    .filter((s) => favoriteIds.includes(s.id))
-    .map((s) => ({ item: s, basePath: "store" as const }));
+  const favoriteRestaurants = restaurants.filter((r) =>
+    favoriteIds.includes(r.id),
+  );
+  const favoriteStores = stores.filter((s) => favoriteIds.includes(s.id));
   const items = [...favoriteRestaurants, ...favoriteStores];
 
   if (items.length === 0) {
@@ -93,11 +91,10 @@ export function FavoritesList({
 
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map(({ item, basePath }) => (
+      {items.map((item) => (
         <RestaurantCard
           key={item.id}
           restaurant={item}
-          href={`/${lang}/${basePath}/${item.slug}`}
           locationLabel={locationLabel(item)}
         />
       ))}

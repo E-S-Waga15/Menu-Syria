@@ -28,7 +28,7 @@ interface DirectoryCopy {
  *
  * Server pages can't pass callback props across the client boundary, so
  * location labels and hrefs are built here from plain data (governorates,
- * regions, `basePath`) rather than caller-supplied functions.
+ * regions) rather than caller-supplied functions.
  */
 export function BusinessDirectory<
   T extends Business & { category?: LocalizedText },
@@ -38,15 +38,12 @@ export function BusinessDirectory<
   regions,
   lang,
   copy,
-  basePath = "restaurants",
 }: {
   items: T[];
   governorates: Governorate[];
   regions: Region[];
   lang: "ar" | "en";
   copy: DirectoryCopy;
-  /** route segment for the detail page — "restaurants" or "store" */
-  basePath?: string;
 }) {
   const [search, setSearch] = useState("");
   const [governorateId, setGovernorateId] = useState(ALL);
@@ -140,7 +137,7 @@ export function BusinessDirectory<
               <RestaurantCard
                 key={item.id}
                 restaurant={item}
-                href={`/${lang}/${basePath}/${item.slug}`}
+                href={`/${lang}/${item.slug}`}
                 locationLabel={locationLabel(item)}
               />
             ))}

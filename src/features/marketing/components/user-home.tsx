@@ -240,7 +240,6 @@ export function UserHome() {
                     <RestaurantCard
                       restaurant={store}
                       locationLabel={store.address[lang]}
-                      href={`/${lang}/stores/${store.slug}`}
                     />
                   </TeaserCell>
                 ))}

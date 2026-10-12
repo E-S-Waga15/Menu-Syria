@@ -57,7 +57,6 @@ export function AdminBusinessesList({
   const [regionId, setRegionId] = useState(ALL);
 
   const base = `/${lang}/admin`;
-  const storefrontBase = kind === "restaurant" ? "menu" : "store";
   const adminBusinessBase = kind === "restaurant" ? "restaurants" : "stores";
 
   const hasFilters =
@@ -133,7 +132,7 @@ export function AdminBusinessesList({
       icon: ExternalLink,
       render: (
         <Link
-          href={`/${lang}/${storefrontBase}/${business.slug}`}
+          href={`/${lang}/${business.slug}/menu`}
           target="_blank"
         />
       ),

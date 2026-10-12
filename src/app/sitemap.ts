@@ -45,10 +45,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localized("/register/restaurant", 0.6, "monthly"),
     ...localized("/register/agent", 0.5, "monthly"),
     ...restaurants.flatMap((r) => [
-      ...localized(`/restaurants/${r.slug}`, 0.8, "weekly"),
-      ...localized(`/menu/${r.slug}`, 0.7, "daily"),
+      ...localized(`/${r.slug}`, 0.8, "weekly"),
+      ...localized(`/${r.slug}/menu`, 0.7, "daily"),
     ]),
-    ...stores.flatMap((s) => [...localized(`/store/${s.slug}`, 0.8, "daily")]),
+    ...stores.flatMap((s) => [
+      ...localized(`/${s.slug}`, 0.8, "weekly"),
+      ...localized(`/${s.slug}/menu`, 0.8, "daily"),
+    ]),
     ...agents.flatMap((a) =>
       localized(`/agents/${a.referralCode}`, 0.6, "monthly"),
     ),

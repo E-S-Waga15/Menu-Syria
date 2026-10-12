@@ -62,7 +62,7 @@ export function RestaurantDetailsBody({
   lang: Locale;
   t: Dictionary;
   showMenuCta?: boolean;
-  /** override the CTA destination (e.g. /store/slug) */
+  /** override the CTA destination */
   menuHref?: string;
 }) {
   const separator = lang === "ar" ? "، " : ", ";
@@ -187,7 +187,7 @@ export function RestaurantDetailsBody({
           {/* the one action that matters — themed with the business's own colour */}
           {showMenuCta && (
             <Link
-              href={menuHref ?? `/${lang}/menu/${restaurant.slug}`}
+              href={menuHref ?? `/${lang}/${restaurant.slug}/menu`}
               className="group relative flex w-full transform-gpu items-center justify-center gap-3 overflow-hidden rounded-2xl px-8 py-5 text-lg font-bold text-white transition-[scale] duration-300 ease-smooth hover:scale-[1.01]"
               style={{
                 background: `linear-gradient(135deg, ${restaurant.theme.primaryColor}, color-mix(in oklch, ${restaurant.theme.primaryColor}, ${restaurant.theme.secondaryColor} 35%))`,

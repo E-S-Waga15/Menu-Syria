@@ -8,7 +8,6 @@ import { QRCodeCanvas } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
-import { useAuthStore } from "@/features/auth/store";
 import { getMyRestaurant } from "@/features/restaurant-dashboard/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -18,9 +17,6 @@ export function QrPanel() {
   const { t, lang } = useI18n();
   const qrWrapRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
-  const isStore = useAuthStore(
-    (s) => (s.session?.businessType ?? "restaurant") === "store",
-  );
 
   const { data: restaurant } = useQuery({
     queryKey: queryKeys.me.business,
@@ -29,7 +25,7 @@ export function QrPanel() {
 
   if (!restaurant) return <LoadingSpinner />;
 
-  const menuUrl = `${window.location.origin}/${lang}/${isStore ? "store" : "menu"}/${restaurant.slug}`;
+  const menuUrl = `${window.location.origin}/${lang}/${restaurant.slug}/menu`;
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(menuUrl);
