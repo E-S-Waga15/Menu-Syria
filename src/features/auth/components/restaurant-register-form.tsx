@@ -256,7 +256,7 @@ export function RestaurantRegisterForm({
     // button on the last step may actually send the request
     if (step !== steps.length - 1) return;
     try {
-      await submitRegistrationRequest({
+      const result = await submitRegistrationRequest({
         districtId: values.regionId,
         applicantName: values.name.trim(),
         phone: values.phone,
@@ -282,7 +282,9 @@ export function RestaurantRegisterForm({
           .filter(Boolean)
           .join("\n"),
       });
-      toast.success(t.auth.applicationSent);
+      toast.success(
+        (result as { message?: string }).message ?? t.auth.applicationSent,
+      );
       startNavigating();
       router.push(`/${lang}`);
     } catch (error) {

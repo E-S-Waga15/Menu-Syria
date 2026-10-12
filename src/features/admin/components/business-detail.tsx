@@ -90,12 +90,15 @@ export function AdminBusinessDetail({
     const next = !enabled;
     setSavingStatus(true);
     try {
-      await updateAdminBusinessStatus(
+      const result = await updateAdminBusinessStatus(
         business.id,
         next ? "active" : "inactive",
       );
       setEnabled(next);
-      toast.success(next ? t.admin.accountEnabled : t.admin.accountDisabled);
+      toast.success(
+        result?.message ??
+          (next ? t.admin.accountEnabled : t.admin.accountDisabled),
+      );
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
@@ -107,8 +110,8 @@ export function AdminBusinessDetail({
     if (!currentSubscription || planId === currentSubscription.planId) return;
     setSavingPlan(true);
     try {
-      await changeBusinessPlan(currentSubscription.id, planId);
-      toast.success(t.admin.planChanged);
+      const result = await changeBusinessPlan(currentSubscription.id, planId);
+      toast.success((result as { message?: string })?.message ?? t.admin.planChanged);
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {

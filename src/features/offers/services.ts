@@ -116,7 +116,9 @@ interface RawOffer {
 /** Decimal columns arrive as strings ("40000.00") — coerce to numbers. */
 const toNumber = (value: number | string): number => Number(value);
 
-function normalizeOffer(raw: RawOffer): Offer {
+function normalizeOffer(raw: RawOffer & { message?: string }): Offer & {
+  message?: string;
+} {
   return {
     id: raw.id,
     businessId: raw.businessId,
@@ -131,6 +133,7 @@ function normalizeOffer(raw: RawOffer): Offer {
     isActive: raw.isActive,
     badge: raw.badge,
     sortOrder: raw.sortOrder,
+    message: raw.message,
   };
 }
 
@@ -305,7 +308,7 @@ export interface OfferWriteInput {
 export async function createOffer(
   businessId: string,
   input: OfferWriteInput,
-): Promise<Offer> {
+): Promise<Offer & { message?: string }> {
   if (IS_MOCK) {
     return mockDelay({
       id: `of${Date.now()}`,
@@ -334,7 +337,7 @@ export async function updateOffer(
   businessId: string,
   id: string,
   input: Partial<OfferWriteInput>,
-): Promise<Offer> {
+): Promise<Offer & { message?: string }> {
   if (IS_MOCK) {
     return mockDelay({
       id,
@@ -362,11 +365,12 @@ export async function updateOffer(
 export async function deleteOffer(
   businessId: string,
   id: string,
-): Promise<void> {
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined);
-  await apiFetch<void>(`/businesses/${businessId}/offers/${id}`, {
-    method: "DELETE",
-  });
+  return apiFetch<{ message?: string }>(
+    `/businesses/${businessId}/offers/${id}`,
+    { method: "DELETE" },
+  );
 }
 
 /**

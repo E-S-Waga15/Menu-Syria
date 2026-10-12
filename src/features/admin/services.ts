@@ -63,25 +63,31 @@ type DistrictResponse = {
   districtName: string;
 };
 
-function toGovernorate(item: GovernorateResponse): Governorate {
+function toGovernorate(
+  item: GovernorateResponse & { message?: string },
+): Governorate & { message?: string } {
   return {
     id: item.id,
     name: { ar: item.governorateName, en: item.governorateName },
+    message: item.message,
   };
 }
 
-function toRegion(item: DistrictResponse): Region {
+function toRegion(
+  item: DistrictResponse & { message?: string },
+): Region & { message?: string } {
   return {
     id: item.id,
     governorateId: item.governorateId,
     name: { ar: item.districtName, en: item.districtName },
+    message: item.message,
   };
 }
 
 export async function createAdminGovernorate(
   name: string,
   auth: AdminAuth = {},
-): Promise<Governorate> {
+): Promise<Governorate & { message?: string }> {
   if (IS_MOCK) {
     return mockDelay({
       id: `g${Date.now()}`,
@@ -100,7 +106,7 @@ export async function updateAdminGovernorate(
   id: string,
   name: string,
   auth: AdminAuth = {},
-): Promise<Governorate> {
+): Promise<Governorate & { message?: string }> {
   if (IS_MOCK) {
     return mockDelay({ id, name: { ar: name, en: name } });
   }
@@ -118,9 +124,9 @@ export async function updateAdminGovernorate(
 export async function deleteAdminGovernorate(
   id: string,
   auth: AdminAuth = {},
-): Promise<void> {
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined, 150);
-  await apiFetch<void>(`/locations/governorates/${id}`, {
+  return apiFetch<{ message?: string }>(`/locations/governorates/${id}`, {
     method: "DELETE",
     headers: authHeaders(auth),
   });
@@ -130,7 +136,7 @@ export async function createAdminRegion(
   governorateId: string,
   name: string,
   auth: AdminAuth = {},
-): Promise<Region> {
+): Promise<Region & { message?: string }> {
   if (IS_MOCK) {
     return mockDelay({
       id: `r${Date.now()}`,
@@ -150,7 +156,7 @@ export async function updateAdminRegion(
   id: string,
   name: string,
   auth: AdminAuth = {},
-): Promise<Region> {
+): Promise<Region & { message?: string }> {
   if (IS_MOCK) {
     return mockDelay({
       id,
@@ -169,9 +175,9 @@ export async function updateAdminRegion(
 export async function deleteAdminRegion(
   id: string,
   auth: AdminAuth = {},
-): Promise<void> {
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined, 150);
-  await apiFetch<void>(`/locations/districts/${id}`, {
+  return apiFetch<{ message?: string }>(`/locations/districts/${id}`, {
     method: "DELETE",
     headers: authHeaders(auth),
   });
@@ -251,9 +257,9 @@ export async function updateAdminBusinessStatus(
   businessId: string,
   status: AdminBusinessStatus,
   auth: AdminAuth = {},
-): Promise<void> {
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined, 150);
-  await apiFetch(`/businesses/${businessId}/status`, {
+  return apiFetch(`/businesses/${businessId}/status`, {
     method: "PATCH",
     headers: authHeaders(auth),
     body: { status },
@@ -306,8 +312,8 @@ export async function updateAdminAgent(
   id: string,
   input: { commissionRate: number },
   auth: AdminAuth = {},
-): Promise<void> {
-  await apiFetch(`/agents/${id}`, {
+): Promise<{ message?: string }> {
+  return apiFetch(`/agents/${id}`, {
     method: "PATCH",
     headers: authHeaders(auth),
     body: input,
@@ -369,9 +375,9 @@ export async function updateAdminPlan(
 export async function deleteAdminPlan(
   id: string,
   auth: AdminAuth = {},
-): Promise<void> {
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined, 150);
-  await apiFetch<void>(`/subscription-plans/${id}`, {
+  return apiFetch<{ message?: string }>(`/subscription-plans/${id}`, {
     method: "DELETE",
     headers: authHeaders(auth),
   });
@@ -602,9 +608,11 @@ export async function replaceWhatsappOtp(
  * Unlinks and does not reconnect. Verification codes stop going out until
  * someone pairs again, so this is the destructive entry in the menu.
  */
-export async function unlinkWhatsappOtp(auth: AdminAuth = {}): Promise<void> {
+export async function unlinkWhatsappOtp(
+  auth: AdminAuth = {},
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined);
-  await apiFetch("/whatsapp-otp/unlink", {
+  return apiFetch("/whatsapp-otp/unlink", {
     method: "POST",
     headers: authHeaders(auth),
   });

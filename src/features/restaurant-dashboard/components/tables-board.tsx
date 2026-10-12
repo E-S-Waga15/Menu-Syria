@@ -43,7 +43,7 @@ export function TablesBoard() {
     queryFn: getMyWaiters,
   });
 
-  const { setOccupied, assignWaiter } = useTableMutations();
+  const { setOccupied } = useTableMutations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // the cache is the source of truth; occupancy and waiter changes patch it
@@ -140,14 +140,17 @@ export function TablesBoard() {
 
                 <div className="space-y-2">
                   <Label>{t.dashboard.assignWaiter}</Label>
+                  {/* the backend has no waiter/staff column on a table yet,
+                      so this can never actually persist — shown disabled
+                      with an honest note instead of a picker that silently
+                      does nothing */}
                   <Select
                     value={selected.waiterId ?? null}
-                    onValueChange={(v) =>
-                      assignWaiter(selected.id, v ?? undefined)
-                    }
+                    onValueChange={() => {}}
                     items={Object.fromEntries(
                       (waiters ?? []).map((w) => [w.id, w.name]),
                     )}
+                    disabled
                   >
                     <SelectTrigger className="h-11 w-full">
                       <UserRound className="size-4 text-muted-foreground" />
@@ -161,6 +164,9 @@ export function TablesBoard() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    {t.dashboard.assignWaiterUnavailable}
+                  </p>
                 </div>
 
                 <Button className="w-full" onClick={() => setSelectedId(null)}>

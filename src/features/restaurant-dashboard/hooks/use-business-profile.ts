@@ -37,7 +37,10 @@ export function useBusinessProfileMutations(businessId: string) {
       if (context?.previous) queryClient.setQueryData(key, context.previous);
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     },
-    onSuccess: () => toast.success(t.dashboard.settingsSaved),
+    onSuccess: (data) =>
+      toast.success(
+        (data as { message?: string })?.message ?? t.dashboard.settingsSaved,
+      ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 

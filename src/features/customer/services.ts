@@ -54,7 +54,9 @@ const toPhoneType = (value: unknown): CustomerPhoneType =>
     ? (value as CustomerPhoneType)
     : "mobile";
 
-function normalizeAccount(raw: Record<string, unknown>): CustomerAccount {
+function normalizeAccount(
+  raw: Record<string, unknown>,
+): CustomerAccount & { message?: string } {
   const phones = Array.isArray(raw.phones) ? raw.phones : [];
   const stats = (raw.stats ?? {}) as Record<string, unknown>;
 
@@ -76,6 +78,7 @@ function normalizeAccount(raw: Record<string, unknown>): CustomerAccount {
       };
     }),
     stats: { orders: Number(stats.orders ?? 0) },
+    message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }
 
@@ -106,7 +109,7 @@ export async function getMyAccount(): Promise<CustomerAccount> {
 
 export async function updateMyProfile(
   input: CustomerProfileInput,
-): Promise<CustomerAccount> {
+): Promise<CustomerAccount & { message?: string }> {
   if (IS_MOCK) return mockDelay({ ...mockAccount(), ...input });
   return normalizeAccount(
     await apiFetch<Record<string, unknown>>("/me/profile", {
@@ -120,7 +123,7 @@ export async function updateMyProfile(
  * backend stores either and returns the hosted path in the account payload. */
 export async function updateMyAvatar(
   avatarUrl: string,
-): Promise<CustomerAccount> {
+): Promise<CustomerAccount & { message?: string }> {
   if (IS_MOCK) return mockDelay({ ...mockAccount(), avatarUrl });
   return normalizeAccount(
     await apiFetch<Record<string, unknown>>("/me/avatar", {
@@ -132,7 +135,7 @@ export async function updateMyAvatar(
 
 export async function addMyPhone(
   input: CustomerPhoneInput,
-): Promise<CustomerAccount> {
+): Promise<CustomerAccount & { message?: string }> {
   if (IS_MOCK) {
     const account = mockAccount();
     return mockDelay({
@@ -155,7 +158,9 @@ export async function addMyPhone(
   );
 }
 
-export async function removeMyPhone(phoneId: string): Promise<CustomerAccount> {
+export async function removeMyPhone(
+  phoneId: string,
+): Promise<CustomerAccount & { message?: string }> {
   if (IS_MOCK) {
     const account = mockAccount();
     return mockDelay({

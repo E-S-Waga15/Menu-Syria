@@ -220,8 +220,7 @@ export function CartSheet({
       clear();
       setOpen(false);
     } catch (err) {
-      const msg = err instanceof ApiError ? t.auth.genericError : undefined;
-      toast.error(msg ?? t.auth.genericError);
+      toast.error(err instanceof ApiError ? err.message : t.auth.genericError);
     }
   };
 

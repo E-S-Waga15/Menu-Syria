@@ -105,16 +105,17 @@ export function AdminBusinessesList({
   const toggleAccount = async (business: Business) => {
     const nextStatus = business.status === "active" ? "inactive" : "active";
     try {
-      await updateAdminBusinessStatus(business.id, nextStatus);
+      const result = await updateAdminBusinessStatus(business.id, nextStatus);
       setBusinessRows((current) =>
         current.map((row) =>
           row.id === business.id ? { ...row, status: nextStatus } : row,
         ),
       );
       toast.success(
-        nextStatus === "active"
-          ? t.admin.accountEnabled
-          : t.admin.accountDisabled,
+        result?.message ??
+          (nextStatus === "active"
+            ? t.admin.accountEnabled
+            : t.admin.accountDisabled),
       );
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);

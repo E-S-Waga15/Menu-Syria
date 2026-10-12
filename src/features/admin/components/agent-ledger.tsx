@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownCircle, ArrowUpCircle, Percent, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +17,14 @@ import {
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { StatCard } from "@/features/restaurant-dashboard/components/stat-card";
 import { useI18n } from "@/i18n/client";
+import { ApiError } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export function AdminAgentLedger({ agentId }: { agentId: string }) {
   const { t, lang } = useI18n();
+  const queryClient = useQueryClient();
   const [commissionRate, setCommissionRate] = useState("");
   const [savingRate, setSavingRate] = useState(false);
 
@@ -53,9 +56,16 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
     }
     setSavingRate(true);
     try {
-      await updateAdminAgent(agent.id, { commissionRate: percentage / 100 });
-      agent.commissionRate = percentage / 100;
+      const result = await updateAdminAgent(agent.id, {
+        commissionRate: percentage / 100,
+      });
       setCommissionRate("");
+      toast.success(result.message ?? t.dashboard.settingsSaved);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.agents.detail(agentId),
+      });
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
       setSavingRate(false);
     }

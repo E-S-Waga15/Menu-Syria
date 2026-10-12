@@ -31,6 +31,7 @@ export function GovernorateRegionSelect({
   governorateItems,
   governorateAriaLabel,
   governorateInvalid,
+  governorateDisabled,
   regionValue,
   onRegionChange,
   regionItems,
@@ -47,6 +48,7 @@ export function GovernorateRegionSelect({
   governorateItems: Record<string, string>;
   governorateAriaLabel: string;
   governorateInvalid?: boolean;
+  governorateDisabled?: boolean;
   regionValue?: string;
   onRegionChange?: (value: string) => void;
   regionItems?: Record<string, string>;
@@ -61,6 +63,7 @@ export function GovernorateRegionSelect({
       value={governorateValue || null}
       onValueChange={(v) => v && onGovernorateChange(v)}
       items={governorateItems}
+      disabled={governorateDisabled}
     >
       <SelectTrigger
         className={cn(FIELD, triggerClassName)}

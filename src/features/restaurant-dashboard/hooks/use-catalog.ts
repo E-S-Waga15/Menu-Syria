@@ -78,7 +78,7 @@ export function useCategoryMutations(businessId: string) {
           },
         ],
       })),
-    onSuccess: () => toast.success(t.dashboard.categorySaved),
+    onSuccess: (data) => toast.success(data.message ?? t.dashboard.categorySaved),
     onError,
     onSettled,
   });
@@ -101,8 +101,9 @@ export function useCategoryMutations(businessId: string) {
       })),
     // reorder rides this same mutation with no `name` — it has no result
     // worth announcing, unlike an actual rename
-    onSuccess: (_data, { name }) => {
-      if (name !== undefined) toast.success(t.dashboard.categorySaved);
+    onSuccess: (data, { name }) => {
+      if (name !== undefined)
+        toast.success(data.message ?? t.dashboard.categorySaved);
     },
     onError,
     onSettled,
@@ -115,7 +116,8 @@ export function useCategoryMutations(businessId: string) {
         ...current,
         categories: current.categories.filter((category) => category.id !== id),
       })),
-    onSuccess: () => toast.success(t.dashboard.categoryDeleted),
+    onSuccess: (data) =>
+      toast.success(data?.message ?? t.dashboard.categoryDeleted),
     onError,
     onSettled,
   });
@@ -215,7 +217,7 @@ export function useItemMutations(businessId: string) {
         ...current,
         items: [...current.items, toItem(input)],
       })),
-    onSuccess: () => toast.success(t.dashboard.itemSaved),
+    onSuccess: (data) => toast.success(data.message ?? t.dashboard.itemSaved),
     onError,
     onSettled,
   });
@@ -233,8 +235,9 @@ export function useItemMutations(businessId: string) {
     // this mutation also carries the availability toggle and drag-reorder's
     // writes, neither of which is a "save" worth announcing — only the
     // dialog's own save sends a name
-    onSuccess: (_data, variables) => {
-      if (variables.name !== undefined) toast.success(t.dashboard.itemSaved);
+    onSuccess: (data, variables) => {
+      if (variables.name !== undefined)
+        toast.success(data.message ?? t.dashboard.itemSaved);
     },
     onError,
     onSettled,
@@ -247,7 +250,8 @@ export function useItemMutations(businessId: string) {
         ...current,
         items: current.items.filter((item) => item.id !== id),
       })),
-    onSuccess: () => toast.success(t.dashboard.itemDeleted),
+    onSuccess: (data) =>
+      toast.success(data?.message ?? t.dashboard.itemDeleted),
     onError,
     onSettled,
   });

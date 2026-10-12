@@ -41,6 +41,16 @@ import type {
 
 type Raw = Record<string, unknown>;
 
+/**
+ * A write response carries the backend's own success message (merged onto
+ * `data` by `apiFetch`'s envelope unwrap) — but every normalizer below
+ * rebuilds a fresh domain object field-by-field rather than spreading `raw`,
+ * which was silently dropping it. Carrying it through as `message` lets a
+ * mutation hook's `onSuccess` show the real backend sentence instead of a
+ * hardcoded local string.
+ */
+type WithMessage<T> = T & { message?: string };
+
 /** The write endpoints answer with single-locale rows, while `/me/menu` already
  * answers with the bilingual domain shape. Every mapper below accepts both and
  * settles on the domain shape, so a create/update response can be dropped
@@ -56,16 +66,17 @@ const toLocalized = (value: unknown): LocalizedText => {
 /** Decimal columns arrive as strings ("40000.00") — coerce to numbers. */
 const toNumber = (value: unknown): number => Number(value ?? 0);
 
-function normalizeCategory(raw: Raw, businessId: string): MenuCategory {
+function normalizeCategory(raw: Raw, businessId: string): WithMessage<MenuCategory> {
   return {
     id: String(raw.id),
     restaurantId: String(raw.businessId ?? raw.restaurantId ?? businessId),
     name: toLocalized(raw.name),
     sortOrder: toNumber(raw.sortOrder),
+    message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }
 
-function normalizeItem(raw: Raw, businessId: string): MenuItem {
+function normalizeItem(raw: Raw, businessId: string): WithMessage<MenuItem> {
   const images = Array.isArray(raw.images)
     ? (raw.images as unknown[]).map((image) =>
         typeof image === "string"
@@ -92,14 +103,15 @@ function normalizeItem(raw: Raw, businessId: string): MenuItem {
     optionGroups: optionGroups?.length ? optionGroups : undefined,
     isAvailable: raw.isAvailable !== false,
     sortOrder: toNumber(raw.sortOrder),
+    message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }
 
-function normalizeOrder(raw: Raw): Order {
-  return raw as unknown as Order;
+function normalizeOrder(raw: Raw): WithMessage<Order> {
+  return raw as unknown as WithMessage<Order>;
 }
 
-function normalizeTable(raw: Raw): DiningTable {
+function normalizeTable(raw: Raw): WithMessage<DiningTable> {
   const status = raw.status === undefined ? "" : String(raw.status);
   return {
     id: String(raw.id),
@@ -113,6 +125,7 @@ function normalizeTable(raw: Raw): DiningTable {
     waiterId: raw.waiterId ? String(raw.waiterId) : undefined,
     x: toNumber(raw.x),
     y: toNumber(raw.y),
+    message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }
 
@@ -236,7 +249,7 @@ export async function createCategory(input: {
   businessId: string;
   name: string;
   sortOrder: number;
-}): Promise<MenuCategory> {
+}): Promise<WithMessage<MenuCategory>> {
   if (IS_MOCK)
     return mockDelay({
       id: `c${Date.now()}`,
@@ -256,7 +269,7 @@ export async function updateCategory(input: {
   businessId: string;
   name?: string;
   sortOrder?: number;
-}): Promise<MenuCategory> {
+}): Promise<WithMessage<MenuCategory>> {
   const { id, businessId, ...body } = input;
   if (IS_MOCK)
     return mockDelay({
@@ -272,9 +285,13 @@ export async function updateCategory(input: {
   return normalizeCategory(raw, businessId);
 }
 
-export async function deleteCategory(id: string): Promise<void> {
+export async function deleteCategory(
+  id: string,
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined);
-  await apiFetch<void>(`/categories/${id}`, { method: "DELETE" });
+  return apiFetch<{ message?: string }>(`/categories/${id}`, {
+    method: "DELETE",
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -343,7 +360,7 @@ export async function createItem(
     sortOrder: number;
     isAvailable?: boolean;
   } & ItemWriteInput,
-): Promise<MenuItem> {
+): Promise<WithMessage<MenuItem>> {
   if (IS_MOCK) return mockDelay(mockItem(input));
   const { businessId, ...rest } = input;
   const raw = await apiFetch<Raw>("/items", {
@@ -365,7 +382,9 @@ export type ItemUpdateInput = {
     sortOrder?: number;
   };
 
-export async function updateItem(input: ItemUpdateInput): Promise<MenuItem> {
+export async function updateItem(
+  input: ItemUpdateInput,
+): Promise<WithMessage<MenuItem>> {
   if (IS_MOCK) return mockDelay(mockItem(input));
   const { id, businessId, ...rest } = input;
   const raw = await apiFetch<Raw>(`/items/${id}`, {
@@ -375,9 +394,11 @@ export async function updateItem(input: ItemUpdateInput): Promise<MenuItem> {
   return normalizeItem(raw, businessId);
 }
 
-export async function deleteItem(id: string): Promise<void> {
+export async function deleteItem(
+  id: string,
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined);
-  await apiFetch<void>(`/items/${id}`, { method: "DELETE" });
+  return apiFetch<{ message?: string }>(`/items/${id}`, { method: "DELETE" });
 }
 
 
@@ -400,7 +421,7 @@ export function toApiOrderStatus(status: OrderStatus): string {
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus,
-): Promise<Order> {
+): Promise<WithMessage<Order>> {
   if (IS_MOCK) return mockDelay({ id, status } as Order);
   const raw = await apiFetch<Raw>(`/orders/${id}/status`, {
     method: "PATCH",
@@ -416,6 +437,14 @@ export async function updateOrderStatus(
 export interface TableWriteInput {
   tableNumber?: string;
   status?: "available" | "occupied" | "reserved";
+  /**
+   * NOT accepted by `UpdateTableDto` — `RestaurantTable` has no waiter/staff
+   * column at all, so there is nowhere on the backend to persist this.
+   * Stripped before the request below rather than sent, since
+   * `forbidNonWhitelisted` would 400 the WHOLE request (including the
+   * `status` change riding alongside it) over this one unknown field.
+   * Backend gap — see audit report.
+   */
   waiterId?: string | null;
   seats?: number;
   shape?: string;
@@ -426,11 +455,13 @@ export interface TableWriteInput {
 export async function updateTable(
   id: string,
   input: TableWriteInput,
-): Promise<DiningTable> {
+): Promise<WithMessage<DiningTable>> {
   if (IS_MOCK) return mockDelay({ id, ...input } as unknown as DiningTable);
+  const body: Record<string, unknown> = { ...input };
+  delete body.waiterId;
   const raw = await apiFetch<Raw>(`/tables/${id}`, {
     method: "PATCH",
-    body: input,
+    body,
   });
   return normalizeTable(raw);
 }
@@ -443,6 +474,13 @@ export interface BusinessProfileInput {
   name?: string;
   description?: string;
   address?: string;
+  /**
+   * NOT accepted by `UpdateBusinessDto` on the backend (only `CreateBusinessDto`
+   * has it) — sending it 400s the whole request under `forbidNonWhitelisted`.
+   * No caller sends it; kept typed here only so a backend fix (add
+   * `districtId` to `UpdateBusinessDto`) doesn't require touching this type.
+   * Backend gap — see audit report.
+   */
   districtId?: string;
   latitude?: number;
   longitude?: number;
@@ -451,6 +489,12 @@ export interface BusinessProfileInput {
   logo?: string;
   /** food_beverage only — sent as `restaurantProfile.cuisineType` */
   cuisineType?: string;
+  /**
+   * NOT accepted by `UpdateBusinessDto` — `BusinessPhone`/`BusinessLink` rows
+   * have no update endpoint at all, only ever written once at registration
+   * approval. Sending these 400s the whole request. Backend gap — see audit
+   * report.
+   */
   phones?: { type: string; number: string }[];
   socialLinks?: { platform: string; url: string }[];
   images?: string[];
@@ -481,7 +525,7 @@ export async function updateBusinessProfile(
 // Writes — branches
 // ---------------------------------------------------------------------------
 
-function normalizeBranch(raw: Raw): Branch {
+function normalizeBranch(raw: Raw): WithMessage<Branch> {
   return {
     id: String(raw.id),
     businessId: String(raw.businessId),
@@ -493,6 +537,7 @@ function normalizeBranch(raw: Raw): Branch {
     phone: String(raw.phone ?? ""),
     createdAt: String(raw.createdAt ?? ""),
     updatedAt: String(raw.updatedAt ?? ""),
+    message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }
 
@@ -514,7 +559,7 @@ export async function getMyBranches(businessId: string): Promise<Branch[]> {
 
 export async function createBranch(
   input: { businessId: string } & BranchWriteInput,
-): Promise<Branch> {
+): Promise<WithMessage<Branch>> {
   if (IS_MOCK) {
     return mockDelay({
       id: `branch-${Date.now()}`,
@@ -536,7 +581,7 @@ export async function createBranch(
 export async function updateBranch(
   id: string,
   input: Partial<BranchWriteInput>,
-): Promise<Branch> {
+): Promise<WithMessage<Branch>> {
   if (IS_MOCK) {
     const existing = branches.find((b) => b.id === id)!;
     return mockDelay({
@@ -552,7 +597,11 @@ export async function updateBranch(
   return normalizeBranch(raw);
 }
 
-export async function deleteBranch(id: string): Promise<void> {
+export async function deleteBranch(
+  id: string,
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined);
-  await apiFetch<void>(`/branches/${id}`, { method: "DELETE" });
+  return apiFetch<{ message?: string }>(`/branches/${id}`, {
+    method: "DELETE",
+  });
 }

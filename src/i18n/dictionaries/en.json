@@ -633,6 +633,7 @@
     "tableFree": "Free",
     "tableOccupied": "Occupied",
     "assignWaiter": "Assign waiter",
+    "assignWaiterUnavailable": "Assigning a waiter to a table isn't supported by the server yet",
     "waiters": "Waiters",
     "addWaiter": "Add waiter",
     "revenueGrowth": "Revenue growth",
@@ -750,7 +751,9 @@
     "favoriteCount": "Added to favorites",
     "productStatsHint": "This product's performance with your customers over the last 30 days",
     "productStatsUnavailable": "Detailed statistics for this product aren't available yet — they'll appear here once the server supports this feature",
-    "productStatsLocked": "Product statistics aren't available on your current plan"
+    "productStatsLocked": "Product statistics aren't available on your current plan",
+    "phoneRegionEditUnavailable": "Editing the phone number and governorate/region isn't supported by the server yet — contact support to change these",
+    "socialMediaEditUnavailable": "Editing WhatsApp and social pages isn't supported by the server yet — contact support to change these"
   },
   "agent": {
     "dashboard": "Agent dashboard",

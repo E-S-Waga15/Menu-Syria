@@ -97,7 +97,7 @@ export function useCustomerProfileMutations() {
     mutationFn: (input: CustomerProfileInput) => updateMyProfile(input),
     onSuccess: (account) => {
       publish(account);
-      toast.success(t.account.profileSaved);
+      toast.success(account.message ?? t.account.profileSaved);
     },
     onError: (error) => failed(error, t.common.saveFailed),
     onSettled: settled,
@@ -110,7 +110,7 @@ export function useCustomerProfileMutations() {
       updateMyAvatar(await toAvatarUrl(file)),
     onSuccess: (account) => {
       publish(account);
-      toast.success(t.account.photoSaved);
+      toast.success(account.message ?? t.account.photoSaved);
     },
     onError: (error) => failed(error, t.account.photoFailed),
     onSettled: settled,
@@ -120,7 +120,7 @@ export function useCustomerProfileMutations() {
     mutationFn: (input: CustomerPhoneInput) => addMyPhone(input),
     onSuccess: (account) => {
       publish(account);
-      toast.success(t.account.phoneAdded);
+      toast.success(account.message ?? t.account.phoneAdded);
     },
     onError: (error) => failed(error, t.common.saveFailed),
     onSettled: settled,
@@ -130,7 +130,7 @@ export function useCustomerProfileMutations() {
     mutationFn: (phoneId: string) => removeMyPhone(phoneId),
     onSuccess: (account) => {
       publish(account);
-      toast.success(t.account.phoneRemoved);
+      toast.success(account.message ?? t.account.phoneRemoved);
     },
     onError: (error) => failed(error, t.common.saveFailed),
     onSettled: settled,

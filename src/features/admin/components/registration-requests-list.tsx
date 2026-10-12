@@ -44,7 +44,10 @@ export function RegistrationRequestsList({
             const planId = selectedPlans[request.id] ?? request.planId ?? undefined;
             const updated = await updateRegistrationRequestStatus(request.id, status, planId);
             setRequests((current) => current.map((item) => item.id === request.id ? updated : item));
-            toast.success(status === "approved" ? t.admin.requestApproved : t.admin.requestRejected);
+            toast.success(
+                (updated as { message?: string }).message ??
+                    (status === "approved" ? t.admin.requestApproved : t.admin.requestRejected),
+            );
         } catch (error) {
             toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
         } finally {

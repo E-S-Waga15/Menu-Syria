@@ -71,7 +71,7 @@ export function useOfferMutations(businessId: string) {
           sortOrder: input.sortOrder,
         },
       ]),
-    onSuccess: () => toast.success(t.offers.saved),
+    onSuccess: (data) => toast.success(data.message ?? t.offers.saved),
     ...failure,
   });
 
@@ -84,14 +84,14 @@ export function useOfferMutations(businessId: string) {
           offer.id === id ? { ...offer, ...toOfferPatch(input) } : offer,
         ),
       ),
-    onSuccess: () => toast.success(t.offers.saved),
+    onSuccess: (data) => toast.success(data.message ?? t.offers.saved),
     ...failure,
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteOffer(businessId, id),
     onMutate: (id) => patch((current) => current.filter((o) => o.id !== id)),
-    onSuccess: () => toast.success(t.offers.deleted),
+    onSuccess: (data) => toast.success(data?.message ?? t.offers.deleted),
     ...failure,
   });
 

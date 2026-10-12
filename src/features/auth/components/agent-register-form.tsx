@@ -134,7 +134,7 @@ export function AgentRegisterForm() {
     // the last step may actually send the request
     if (step !== steps.length - 1) return;
     try {
-      await submitAgentApplication({
+      const result = await submitAgentApplication({
         name: values.name.trim(),
         username: values.username.trim(),
         phone: values.phone,
@@ -153,7 +153,9 @@ export function AgentRegisterForm() {
           .filter(Boolean)
           .join("\n"),
       });
-      toast.success(t.auth.applicationSent);
+      toast.success(
+        (result as { message?: string }).message ?? t.auth.applicationSent,
+      );
       startNavigating();
       router.push(`/${lang}`);
     } catch (error) {

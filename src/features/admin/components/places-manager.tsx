@@ -81,7 +81,7 @@ export function PlacesManager({
       setGovernorates((prev) => [...prev, governorate]);
       setNewGovernorate("");
       setSelectedId(governorate.id);
-      toast.success(t.admin.saved);
+      toast.success(governorate.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
     }
@@ -105,7 +105,7 @@ export function PlacesManager({
           governorate.id === updated.id ? updated : governorate,
         ),
       );
-      toast.success(t.admin.saved);
+      toast.success(updated.message ?? t.admin.saved);
       setRenamingGovernorateId(null);
     } catch (error) {
       showError(error);
@@ -120,11 +120,11 @@ export function PlacesManager({
       return;
     }
     try {
-      await deleteAdminGovernorate(id);
+      const result = await deleteAdminGovernorate(id);
       const next = governorates.filter((governorate) => governorate.id !== id);
       setGovernorates(next);
       if (selectedId === id) setSelectedId(next[0]?.id ?? "");
-      toast.success(t.admin.saved);
+      toast.success(result?.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
     }
@@ -137,7 +137,7 @@ export function PlacesManager({
       const region = await createAdminRegion(selected.id, name);
       setRegions((prev) => [...prev, region]);
       setNewRegion("");
-      toast.success(t.admin.saved);
+      toast.success(region.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
     }
@@ -165,7 +165,7 @@ export function PlacesManager({
             : region,
         ),
       );
-      toast.success(t.admin.saved);
+      toast.success(updated.message ?? t.admin.saved);
       setRenamingId(null);
     } catch (error) {
       showError(error);
@@ -174,9 +174,9 @@ export function PlacesManager({
 
   const deleteRegion = async (id: string) => {
     try {
-      await deleteAdminRegion(id);
+      const result = await deleteAdminRegion(id);
       setRegions((prev) => prev.filter((region) => region.id !== id));
-      toast.success(t.admin.saved);
+      toast.success(result?.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
     }

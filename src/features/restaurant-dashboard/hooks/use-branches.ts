@@ -34,7 +34,7 @@ export function useBranchMutations(businessId: string) {
   const add = useMutation({
     mutationFn: (input: BranchWriteInput) =>
       createBranch({ businessId, ...input }),
-    onSuccess: () => toast.success(t.dashboard.branchSaved),
+    onSuccess: (data) => toast.success(data.message ?? t.dashboard.branchSaved),
     onError,
     onSettled,
   });
@@ -42,14 +42,15 @@ export function useBranchMutations(businessId: string) {
   const edit = useMutation({
     mutationFn: ({ id, ...input }: { id: string } & Partial<BranchWriteInput>) =>
       updateBranch(id, input),
-    onSuccess: () => toast.success(t.dashboard.branchSaved),
+    onSuccess: (data) => toast.success(data.message ?? t.dashboard.branchSaved),
     onError,
     onSettled,
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteBranch(id),
-    onSuccess: () => toast.success(t.dashboard.branchDeleted),
+    onSuccess: (data) =>
+      toast.success(data?.message ?? t.dashboard.branchDeleted),
     onError,
     onSettled,
   });

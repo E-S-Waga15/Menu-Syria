@@ -44,9 +44,10 @@ export function SubscriptionRequestsList({
                 current.map((item) => (item.id === request.id ? updated : item)),
             );
             toast.success(
-                status === "approved"
-                    ? t.admin.subscriptionRequestApproved
-                    : t.admin.requestRejected,
+                (updated as { message?: string }).message ??
+                    (status === "approved"
+                        ? t.admin.subscriptionRequestApproved
+                        : t.admin.requestRejected),
             );
         } catch (error) {
             toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);

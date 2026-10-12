@@ -101,19 +101,6 @@ const SECONDARY_COLOR_PRESETS = [
 type SaveProfile = (input: BusinessProfileInput) => void;
 
 /**
- * The contact and the social section both own phone numbers, and the API
- * replaces the whole list on write — so the list is built from the business's
- * current values in one place. Without this, saving one section would silently
- * drop the number the other section looks after.
- */
-function phoneRows(phone: string, whatsapp: string) {
-  return [
-    phone ? { type: "mobile", number: phone } : null,
-    whatsapp ? { type: "whatsapp", number: whatsapp } : null,
-  ].filter((row): row is { type: string; number: string } => row !== null);
-}
-
-/**
  * Card wrapper every section shares: a title, an "Edit" trigger while at
  * rest, and — once the section is being edited — a floating save/discard bar
  * (the same fixed pill the storefront cart uses) instead of a quiet dropdown
@@ -349,14 +336,15 @@ function AccountInfoSection({
           // assigns — only a food business has an editable cuisine
           ...(isStore ? {} : { cuisineType: specialty }),
           address,
-          // the region is the district row the API stores; the governorate is
-          // derived from it, so it is not sent separately
-          districtId: regionId || undefined,
+          // NOTE: `districtId` and `phones` are deliberately NOT sent here.
+          // `UpdateBusinessDto` on the backend has no `districtId` field and
+          // no field/endpoint for updating `BusinessPhone` rows post-
+          // registration — with `forbidNonWhitelisted: true`, including
+          // either one made the ENTIRE PATCH /businesses/:id request 400,
+          // which is why even the plain `description` edit above appeared to
+          // "silently fail". Backend gap — see audit report.
           latitude: lat,
           longitude: lng,
-          // the social section owns the WhatsApp number, so it is carried
-          // across rather than cleared by writing this section alone
-          phones: phoneRows(phone, restaurant.whatsapp),
         });
         setEditing(false);
       }}
@@ -410,17 +398,13 @@ function AccountInfoSection({
         />
       </div>
 
-      <div className="mt-5 grid gap-5 md:grid-cols-2">
+      <p className="mt-5 text-xs font-semibold text-muted-foreground">
+        {t.dashboard.phoneRegionEditUnavailable}
+      </p>
+      <div className="mt-2 grid gap-5 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="p-phone">{t.auth.phoneLabel}</Label>
-          <Input
-            id="p-phone"
-            dir="ltr"
-            className="h-11"
-            disabled={!editing}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+          <Input id="p-phone" dir="ltr" className="h-11" disabled value={phone} />
         </div>
         <div className="space-y-2">
           <Label>{t.auth.governorateLabel}</Label>
@@ -428,21 +412,19 @@ function AccountInfoSection({
             triggerClassName="h-11"
             className="grid gap-2 sm:grid-cols-2"
             governorateValue={governorateId}
-            onGovernorateChange={(v) => {
-              setGovernorateId(v);
-              setRegionId("");
-            }}
+            onGovernorateChange={() => {}}
             governorateItems={Object.fromEntries(
               (governorates ?? []).map((g) => [g.id, g.name[lang]]),
             )}
             governorateAriaLabel={t.auth.governorateLabel}
             regionValue={regionId}
-            onRegionChange={setRegionId}
+            onRegionChange={() => {}}
             regionItems={Object.fromEntries(
               regionChoices.map((r) => [r.id, r.name[lang]]),
             )}
             regionAriaLabel={t.restaurantsPage.regionLabel}
-            regionDisabled={!editing || !governorateId}
+            regionDisabled
+            governorateDisabled
           />
         </div>
       </div>
@@ -527,52 +509,36 @@ function AccountInfoSection({
   );
 }
 
+/**
+ * View-only until the backend can actually persist these: `phones` and
+ * `socialLinks` have no backing field on `UpdateBusinessDto` and no
+ * dedicated endpoint of their own — `BusinessPhone`/`BusinessLink` rows are
+ * only ever written once, at registration approval. Letting the owner edit
+ * and "save" this section used to just 400 every time, with no indication
+ * why — showing it read-only with a plain explanation is more honest than a
+ * save button that can never work.
+ */
 function SocialMediaSection({
   restaurant,
   t,
-  save,
 }: {
   restaurant: Restaurant;
   t: I18n["t"];
-  save: SaveProfile;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [whatsapp, setWhatsapp] = useState(restaurant.whatsapp);
-  const [instagram, setInstagram] = useState(restaurant.instagram ?? "");
-  const [facebook, setFacebook] = useState(restaurant.facebook ?? "");
-  const snapshot = useRef({ whatsapp, instagram, facebook });
-
   return (
     <ProfileSection
       title={t.dashboard.socialMediaTab}
       icon={Globe}
-      editing={editing}
+      editing={false}
+      editable={false}
       t={t}
-      onEdit={() => {
-        snapshot.current = { whatsapp, instagram, facebook };
-        setEditing(true);
-      }}
-      onSave={() => {
-        save({
-          // the contact section owns the primary phone, so it rides along
-          phones: phoneRows(restaurant.phone, whatsapp),
-          // an emptied field removes the link rather than storing a blank one
-          socialLinks: [
-            instagram ? { platform: "instagram", url: instagram } : null,
-            facebook ? { platform: "facebook", url: facebook } : null,
-          ].filter((link): link is { platform: string; url: string } =>
-            link !== null,
-          ),
-        });
-        setEditing(false);
-      }}
-      onCancel={() => {
-        setWhatsapp(snapshot.current.whatsapp);
-        setInstagram(snapshot.current.instagram);
-        setFacebook(snapshot.current.facebook);
-        setEditing(false);
-      }}
+      onEdit={() => {}}
+      onSave={() => {}}
+      onCancel={() => {}}
     >
+      <p className="mb-5 text-sm text-muted-foreground">
+        {t.dashboard.socialMediaEditUnavailable}
+      </p>
       <div className="grid gap-5 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="p-wa">{t.auth.whatsappLabel}</Label>
@@ -580,9 +546,8 @@ function SocialMediaSection({
             id="p-wa"
             dir="ltr"
             className="h-11"
-            disabled={!editing}
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
+            disabled
+            value={restaurant.whatsapp}
           />
         </div>
         <div className="space-y-2">
@@ -591,9 +556,8 @@ function SocialMediaSection({
             id="p-ig"
             dir="ltr"
             className="h-11"
-            disabled={!editing}
-            value={instagram}
-            onChange={(e) => setInstagram(e.target.value)}
+            disabled
+            value={restaurant.instagram ?? ""}
           />
         </div>
       </div>
@@ -603,9 +567,8 @@ function SocialMediaSection({
           id="p-fb"
           dir="ltr"
           className="h-11"
-          disabled={!editing}
-          value={facebook}
-          onChange={(e) => setFacebook(e.target.value)}
+          disabled
+          value={restaurant.facebook ?? ""}
         />
       </div>
     </ProfileSection>
@@ -1342,7 +1305,7 @@ export function BusinessProfile() {
           <DeliveryFeeSection restaurant={restaurant} t={t} save={save} />
         </TabsContent>
         <TabsContent value="social">
-          <SocialMediaSection restaurant={restaurant} t={t} save={save} />
+          <SocialMediaSection restaurant={restaurant} t={t} />
         </TabsContent>
         <TabsContent value="gallery">
           <GallerySection restaurant={restaurant} t={t} save={save} />

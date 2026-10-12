@@ -58,7 +58,10 @@ export function BranchLocationPanel({
   return (
     <div className="space-y-4">
       {branches.length > 0 && (
-        <Select value={selectedId} onValueChange={setSelectedId}>
+        <Select
+          value={selectedId}
+          onValueChange={(value) => setSelectedId(value ?? MAIN)}
+        >
           <SelectTrigger className="h-11! w-full" aria-label={t.restaurant.selectBranch}>
             <SelectValue />
           </SelectTrigger>

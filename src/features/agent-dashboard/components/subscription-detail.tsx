@@ -95,9 +95,10 @@ export function SubscriptionDetail({
     if (!selectedPlanId) return;
     setRequesting(true);
     try {
-      await requestBusinessRenewal(business.id, selectedPlanId);
+      const result = await requestBusinessRenewal(business.id, selectedPlanId);
       toast.success(
-        kind2 === "upgrade" ? t.agent.upgradeRequested : t.agent.renewRequested,
+        result?.message ??
+          (kind2 === "upgrade" ? t.agent.upgradeRequested : t.agent.renewRequested),
       );
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);

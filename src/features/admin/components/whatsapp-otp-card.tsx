@@ -91,13 +91,16 @@ export function WhatsappOtpCard() {
 
   const unlink = useMutation({
     mutationFn: () => unlinkWhatsappOtp(),
-    onSuccess: () => {
-      toast.success(t.admin.whatsappUnlinked);
+    onSuccess: (data) => {
+      toast.success(data?.message ?? t.admin.whatsappUnlinked);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.admin.whatsappOtp,
       });
     },
-    onError: () => toast.error(t.admin.whatsappActionFailed),
+    onError: (error) =>
+      toast.error(
+        error instanceof ApiError ? error.message : t.admin.whatsappActionFailed,
+      ),
     onSettled: () => setConfirm(null),
   });
 
@@ -324,7 +327,11 @@ function PairingDialog({
               tone="danger"
               icon={<WifiOff className="size-6" />}
               title={t.admin.whatsappActionFailed}
-              body={t.admin.whatsappStatusFailedBody}
+              body={
+                start.error instanceof ApiError
+                  ? start.error.message
+                  : t.admin.whatsappStatusFailedBody
+              }
             />
           ) : isPending ? (
             <>

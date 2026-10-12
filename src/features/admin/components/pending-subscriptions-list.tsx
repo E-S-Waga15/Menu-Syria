@@ -43,7 +43,10 @@ export function PendingSubscriptionsList() {
             setItems((current) =>
                 current.filter((row) => row.id !== updated.id),
             );
-            toast.success(t.admin.subscriptionActivated);
+            toast.success(
+                (updated as { message?: string }).message ??
+                    t.admin.subscriptionActivated,
+            );
         } catch (error) {
             toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
         } finally {

@@ -10,9 +10,9 @@ import type { Agent, Restaurant, Store, Transaction } from "@/lib/types";
 export async function requestBusinessRenewal(
   businessId: string,
   planId: string,
-): Promise<void> {
+): Promise<{ message?: string } | undefined> {
   if (IS_MOCK) return mockDelay(undefined, 200);
-  await apiFetch("/subscription-requests", {
+  return apiFetch("/subscription-requests", {
     method: "POST",
     body: { businessId, planId },
   });

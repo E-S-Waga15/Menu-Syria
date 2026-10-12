@@ -92,21 +92,24 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
       isPopular: draft.isPopular,
     };
 
+    let message: string | undefined;
     try {
       if (draft.id) {
-        await updateAdminPlan(draft.id, {
+        const result = await updateAdminPlan(draft.id, {
           name,
           price: nextPlan.priceMonthly,
           agentPrice: 0,
           durationDays: 30,
         });
+        message = (result as { message?: string })?.message;
       } else {
-        await createAdminPlan({
+        const result = await createAdminPlan({
           name,
           price: nextPlan.priceMonthly,
           agentPrice: 0,
           durationDays: 30,
         });
+        message = (result as { message?: string })?.message;
       }
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
@@ -125,18 +128,20 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
     });
 
     setDraft(null);
-    toast.success(t.admin.planSaved);
+    toast.success(message ?? t.admin.planSaved);
   };
 
   const remove = async (plan: Plan) => {
+    let message: string | undefined;
     try {
-      await deleteAdminPlan(plan.id);
+      const result = await deleteAdminPlan(plan.id);
+      message = result?.message;
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
       return;
     }
     setRows((prev) => prev.filter((p) => p.id !== plan.id));
-    toast.success(t.admin.planDeleted);
+    toast.success(message ?? t.admin.planDeleted);
   };
 
   const actionsFor = (plan: Plan): RowAction[] => [
