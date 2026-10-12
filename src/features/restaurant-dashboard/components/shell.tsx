@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { useQuery } from "@tanstack/react-query";
+
 import {
   Bell,
   Building2,
@@ -25,7 +27,9 @@ import {
 } from "@/components/shared/dashboard-shell";
 import { useAuthStore } from "@/features/auth/store";
 import { useHydratedSession } from "@/features/auth/use-hydrated-session";
+import { getMyRestaurant } from "@/features/restaurant-dashboard/services";
 import { useI18n } from "@/i18n/client";
+import { queryKeys } from "@/lib/api/query-keys";
 
 export function RestaurantDashboardShell({
   children,
@@ -41,6 +45,17 @@ export function RestaurantDashboardShell({
   );
   const isStore = businessType === "store";
   const base = `/${lang}/dashboard`;
+
+  // Only fetched for its slug — the preview link has to point at this
+  // owner's own real storefront, not a stand-in that happened to exist.
+  const { data: restaurant } = useQuery({
+    queryKey: queryKeys.me.business,
+    queryFn: getMyRestaurant,
+    enabled: hydrated && !!session,
+  });
+  const previewHref = restaurant
+    ? `/${lang}/${isStore ? "store" : "menu"}/${restaurant.slug}`
+    : undefined;
 
   const navItems: DashboardNavItem[] = [
     {
@@ -74,7 +89,7 @@ export function RestaurantDashboardShell({
     <DashboardShell
       navItems={navItems}
       title={t.dashboard.overview}
-      previewHref={`/${lang}/menu/yasmeen-house`}
+      previewHref={previewHref}
       previewLabel={t.dashboard.preview}
       accountMenu={
         hydrated && session ? (
