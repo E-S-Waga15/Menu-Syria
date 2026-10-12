@@ -77,9 +77,10 @@ export const useCartStore = create<CartState>()(
 
       clear: () => set({ lines: [], restaurantId: null }),
     }),
-    // v3: option ids now come from grouped optionGroups instead of a flat
-    // list — bumped so a stale cart from before this change resets cleanly
-    { name: "menu-syria-cart", version: 3 },
+    // v4: an option is now just {id, priceDelta} — the backend never had a
+    // separate name field, `id` doubles as the label — bumped so a stale
+    // cart holding the old shape resets instead of showing stale labels
+    { name: "menu-syria-cart", version: 4 },
   ),
 );
 

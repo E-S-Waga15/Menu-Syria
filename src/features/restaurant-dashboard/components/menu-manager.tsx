@@ -4,6 +4,16 @@ import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { useAuthStore } from "@/features/auth/store";
 import {
@@ -22,7 +32,7 @@ import {
 } from "@/features/restaurant-dashboard/hooks/use-catalog";
 import { useBusinessId } from "@/features/restaurant-dashboard/hooks/use-my-business";
 import { getMyMenu } from "@/features/restaurant-dashboard/services";
-import { useI18n } from "@/i18n/client";
+import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
 import { useUiStore } from "@/stores/ui-store";
@@ -37,7 +47,7 @@ import type { MenuItem } from "@/lib/types";
  * never means reading the reorder logic, and vice versa.
  */
 export function MenuManager() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const businessType = useAuthStore(
     (s) => s.session?.businessType ?? "restaurant",
   );
@@ -53,6 +63,7 @@ export function MenuManager() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<MenuItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<MenuItem | null>(null);
   const view = useUiStore((s) => s.catalogView);
   const setView = useUiStore((s) => s.setCatalogView);
 
@@ -95,7 +106,11 @@ export function MenuManager() {
   const toggleAvailability = (id: string, value: boolean) =>
     itemMutations.setAvailability(id, value);
 
-  const removeItem = (id: string) => itemMutations.remove(id);
+  const confirmRemoveItem = () => {
+    if (!deletingItem) return;
+    itemMutations.remove(deletingItem.id);
+    setDeletingItem(null);
+  };
 
   const onDropOn = (targetId: string) => {
     if (!dragId || dragId === targetId || !canReorder) return;
@@ -149,7 +164,7 @@ export function MenuManager() {
     onToggleAvailability: (value: boolean) =>
       toggleAvailability(item.id, value),
     onEdit: () => openEdit(item),
-    onDelete: () => removeItem(item.id),
+    onDelete: () => setDeletingItem(item),
   });
 
   return (
@@ -236,6 +251,34 @@ export function MenuManager() {
           setDialogOpen(false);
         }}
       />
+
+      <AlertDialog
+        open={deletingItem !== null}
+        onOpenChange={(open) => !open && setDeletingItem(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.dashboard.deleteItemTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.dashboard.deleteItemBody, {
+                name: deletingItem?.name[lang] ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingItem(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={itemMutations.isRemoving}
+              onClick={confirmRemoveItem}
+            >
+              {t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

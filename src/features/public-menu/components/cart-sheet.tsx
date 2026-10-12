@@ -293,7 +293,7 @@ export function CartSheet({
                       </p>
                       {line.options.length > 0 && (
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {line.options.map((o) => o.name[lang]).join("، ")}
+                          {line.options.map((o) => o.id).join("، ")}
                         </p>
                       )}
                       <p className="mt-0.5 text-sm font-bold text-[var(--menu-primary)]">

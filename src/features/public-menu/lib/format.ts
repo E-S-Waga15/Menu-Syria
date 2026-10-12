@@ -84,7 +84,7 @@ export function buildWhatsAppOrderUrl({
     ...lines.map((line) => {
       const options =
         line.options.length > 0
-          ? ` (${line.options.map((o) => o.name[lang]).join("، ")})`
+          ? ` (${line.options.map((o) => o.id).join("، ")})`
           : "";
       return `• ${line.quantity}× ${line.item.name[lang]}${options} — ${formatPrice(
         lineUnitPrice(line) * line.quantity,

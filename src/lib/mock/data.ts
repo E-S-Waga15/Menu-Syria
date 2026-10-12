@@ -388,24 +388,20 @@ export const menuItems: MenuItem[] = [
     ],
     optionGroups: [
       {
-        id: "og1",
-        name: { ar: "إضافات", en: "Add-ons" },
+        id: "إضافات",
         selectionType: "multiple",
         required: false,
         options: [
           {
-            id: "op1",
-            name: { ar: "لحمة مقلية", en: "Fried lamb bits" },
+            id: "لحمة مقلية",
             priceDelta: 15000,
           },
           {
-            id: "op2",
-            name: { ar: "صنوبر", en: "Pine nuts" },
+            id: "صنوبر",
             priceDelta: 8000,
           },
           {
-            id: "op3",
-            name: { ar: "خبز إضافي", en: "Extra bread" },
+            id: "خبز إضافي",
             priceDelta: 3000,
           },
         ],
@@ -469,19 +465,16 @@ export const menuItems: MenuItem[] = [
     ],
     optionGroups: [
       {
-        id: "og2",
-        name: { ar: "إضافات", en: "Add-ons" },
+        id: "إضافات",
         selectionType: "multiple",
         required: false,
         options: [
           {
-            id: "op4",
-            name: { ar: "لحم إضافي", en: "Extra lamb" },
+            id: "لحم إضافي",
             priceDelta: 35000,
           },
           {
-            id: "op5",
-            name: { ar: "لبن خيار", en: "Cucumber yogurt" },
+            id: "لبن خيار",
             priceDelta: 10000,
           },
         ],
@@ -544,24 +537,20 @@ export const menuItems: MenuItem[] = [
     ],
     optionGroups: [
       {
-        id: "og3",
-        name: { ar: "إضافات", en: "Add-ons" },
+        id: "إضافات",
         selectionType: "multiple",
         required: false,
         options: [
           {
-            id: "op6",
-            name: { ar: "صحن حمص", en: "Hummus plate" },
+            id: "صحن حمص",
             priceDelta: 20000,
           },
           {
-            id: "op7",
-            name: { ar: "بطاطا مقلية", en: "French fries" },
+            id: "بطاطا مقلية",
             priceDelta: 12000,
           },
           {
-            id: "op8",
-            name: { ar: "حجم عائلي (×2)", en: "Family size (×2)" },
+            id: "حجم عائلي (×2)",
             priceDelta: 120000,
           },
         ],
@@ -609,19 +598,16 @@ export const menuItems: MenuItem[] = [
     ],
     optionGroups: [
       {
-        id: "og4",
-        name: { ar: "إضافات", en: "Add-ons" },
+        id: "إضافات",
         selectionType: "multiple",
         required: false,
         options: [
           {
-            id: "op9",
-            name: { ar: "قشطة إضافية", en: "Extra cream" },
+            id: "قشطة إضافية",
             priceDelta: 8000,
           },
           {
-            id: "op10",
-            name: { ar: "فستق مضاعف", en: "Double pistachio" },
+            id: "فستق مضاعف",
             priceDelta: 12000,
           },
         ],
@@ -1342,28 +1328,24 @@ export const storeProducts: StoreProduct[] = [
     ],
     optionGroups: [
       {
-        id: "ogp1",
-        name: { ar: "القياس", en: "Size" },
+        id: "القياس",
         selectionType: "single",
         required: true,
         options: [
-          { id: "po1", name: { ar: "قياس L", en: "Size L" }, priceDelta: 0 },
+          { id: "قياس L", priceDelta: 0 },
           {
-            id: "po2",
-            name: { ar: "قياس XL", en: "Size XL" },
+            id: "قياس XL",
             priceDelta: 10000,
           },
         ],
       },
       {
-        id: "ogp1b",
-        name: { ar: "إضافات", en: "Add-ons" },
+        id: "إضافات",
         selectionType: "multiple",
         required: false,
         options: [
           {
-            id: "po3",
-            name: { ar: "تطريز اسمك", en: "Name embroidery" },
+            id: "تطريز اسمك",
             priceDelta: 35000,
           },
         ],
@@ -1390,15 +1372,13 @@ export const storeProducts: StoreProduct[] = [
     ],
     optionGroups: [
       {
-        id: "ogp2",
-        name: { ar: "القياس", en: "Size" },
+        id: "القياس",
         selectionType: "single",
         required: true,
         options: [
-          { id: "po4", name: { ar: "قياس L", en: "Size L" }, priceDelta: 0 },
+          { id: "قياس L", priceDelta: 0 },
           {
-            id: "po5",
-            name: { ar: "قياس XL", en: "Size XL" },
+            id: "قياس XL",
             priceDelta: 10000,
           },
         ],
@@ -1425,16 +1405,14 @@ export const storeProducts: StoreProduct[] = [
     ],
     optionGroups: [
       {
-        id: "ogp3",
-        name: { ar: "القياس", en: "Size" },
+        id: "القياس",
         selectionType: "single",
         required: true,
         options: [
-          { id: "po6", name: { ar: "قياس M", en: "Size M" }, priceDelta: 0 },
-          { id: "po7", name: { ar: "قياس L", en: "Size L" }, priceDelta: 0 },
+          { id: "قياس M", priceDelta: 0 },
+          { id: "قياس L", priceDelta: 0 },
           {
-            id: "po8",
-            name: { ar: "قياس XL", en: "Size XL" },
+            id: "قياس XL",
             priceDelta: 15000,
           },
         ],
@@ -1490,17 +1468,15 @@ export const storeProducts: StoreProduct[] = [
     imageUrl: img("photo-1553062407-98eeb64c6a62"),
     optionGroups: [
       {
-        id: "ogp4",
-        name: { ar: "اللون", en: "Color" },
+        id: "اللون",
         selectionType: "single",
         required: true,
         options: [
           {
-            id: "po9",
-            name: { ar: "بني غامق", en: "Dark brown" },
+            id: "بني غامق",
             priceDelta: 0,
           },
-          { id: "po10", name: { ar: "أسود", en: "Black" }, priceDelta: 0 },
+          { id: "أسود", priceDelta: 0 },
         ],
       },
     ],

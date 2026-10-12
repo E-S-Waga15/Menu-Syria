@@ -560,6 +560,8 @@
     "branchDeleted": "تم حذف الفرع",
     "deleteBranchTitle": "حذف الفرع",
     "deleteBranchBody": "هل تريد حذف {name}؟ لا يمكن التراجع عن هذا الإجراء.",
+    "deleteItemTitle": "حذف المنتج",
+    "deleteItemBody": "هل تريد حذف {name}؟ هذا الإجراء نهائي ولا يمكن التراجع عنه.",
     "analytics": "التحليلات",
     "qrCode": "رمز QR",
     "settings": "الإعدادات",

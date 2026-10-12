@@ -74,7 +74,15 @@ export function MenuItemRow(props: MenuItemViewProps) {
         </p>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 md:gap-3">
+      {/* the row itself is draggable for reordering; starting the pointer
+          down here instead must not let that native drag gesture capture
+          the click — stopping propagation here is what makes Switch/Edit/
+          Delete reliable instead of only working every other try */}
+      <div
+        className="flex shrink-0 items-center gap-1.5 md:gap-3"
+        onMouseDown={(e) => e.stopPropagation()}
+        onDragStart={(e) => e.preventDefault()}
+      >
         <label className="flex items-center gap-2">
           <span className="hidden text-xs font-semibold text-muted-foreground md:block">
             {item.isAvailable ? t.common.available : t.common.unavailable}
@@ -142,7 +150,11 @@ export function MenuItemCard(props: MenuItemViewProps) {
         <p className="mt-0.5 text-sm font-semibold text-primary">
           {formatPrice(item.price, item.currency ?? "SYP", lang)}
         </p>
-        <div className="mt-2.5 flex items-center justify-between">
+        <div
+          className="mt-2.5 flex items-center justify-between"
+          onMouseDown={(e) => e.stopPropagation()}
+          onDragStart={(e) => e.preventDefault()}
+        >
           <Switch
             checked={item.isAvailable}
             onCheckedChange={props.onToggleAvailability}

@@ -560,6 +560,8 @@
     "branchDeleted": "Branch deleted",
     "deleteBranchTitle": "Delete branch",
     "deleteBranchBody": "Delete {name}? This can't be undone.",
+    "deleteItemTitle": "Delete product",
+    "deleteItemBody": "Delete {name}? This is permanent and can't be undone.",
     "analytics": "Analytics",
     "qrCode": "QR code",
     "settings": "Settings",

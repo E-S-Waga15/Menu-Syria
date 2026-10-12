@@ -42,6 +42,49 @@ import type {
 import { cn } from "@/lib/utils";
 
 /**
+ * The backend's `CatalogOption`/`CatalogOptionGroup` carry only `id` — the
+ * owner's own typed text doubles as the label, there is no separate name
+ * field. That `id` is exactly what this form edits live on every keystroke,
+ * so it cannot also be the React key (the list would remount, and every
+ * input would drop focus after one character). `key` below is a draft-only,
+ * never-submitted identity that solves that; `toOptionGroups` strips it back
+ * out to the real shape on save.
+ */
+interface DraftOption {
+  key: string;
+  id: string;
+  priceDelta: number;
+}
+interface DraftGroup {
+  key: string;
+  id: string;
+  selectionType: OptionSelectionType;
+  required: boolean;
+  options: DraftOption[];
+}
+
+function toDraftGroups(groups: CatalogOptionGroup[] | undefined): DraftGroup[] {
+  return (groups ?? []).map((g) => ({
+    key: crypto.randomUUID(),
+    id: g.id,
+    selectionType: g.selectionType,
+    required: g.required,
+    options: g.options.map((o) => ({
+      key: crypto.randomUUID(),
+      id: o.id,
+      priceDelta: o.priceDelta,
+    })),
+  }));
+}
+
+function toOptionGroups(groups: DraftGroup[]): CatalogOptionGroup[] {
+  return groups.map(({ key: _key, options, ...g }) => ({
+    ...g,
+    options: options.map(({ key: _optKey, ...o }) => o),
+  }));
+}
+
+/**
  * Create/edit panel for a single menu item, lifted out of MenuManager so the
  * manager reads as layout and the form reads as a form. It owns nothing but
  * the draft: the parent decides what saving means.
@@ -84,7 +127,7 @@ export function MenuDishDialog({
     mode: "onTouched",
   });
 
-  const [groups, setGroups] = useState<CatalogOptionGroup[]>([]);
+  const [groups, setGroups] = useState<DraftGroup[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState("");
 
@@ -113,7 +156,7 @@ export function MenuDishDialog({
       price: editing ? String(editing.price) : "",
       currency: editing?.currency ?? "SYP",
     });
-    setGroups(editing?.optionGroups ?? []);
+    setGroups(toDraftGroups(editing?.optionGroups));
     setCategoryId(editing?.categoryId ?? categories[0]?.id ?? "");
     // an older item may only have the single imageUrl; treat it as a gallery
     // of one so editing never silently drops it
@@ -129,22 +172,22 @@ export function MenuDishDialog({
       price: Number(values.price) || 0,
       currency: values.currency,
       categoryId,
-      optionGroups: groups,
+      optionGroups: toOptionGroups(groups),
       images,
     });
 
   const addGroup = (preset: "size" | "color" | "custom") => {
-    const presetName =
+    const presetId =
       preset === "size"
-        ? { ar: "القياس", en: "Size" }
+        ? t.dashboard.presetSize
         : preset === "color"
-          ? { ar: "اللون", en: "Color" }
-          : { ar: "", en: "" };
+          ? t.dashboard.presetColor
+          : "";
     setGroups((prev) => [
       ...prev,
       {
-        id: `og${Date.now()}`,
-        name: presetName,
+        key: crypto.randomUUID(),
+        id: presetId,
         selectionType: preset === "custom" ? "multiple" : "single",
         required: preset !== "custom",
         options: [],
@@ -152,29 +195,25 @@ export function MenuDishDialog({
     ]);
   };
 
-  const updateGroup = (id: string, patch: Partial<CatalogOptionGroup>) => {
+  const updateGroup = (key: string, patch: Partial<DraftGroup>) => {
     setGroups((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+      prev.map((g) => (g.key === key ? { ...g, ...patch } : g)),
     );
   };
 
-  const removeGroup = (id: string) => {
-    setGroups((prev) => prev.filter((g) => g.id !== id));
+  const removeGroup = (key: string) => {
+    setGroups((prev) => prev.filter((g) => g.key !== key));
   };
 
-  const addOption = (groupId: string) => {
+  const addOption = (groupKey: string) => {
     setGroups((prev) =>
       prev.map((g) =>
-        g.id === groupId
+        g.key === groupKey
           ? {
             ...g,
             options: [
               ...g.options,
-              {
-                id: `opt${Date.now()}`,
-                name: { ar: "", en: "" },
-                priceDelta: 0,
-              },
+              { key: crypto.randomUUID(), id: "", priceDelta: 0 },
             ],
           }
           : g,
@@ -183,38 +222,29 @@ export function MenuDishDialog({
   };
 
   const updateOption = (
-    groupId: string,
-    optionId: string,
-    patch: { name?: string; priceDelta?: number },
+    groupKey: string,
+    optionKey: string,
+    patch: Partial<DraftOption>,
   ) => {
     setGroups((prev) =>
       prev.map((g) =>
-        g.id !== groupId
+        g.key !== groupKey
           ? g
           : {
             ...g,
             options: g.options.map((o) =>
-              o.id === optionId
-                ? {
-                  ...o,
-                  name:
-                    patch.name !== undefined
-                      ? { ar: patch.name, en: patch.name }
-                      : o.name,
-                  priceDelta: patch.priceDelta ?? o.priceDelta,
-                }
-                : o,
+              o.key === optionKey ? { ...o, ...patch } : o,
             ),
           },
       ),
     );
   };
 
-  const removeOption = (groupId: string, optionId: string) => {
+  const removeOption = (groupKey: string, optionKey: string) => {
     setGroups((prev) =>
       prev.map((g) =>
-        g.id === groupId
-          ? { ...g, options: g.options.filter((o) => o.id !== optionId) }
+        g.key === groupKey
+          ? { ...g, options: g.options.filter((o) => o.key !== optionKey) }
           : g,
       ),
     );
@@ -388,16 +418,14 @@ export function MenuDishDialog({
 
               {groups.map((group) => (
                 <div
-                  key={group.id}
+                  key={group.key}
                   className="space-y-3 rounded-xl border border-border/60 p-3"
                 >
                   <div className="flex items-center gap-2">
                     <Input
-                      value={group.name[lang]}
+                      value={group.id}
                       onChange={(e) =>
-                        updateGroup(group.id, {
-                          name: { ar: e.target.value, en: e.target.value },
-                        })
+                        updateGroup(group.key, { id: e.target.value })
                       }
                       placeholder={t.dashboard.optionGroupNamePlaceholder}
                       className="h-9 flex-1"
@@ -408,7 +436,7 @@ export function MenuDishDialog({
                       size="icon-sm"
                       aria-label={t.common.delete}
                       className="text-muted-foreground hover:text-destructive"
-                      onClick={() => removeGroup(group.id)}
+                      onClick={() => removeGroup(group.key)}
                     >
                       <X className="size-4" />
                     </Button>
@@ -422,7 +450,7 @@ export function MenuDishDialog({
                             key={type}
                             type="button"
                             onClick={() =>
-                              updateGroup(group.id, { selectionType: type })
+                              updateGroup(group.key, { selectionType: type })
                             }
                             className={cn(
                               "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
@@ -442,7 +470,7 @@ export function MenuDishDialog({
                       <Checkbox
                         checked={group.required}
                         onCheckedChange={(v) =>
-                          updateGroup(group.id, { required: v === true })
+                          updateGroup(group.key, { required: v === true })
                         }
                       />
                       {t.dashboard.optionRequired}
@@ -451,12 +479,12 @@ export function MenuDishDialog({
 
                   <div className="space-y-2">
                     {group.options.map((option) => (
-                      <div key={option.id} className="flex items-center gap-2">
+                      <div key={option.key} className="flex items-center gap-2">
                         <Input
-                          value={option.name[lang]}
+                          value={option.id}
                           onChange={(e) =>
-                            updateOption(group.id, option.id, {
-                              name: e.target.value,
+                            updateOption(group.key, option.key, {
+                              id: e.target.value,
                             })
                           }
                           placeholder={t.dashboard.optionNamePlaceholder}
@@ -470,7 +498,7 @@ export function MenuDishDialog({
                           // that was never theirs
                           value={option.priceDelta === 0 ? "" : option.priceDelta}
                           onChange={(e) =>
-                            updateOption(group.id, option.id, {
+                            updateOption(group.key, option.key, {
                               priceDelta:
                                 e.target.value === "" ? 0 : Number(e.target.value),
                             })
@@ -487,7 +515,7 @@ export function MenuDishDialog({
                           size="icon-sm"
                           aria-label={t.common.delete}
                           className="text-muted-foreground hover:text-destructive"
-                          onClick={() => removeOption(group.id, option.id)}
+                          onClick={() => removeOption(group.key, option.key)}
                         >
                           <X className="size-3.5" />
                         </Button>
@@ -498,7 +526,7 @@ export function MenuDishDialog({
                       variant="ghost"
                       size="sm"
                       className="text-primary"
-                      onClick={() => addOption(group.id)}
+                      onClick={() => addOption(group.key)}
                     >
                       <Plus className="size-3.5" />
                       {t.dashboard.addOption}

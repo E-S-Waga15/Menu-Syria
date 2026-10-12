@@ -277,6 +277,7 @@ export function useItemMutations(businessId: string) {
     reorder: (order: { id: string; sortOrder: number }[]) =>
       reorder.mutate(order),
     isPending: add.isPending || edit.isPending || remove.isPending,
+    isRemoving: remove.isPending,
   };
 }
 

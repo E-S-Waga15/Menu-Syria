@@ -148,11 +148,15 @@ export type CurrencyCode = "SYP" | "USD";
 
 export type OptionSelectionType = "single" | "multiple";
 
+/**
+ * The backend stores only `id` and `priceDelta` per option — no separate
+ * display name. `id` is free text the owner types when creating the group
+ * (e.g. "صغير", "large"), and doubles as the label shown to a customer;
+ * it only has to be unique within its own group.
+ */
 export interface CatalogOption {
   id: string;
-  name: LocalizedText;
   priceDelta: number;
-  currency?: CurrencyCode;
 }
 
 /**
@@ -160,9 +164,10 @@ export interface CatalogOption {
  * exclusive pick (e.g. Size: Regular/Large, only one at a time), "multiple"
  * as independent add-ons (e.g. extra toppings, several at once).
  */
+/** Same as `CatalogOption`: `id` is free text the owner chose (e.g. "المقاس",
+ * "extras") and is the group's own label — there is no separate name field. */
 export interface CatalogOptionGroup {
   id: string;
-  name: LocalizedText;
   selectionType: OptionSelectionType;
   required: boolean;
   options: CatalogOption[];
