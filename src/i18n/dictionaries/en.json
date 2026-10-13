@@ -753,6 +753,7 @@
     "confirmDisableModeTitle": "Disable this option?",
     "confirmDisableModeBody": "Customers won't be able to choose it once disabled.",
     "confirmEnableDeliveryTitle": "Enable delivery",
+    "editDeliveryFeeTitle": "Edit delivery fee",
     "socialMediaTab": "Social media",
     "appearanceTab": "Appearance",
     "appearanceSocialTab": "Appearance & social",

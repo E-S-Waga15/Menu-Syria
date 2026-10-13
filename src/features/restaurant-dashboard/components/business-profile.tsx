@@ -1234,7 +1234,14 @@ function FulfillmentSection({
       const next = new Set(modes);
       if (pending.next) next.add(pending.mode);
       else next.delete(pending.mode);
-      await save({ fulfillmentModes: [...next] });
+      await save({
+        fulfillmentModes: [...next],
+        // the backend re-validates the delivery fee on every request that
+        // includes "delivery" in the set, not only when delivery is newly
+        // turned on — so it has to ride along on an unrelated dine-in/
+        // pickup toggle too, as long as delivery stays enabled
+        ...(next.has("delivery") ? { deliveryFee: fee } : {}),
+      });
       setModes(next);
       setPending(null);
     } catch (error) {
@@ -1268,11 +1275,11 @@ function FulfillmentSection({
     desc: string;
   }[] = [
     {
-      mode: "delivery",
-      icon: Bike,
-      color: "bg-[#fb7185]",
-      title: t.dashboard.deliveryModeTitle,
-      desc: t.dashboard.deliveryModeDesc,
+      mode: "pickup",
+      icon: PackageOpen,
+      color: "bg-[#22c55e]",
+      title: t.dashboard.pickupModeTitle,
+      desc: t.dashboard.pickupModeDesc,
     },
     ...(isStore
       ? []
@@ -1286,11 +1293,11 @@ function FulfillmentSection({
           },
         ]),
     {
-      mode: "pickup",
-      icon: PackageOpen,
-      color: "bg-[#22c55e]",
-      title: t.dashboard.pickupModeTitle,
-      desc: t.dashboard.pickupModeDesc,
+      mode: "delivery",
+      icon: Bike,
+      color: "bg-[#fb7185]",
+      title: t.dashboard.deliveryModeTitle,
+      desc: t.dashboard.deliveryModeDesc,
     },
   ];
 
@@ -1308,38 +1315,65 @@ function FulfillmentSection({
         return (
           <div
             key={card.mode}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card p-5"
+            className="rounded-2xl border border-border/60 bg-card p-5"
           >
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={enabled}
-                onCheckedChange={(v) => requestToggle(card.mode, v)}
-              />
-              <span
-                className={cn(
-                  "text-sm font-bold",
-                  enabled ? "text-success" : "text-destructive",
-                )}
-              >
-                {enabled ? t.dashboard.modeEnabled : t.dashboard.modeDisabled}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-end">
-                <p className="font-heading text-base font-bold">
-                  {card.title}
-                </p>
-                <p className="text-sm text-muted-foreground">{card.desc}</p>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={enabled}
+                  onCheckedChange={(v) => requestToggle(card.mode, v)}
+                />
+                <span
+                  className={cn(
+                    "text-sm font-bold",
+                    enabled ? "text-success" : "text-destructive",
+                  )}
+                >
+                  {enabled ? t.dashboard.modeEnabled : t.dashboard.modeDisabled}
+                </span>
               </div>
-              <span
-                className={cn(
-                  "flex size-14 shrink-0 items-center justify-center rounded-2xl text-white",
-                  card.color,
-                )}
-              >
-                <card.icon className="size-6" />
-              </span>
+              <div className="flex items-center gap-3">
+                <div className="text-end">
+                  <p className="font-heading text-base font-bold">
+                    {card.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{card.desc}</p>
+                </div>
+                <span
+                  className={cn(
+                    "flex size-14 shrink-0 items-center justify-center rounded-2xl text-white",
+                    card.color,
+                  )}
+                >
+                  <card.icon className="size-6" />
+                </span>
+              </div>
             </div>
+
+            {/* the fee itself is editable from right here, not only at the
+                moment delivery gets switched on */}
+            {card.mode === "delivery" && enabled && (
+              <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftFee(fee || lastFee.current);
+                    setDeliveryDialogOpen(true);
+                  }}
+                  className="text-sm font-semibold text-primary hover:underline"
+                >
+                  {t.common.edit}
+                </button>
+                <span className="text-sm font-semibold text-muted-foreground">
+                  {t.dashboard.deliveryFeeLabel}:{" "}
+                  <span className="font-bold text-foreground">
+                    {fee === 0
+                      ? t.dashboard.freeDelivery
+                      : `${fee} ${t.common.currency}`}
+                  </span>
+                </span>
+              </div>
+            )}
           </div>
         );
       })}
@@ -1381,7 +1415,11 @@ function FulfillmentSection({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t.dashboard.confirmEnableDeliveryTitle}</DialogTitle>
+            <DialogTitle>
+              {modes.has("delivery")
+                ? t.dashboard.editDeliveryFeeTitle
+                : t.dashboard.confirmEnableDeliveryTitle}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {t.dashboard.deliveryFeeHint}
