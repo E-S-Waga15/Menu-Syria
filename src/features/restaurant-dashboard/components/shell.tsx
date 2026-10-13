@@ -10,6 +10,7 @@ import {
   Building2,
   ChartNoAxesCombined,
   LayoutDashboard,
+  LifeBuoy,
   QrCode,
   Receipt,
   Tag,
@@ -83,6 +84,7 @@ export function RestaurantDashboardShell({
     },
     { href: `${base}/qr`, label: t.dashboard.qrCode, icon: QrCode },
     { href: `${base}/settings`, label: t.dashboard.settings, icon: Settings },
+    { href: `${base}/support`, label: t.dashboard.supportTab, icon: LifeBuoy },
   ];
 
   return (

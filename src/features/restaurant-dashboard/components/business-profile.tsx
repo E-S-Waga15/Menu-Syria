@@ -1817,8 +1817,10 @@ function SubscriptionSection({
  * Syria support contact here, deliberately: the agent who onboarded this
  * business owns that relationship, so this page points there instead of
  * duplicating (or competing with) the subscription tab's own agent card.
+ * Exported: this is its own sidebar page now, not a settings tab, so a
+ * standalone route renders it directly.
  */
-function SupportSection({
+export function SupportSection({
   restaurant,
   governorates,
   regions,
@@ -2156,12 +2158,6 @@ export function BusinessProfile() {
               >
                 {t.dashboard.planTab}
               </TabsTrigger>
-              <TabsTrigger
-                value="support"
-                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-              >
-                {t.dashboard.supportTab}
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -2199,15 +2195,6 @@ export function BusinessProfile() {
           </TabsContent>
           <TabsContent value="plan">
             <SubscriptionSection
-              restaurant={restaurant}
-              governorates={governorates}
-              regions={regions}
-              t={t}
-              lang={lang}
-            />
-          </TabsContent>
-          <TabsContent value="support">
-            <SupportSection
               restaurant={restaurant}
               governorates={governorates}
               regions={regions}
