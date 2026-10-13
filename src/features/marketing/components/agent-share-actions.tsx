@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n/client";
+import { qrFileName } from "@/lib/qr-filename";
 import { toast } from "@/lib/toast";
 
 /**
@@ -146,7 +147,7 @@ export function AgentShareActions({
     return canvas;
   };
 
-  const fileName = `${agentName.replace(/\s+/g, "-")}-qr.png`;
+  const fileName = qrFileName([t.common.agentWord, agentName, "qr"]);
 
   // a remote photo without CORS headers taints the canvas: it still draws
   // and displays fine, it just can't be read back for export — so the

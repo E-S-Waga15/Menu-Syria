@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n/client";
+import { qrFileName } from "@/lib/qr-filename";
 import { toast } from "@/lib/toast";
 
 /**
@@ -52,6 +53,7 @@ export function BusinessShareActions({
   businessName,
   businessLocation,
   businessPhotoUrl,
+  businessKind,
   size = "md",
 }: {
   businessName: string;
@@ -60,6 +62,9 @@ export function BusinessShareActions({
   /** centred in the code; falls back to the platform mark when the
    * business has none */
   businessPhotoUrl?: string;
+  /** "restaurant"/"store" prefix on the downloaded file name, so an owner
+   * with both kinds in their downloads folder can tell them apart */
+  businessKind?: "restaurant" | "store";
   size?: "sm" | "md";
 }) {
   const { t, lang } = useI18n();
@@ -156,7 +161,13 @@ export function BusinessShareActions({
     return canvas;
   };
 
-  const fileName = `${businessName.replace(/\s+/g, "-")}-qr.png`;
+  const kindWord =
+    businessKind === "store"
+      ? t.common.storeWord
+      : businessKind === "restaurant"
+        ? t.common.restaurantWord
+        : undefined;
+  const fileName = qrFileName([kindWord, businessName, "qr"]);
 
   // a remote photo without CORS headers taints the canvas: it still draws
   // and displays fine, it just can't be read back for export — so the

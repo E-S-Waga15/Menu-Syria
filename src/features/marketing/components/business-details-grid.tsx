@@ -291,6 +291,7 @@ export function BusinessDetailsGrid({
               businessName={restaurant.name[lang]}
               businessLocation={areaLabel ?? undefined}
               businessPhotoUrl={restaurant.logoUrl}
+              businessKind={isStore ? "store" : "restaurant"}
               size="sm"
             />
           </div>

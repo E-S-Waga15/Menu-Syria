@@ -2,6 +2,10 @@
   "common": {
     "brand": "Menu Syria",
     "tagline": "The luxury digital menu platform",
+    "restaurantWord": "Restaurant",
+    "storeWord": "Store",
+    "agentWord": "Agent",
+    "paymentCodeWord": "Payment code",
     "loading": "Loading…",
     "save": "Save changes",
     "cancel": "Cancel",

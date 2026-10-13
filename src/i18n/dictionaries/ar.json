@@ -2,6 +2,10 @@
   "common": {
     "brand": "منيو سوريا",
     "tagline": "منصة المنيو الرقمي الفاخر",
+    "restaurantWord": "مطعم",
+    "storeWord": "متجر",
+    "agentWord": "وكيل",
+    "paymentCodeWord": "رمز دفع",
     "loading": "جارٍ التحميل…",
     "save": "حفظ التغييرات",
     "cancel": "إلغاء",

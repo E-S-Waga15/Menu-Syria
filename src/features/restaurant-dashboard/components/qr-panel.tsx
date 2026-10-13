@@ -8,15 +8,18 @@ import { QRCodeCanvas } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { useAuthStore } from "@/features/auth/store";
 import { getMyRestaurant } from "@/features/restaurant-dashboard/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { qrFileName } from "@/lib/qr-filename";
 import { toast } from "@/lib/toast";
 
 export function QrPanel() {
   const { t, lang } = useI18n();
   const qrWrapRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const isStore = useAuthStore((s) => s.session?.businessType) === "store";
 
   const { data: restaurant } = useQuery({
     queryKey: queryKeys.me.business,
@@ -26,6 +29,7 @@ export function QrPanel() {
   if (!restaurant) return <LoadingSpinner />;
 
   const menuUrl = `${window.location.origin}/${lang}/${restaurant.slug}/menu`;
+  const kindWord = isStore ? t.common.storeWord : t.common.restaurantWord;
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(menuUrl);
@@ -41,7 +45,7 @@ export function QrPanel() {
     const canvas = getCanvas();
     if (!canvas) return;
     const link = document.createElement("a");
-    link.download = `${restaurant.slug}-qr.png`;
+    link.download = qrFileName([kindWord, restaurant.name[lang], "qr"]);
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
@@ -54,7 +58,7 @@ export function QrPanel() {
     if (!win) return;
     win.document.write(`
       <html dir="${lang === "ar" ? "rtl" : "ltr"}">
-        <head><title>${restaurant.name[lang]} — QR</title></head>
+        <head><title>${kindWord} ${restaurant.name[lang]} — QR</title></head>
         <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;gap:16px">
           <h1 style="margin:0">${restaurant.name[lang]}</h1>
           <img src="${dataUrl}" width="360" height="360" />

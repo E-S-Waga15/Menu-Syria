@@ -19,6 +19,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { toast } from "@/lib/toast";
 import { ApiError } from "@/lib/api/client";
+import { qrFileName } from "@/lib/qr-filename";
 
 import { WhatsAppIcon } from "@/components/shared/brand-icons";
 import { FieldError } from "@/components/shared/field-error";
@@ -189,6 +190,12 @@ export function CartSheet({
    * before because of a missing value.
    */
   const channels = business.orderChannels ?? ["platform", "whatsapp"];
+
+  const paymentQrFileName = qrFileName([
+    t.common.paymentCodeWord,
+    "cuisine" in business ? t.common.restaurantWord : t.common.storeWord,
+    business.name[lang],
+  ]);
 
   const recordOrder = () => {
     if (session?.role !== "user") return;
@@ -660,7 +667,7 @@ export function CartSheet({
                       </div>
                       <a
                         href={business.paymentQrCode}
-                        download
+                        download={paymentQrFileName}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
