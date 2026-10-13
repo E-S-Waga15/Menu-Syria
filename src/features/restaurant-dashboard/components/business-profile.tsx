@@ -1234,14 +1234,7 @@ function FulfillmentSection({
       const next = new Set(modes);
       if (pending.next) next.add(pending.mode);
       else next.delete(pending.mode);
-      await save({
-        fulfillmentModes: [...next],
-        // the backend re-validates the delivery fee on every request that
-        // includes "delivery" in the set, not only when delivery is newly
-        // turned on — so it has to ride along on an unrelated dine-in/
-        // pickup toggle too, as long as delivery stays enabled
-        ...(next.has("delivery") ? { deliveryFee: fee } : {}),
-      });
+      await save({ fulfillmentModes: [...next] });
       setModes(next);
       setPending(null);
     } catch (error) {

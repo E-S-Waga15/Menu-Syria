@@ -2,23 +2,13 @@
 
 This documents the backend contract changes the frontend now expects. Everything here is additive to the existing `Business` resource (`GET /restaurants/:slug`, `GET /stores/:slug`, `GET /me/restaurant`, `PATCH /businesses/:businessId`) — no existing field is renamed or removed.
 
-## ⚠️ Bug found in the §1/§2 implementation — delivery-fee validation fires on unrelated requests
+## ✅ Resolved — delivery-fee validation was firing on unrelated requests
 
-**Symptom:** turning dine-in or pickup on/off (while delivery was already enabled from before, untouched by that request) gets rejected with 422 "delivery fee must be set before enabling delivery" — even though that request never touched delivery at all.
+**Was:** toggling dine-in/pickup while delivery was already enabled only by default (never explicitly chosen) got rejected with 422, because the validation compared against the raw stored column (often `null`) instead of the resolved value after applying the type-based default — so a business that had never touched this setting looked like it was "newly adding delivery" on every unrelated PATCH.
 
-**Cause:** the fee-required validation is apparently checking "does `fulfillmentModes` in this request contain `delivery` without `deliveryFee`?" on *every* PATCH, instead of checking "is `delivery` newly being turned on *in this request* (i.e. it wasn't in the business's previous `fulfillmentModes`, but is in the new one)?". So any request that re-sends the full `fulfillmentModes` array — which is required just to toggle a *different*, unrelated mode — gets caught by the same validation, because delivery happens to still be in the array (correctly, since it wasn't being changed).
+**Fixed:** the validation now compares against the actual previous state (via the same default-resolving function), so the fee is only required when delivery is truly transitioning from absent to present in that request. Verified on production for both the original bug (dine-in toggle no longer 422s) and the real case (enabling delivery without a fee still correctly 422s).
 
-**Fix needed — pick one:**
-
-1. **Preferred: decouple the three modes into independent fields** instead of one array that has to be resent in full for every toggle:
-   ```jsonc
-   { "pickupEnabled": true, "dineInEnabled": true, "deliveryEnabled": false }
-   ```
-   Each is toggled with its own PATCH touching only that field (`{ "pickupEnabled": false }` and nothing else). The fee-required rule then only ever applies to a request that includes `"deliveryEnabled": true` — a request touching `pickupEnabled`/`dineInEnabled` alone can never trigger it, because it's structurally a different field. This also removes the "must resend the whole set" footgun entirely. (If this path is taken, `fulfillmentModes` as a combined array is no longer needed — happy to update the frontend to match whichever shape is simpler on your end.)
-
-2. **Minimal fix, keeping the array:** scope the validation to a *transition* check — only require `deliveryFee` in the payload when `delivery` is present in the submitted `fulfillmentModes` **and** was *not* present in the business's current stored `fulfillmentModes`. A request where delivery was already enabled and stays enabled (because an unrelated mode is being toggled) should never need to carry `deliveryFee` again.
-
-Until this lands, the frontend works around it by always re-sending `deliveryFee` alongside `fulfillmentModes` on every toggle whenever delivery remains in the resulting set — so the immediate error is gone, but it's extra, unnecessary payload on every dine-in/pickup toggle and relies on the frontend always knowing the current fee, which is fragile. Please apply one of the two fixes above when convenient.
+The frontend's temporary workaround (re-sending `deliveryFee` on every toggle) has been removed now that this is fixed at the source.
 
 ## 1. Fulfillment modes — which of dine-in / pickup / delivery a business offers
 
