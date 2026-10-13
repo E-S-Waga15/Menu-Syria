@@ -1227,6 +1227,9 @@ function FulfillmentSection({
   const [savingDelivery, setSavingDelivery] = useState(false);
 
   const requestToggle = (mode: FulfillmentMode, next: boolean) => {
+    // dine-in has no meaning for a store — the switch is already disabled,
+    // this is just the belt-and-suspenders guard
+    if (mode === "dineIn" && isStore) return;
     if (mode === "delivery" && next) {
       setDraftFee(fee || lastFee.current);
       setDeliveryDialogOpen(true);
@@ -1274,7 +1277,17 @@ function FulfillmentSection({
     color: string;
     title: string;
     desc: string;
+    /** dine-in makes no sense for a store — shown but locked off instead
+     * of hidden, so it's clear this isn't a bug, it's never available */
+    locked?: boolean;
   }[] = [
+    {
+      mode: "delivery",
+      icon: Bike,
+      color: "bg-[#fb7185]",
+      title: t.dashboard.deliveryModeTitle,
+      desc: t.dashboard.deliveryModeDesc,
+    },
     {
       mode: "pickup",
       icon: PackageOpen,
@@ -1282,23 +1295,13 @@ function FulfillmentSection({
       title: t.dashboard.pickupModeTitle,
       desc: t.dashboard.pickupModeDesc,
     },
-    ...(isStore
-      ? []
-      : [
-          {
-            mode: "dineIn" as const,
-            icon: Armchair,
-            color: "bg-[#3b82f6]",
-            title: t.dashboard.dineInModeTitle,
-            desc: t.dashboard.dineInModeDesc,
-          },
-        ]),
     {
-      mode: "delivery",
-      icon: Bike,
-      color: "bg-[#fb7185]",
-      title: t.dashboard.deliveryModeTitle,
-      desc: t.dashboard.deliveryModeDesc,
+      mode: "dineIn",
+      icon: Armchair,
+      color: "bg-[#3b82f6]",
+      title: t.dashboard.dineInModeTitle,
+      desc: t.dashboard.dineInModeDesc,
+      locked: isStore,
     },
   ];
 
@@ -1316,30 +1319,16 @@ function FulfillmentSection({
         return (
           <div
             key={card.mode}
-            className="rounded-2xl border border-border/60 bg-card p-5"
+            className={cn(
+              "rounded-2xl border border-border/60 bg-card p-5",
+              card.locked && "opacity-60",
+            )}
           >
             <div className="flex items-center justify-between gap-4">
+              {/* name+icon lead (the row's start side, i.e. the right in
+                  RTL), the switch+status trails at the end — matching the
+                  reference layout instead of the two swapped */}
               <div className="flex items-center gap-3">
-                <Switch
-                  checked={enabled}
-                  onCheckedChange={(v) => requestToggle(card.mode, v)}
-                />
-                <span
-                  className={cn(
-                    "text-sm font-bold",
-                    enabled ? "text-success" : "text-destructive",
-                  )}
-                >
-                  {enabled ? t.dashboard.modeEnabled : t.dashboard.modeDisabled}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-end">
-                  <p className="font-heading text-base font-bold">
-                    {card.title}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{card.desc}</p>
-                </div>
                 <span
                   className={cn(
                     "flex size-14 shrink-0 items-center justify-center rounded-2xl text-white",
@@ -1347,6 +1336,33 @@ function FulfillmentSection({
                   )}
                 >
                   <card.icon className="size-6" />
+                </span>
+                <div>
+                  <p className="font-heading text-base font-bold">
+                    {card.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {card.locked ? t.dashboard.dineInRestaurantOnlyHint : card.desc}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <Switch
+                  checked={enabled}
+                  disabled={card.locked}
+                  onCheckedChange={(v) => requestToggle(card.mode, v)}
+                />
+                <span
+                  className={cn(
+                    "text-sm font-bold",
+                    card.locked
+                      ? "text-muted-foreground"
+                      : enabled
+                        ? "text-success"
+                        : "text-destructive",
+                  )}
+                >
+                  {enabled ? t.dashboard.modeEnabled : t.dashboard.modeDisabled}
                 </span>
               </div>
             </div>
@@ -2129,16 +2145,10 @@ export function BusinessProfile() {
                 {t.dashboard.accountInfoTab}
               </TabsTrigger>
               <TabsTrigger
-                value="paymentQr"
-                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-              >
-                {t.dashboard.paymentQrTab}
-              </TabsTrigger>
-              <TabsTrigger
                 value="delivery"
                 className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
               >
-                {t.dashboard.deliveryTab}
+                {t.dashboard.deliveryPaymentTab}
               </TabsTrigger>
               <TabsTrigger
                 value="gallery"
@@ -2170,16 +2180,18 @@ export function BusinessProfile() {
               save={save}
             />
           </TabsContent>
-          <TabsContent value="paymentQr">
-            <PaymentQrSection restaurant={restaurant} t={t} save={save} />
-          </TabsContent>
           <TabsContent value="delivery">
-            <FulfillmentSection
-              restaurant={restaurant}
-              isStore={isStore}
-              t={t}
-              save={save}
-            />
+            {/* fulfillment cards lead (the start side), the payment card
+                beside them — unchanged internally, just repositioned */}
+            <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
+              <FulfillmentSection
+                restaurant={restaurant}
+                isStore={isStore}
+                t={t}
+                save={save}
+              />
+              <PaymentQrSection restaurant={restaurant} t={t} save={save} />
+            </div>
           </TabsContent>
           <TabsContent value="gallery">
             <GallerySection restaurant={restaurant} t={t} save={save} />
