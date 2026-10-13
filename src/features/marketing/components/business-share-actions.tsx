@@ -280,23 +280,23 @@ export function BusinessShareActions({
 
             <p className="mt-4 text-center text-sm font-bold">{caption}</p>
 
-            <div className="mt-4 w-full">
+            <div className="mt-4 w-full rounded-xl bg-surface-container-low p-4">
               <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  {t.restaurant.qrLinkLabel}
+                </p>
                 <button
                   type="button"
                   aria-label={t.common.copy}
                   onClick={() => void copyUrl()}
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-surface-container hover:text-foreground"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-surface-container-high"
                 >
                   {copied ? (
                     <Check className="size-3.5 text-success" />
                   ) : (
-                    <Copy className="size-3.5" />
+                    <Copy className="size-3.5 text-muted-foreground" />
                   )}
                 </button>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  {t.restaurant.qrLinkLabel}
-                </p>
               </div>
               {/* break-all over truncate: a menu-syria.com/slug link is one
                   unbroken token with nowhere to wrap, so it either breaks
@@ -304,7 +304,7 @@ export function BusinessShareActions({
                   both an ellipsis that hides the link and a line that spills
                   outside the card */}
               <p
-                className="mt-2 w-full max-w-full rounded-xl bg-surface-container px-3.5 py-2 text-center text-xs break-all text-muted-foreground"
+                className="mt-3 w-full max-w-full rounded-lg border border-border/60 bg-card px-3.5 py-2 text-center text-xs break-all text-muted-foreground"
                 dir="ltr"
               >
                 {url}

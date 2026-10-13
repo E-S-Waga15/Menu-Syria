@@ -686,14 +686,14 @@ export function CartSheet({
                               .then(() => toast.success(copy.paymentCodeCopied))
                               .catch(() => toast.error(t.restaurant.shareFailed));
                           }}
-                          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-container-high"
                         >
                           <Copy className="size-3.5" />
                         </button>
                       </div>
                       <div
                         dir="ltr"
-                        className="rounded-xl bg-surface-container px-3.5 py-2.5 text-center font-mono text-sm break-all"
+                        className="rounded-lg border border-border/60 bg-card px-3.5 py-2.5 text-center font-mono text-sm break-all"
                       >
                         {business.paymentCode}
                       </div>
