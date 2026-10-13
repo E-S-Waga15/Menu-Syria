@@ -1,13 +1,23 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { CatalogItem, CatalogOption } from "@/lib/types";
+import type { CatalogItem, CatalogOption, OptionSelectionType } from "@/lib/types";
+
+/**
+ * A selected option, tagged with its group's `selectionType` — the cart and
+ * the WhatsApp message need to tell a size pick from an add-on apart (one
+ * replaces the price, the other stacks on it) without holding onto the
+ * whole `CatalogOptionGroup` just to look that up.
+ */
+export interface CartOption extends CatalogOption {
+  selectionType: OptionSelectionType;
+}
 
 export interface CartLine {
   /** item id + selected option ids — lines with different options stay separate */
   key: string;
   item: CatalogItem;
-  options: CatalogOption[];
+  options: CartOption[];
   quantity: number;
 }
 
@@ -27,10 +37,13 @@ interface CartState {
   addItem: (
     restaurantId: string,
     item: CatalogItem,
-    options?: CatalogOption[],
+    options?: CartOption[],
     quantity?: number,
   ) => void;
   removeLine: (key: string) => void;
+  /** drops one selected option from a line — used for an add-on's own "x",
+   * which should only clear that pick, not the whole item */
+  removeLineOption: (key: string, optionId: string) => void;
   setQuantity: (key: string, quantity: number) => void;
   clear: () => void;
 }
@@ -65,6 +78,36 @@ export const useCartStore = create<CartState>()(
           lines: state.lines.filter((l) => l.key !== key),
         })),
 
+      removeLineOption: (key, optionId) =>
+        set((state) => {
+          const line = state.lines.find((l) => l.key === key);
+          if (!line) return state;
+          const nextOptions = line.options.filter((o) => o.id !== optionId);
+          const nextKey = lineKey(line.item.id, nextOptions);
+          // the option's removal may land on a combo another line already
+          // holds (e.g. the same dish with fewer add-ons already in the
+          // cart) — merge into it instead of carrying two lines for one combo
+          const mergeTarget = state.lines.find(
+            (l) => l.key === nextKey && l.key !== key,
+          );
+          if (mergeTarget) {
+            return {
+              lines: state.lines
+                .filter((l) => l.key !== key)
+                .map((l) =>
+                  l.key === nextKey
+                    ? { ...l, quantity: l.quantity + line.quantity }
+                    : l,
+                ),
+            };
+          }
+          return {
+            lines: state.lines.map((l) =>
+              l.key === key ? { ...l, key: nextKey, options: nextOptions } : l,
+            ),
+          };
+        }),
+
       setQuantity: (key, quantity) =>
         set((state) => ({
           lines:
@@ -77,10 +120,10 @@ export const useCartStore = create<CartState>()(
 
       clear: () => set({ lines: [], restaurantId: null }),
     }),
-    // v4: an option is now just {id, priceDelta} — the backend never had a
-    // separate name field, `id` doubles as the label — bumped so a stale
-    // cart holding the old shape resets instead of showing stale labels
-    { name: "menu-syria-cart", version: 4 },
+    // v5: an option now also carries its group's `selectionType` — bumped
+    // so a stale cart from before that field existed resets instead of
+    // showing every pick as an additive add-on
+    { name: "menu-syria-cart", version: 5 },
   ),
 );
 

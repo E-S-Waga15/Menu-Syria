@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, MapPin, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Building2, MapPin, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { toast } from "@/lib/toast";
@@ -79,6 +79,7 @@ export function CartSheet({
   const lines = useCartStore((s) => s.lines);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeLine = useCartStore((s) => s.removeLine);
+  const removeLineOption = useCartStore((s) => s.removeLineOption);
   const clear = useCartStore((s) => s.clear);
   const subtotal = useCartStore(selectCartTotal);
 
@@ -272,82 +273,121 @@ export function CartSheet({
         ) : (
           <div className="space-y-5 px-4">
             <ul className="divide-y divide-border/70">
-              {lines.map((line) => (
-                <li key={line.key} className="flex items-center gap-3 py-3">
-                  {/* image and name both lead back to the product, for a
-                      customer who wants to re-read the details before
-                      confirming — the sheet closes as the panel opens */}
-                  <button
-                    type="button"
-                    onClick={() => onOpenItem(line.item)}
-                    // cursor-pointer is explicit: the UA stylesheet gives
-                    // <button> `cursor: default`, and nothing in the reset
-                    // overrides it — so the hand has to be asked for, and it is
-                    // the main hint that this line leads somewhere
-                    className="group/line flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    {line.item.imageUrl ? (
-                      <Image
-                        src={line.item.imageUrl}
-                        alt=""
-                        width={56}
-                        height={56}
-                        className="size-14 shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-berry-soft text-lg font-bold text-berry-soft-foreground">
-                        {line.item.name[lang].charAt(0)}
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold transition-colors duration-200 group-hover/line:text-[var(--menu-primary)]">
-                        {line.item.name[lang]}
-                      </p>
-                      {line.options.length > 0 && (
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {line.options.map((o) => o.id).join("، ")}
-                        </p>
+              {lines.map((line) => {
+                // a single-choice pick (size) replaces the price and reads
+                // as part of the dish's own name; a multiple-choice pick
+                // (add-ons) stacks on top and gets its own removable row —
+                // the split the cart needs to tell "350 total" from "+100 each"
+                const singleOption = line.options.find(
+                  (o) => o.selectionType === "single",
+                );
+                const multiOptions = line.options.filter(
+                  (o) => o.selectionType === "multiple",
+                );
+                return (
+                  <li key={line.key} className="py-3">
+                  <div className="flex items-center gap-3">
+                    {/* image and name both lead back to the product, for a
+                        customer who wants to re-read the details before
+                        confirming — the sheet closes as the panel opens */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenItem(line.item)}
+                      // cursor-pointer is explicit: the UA stylesheet gives
+                      // <button> `cursor: default`, and nothing in the reset
+                      // overrides it — so the hand has to be asked for, and it is
+                      // the main hint that this line leads somewhere
+                      className="group/line flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {line.item.imageUrl ? (
+                        <Image
+                          src={line.item.imageUrl}
+                          alt=""
+                          width={56}
+                          height={56}
+                          className="size-14 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-berry-soft text-lg font-bold text-berry-soft-foreground">
+                          {line.item.name[lang].charAt(0)}
+                        </span>
                       )}
-                      <p className="mt-0.5 text-sm font-bold text-[var(--menu-primary)]">
-                        {formatPrice(
-                          lineUnitPrice(line) * line.quantity,
-                          t.common.currency,
-                        )}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold transition-colors duration-200 group-hover/line:text-[var(--menu-primary)]">
+                          {line.item.name[lang]}
+                          {singleOption && (
+                            <span className="font-normal text-muted-foreground">
+                              {" "}
+                              — {singleOption.id}
+                            </span>
+                          )}
+                        </p>
+                        <p className="mt-0.5 text-sm font-bold text-[var(--menu-primary)]">
+                          {formatPrice(
+                            lineUnitPrice(line) * line.quantity,
+                            t.common.currency,
+                          )}
+                        </p>
+                      </div>
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        aria-label="-"
+                        onClick={() => setQuantity(line.key, line.quantity - 1)}
+                      >
+                        <Minus className="size-3.5" />
+                      </Button>
+                      <span className="w-7 text-center text-sm font-bold">
+                        {line.quantity}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        aria-label="+"
+                        onClick={() => setQuantity(line.key, line.quantity + 1)}
+                      >
+                        <Plus className="size-3.5" />
+                      </Button>
                     </div>
-                  </button>
-                  <div className="flex items-center gap-1">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon-sm"
-                      aria-label="-"
-                      onClick={() => setQuantity(line.key, line.quantity - 1)}
+                      aria-label={t.common.delete}
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => removeLine(line.key)}
                     >
-                      <Minus className="size-3.5" />
-                    </Button>
-                    <span className="w-7 text-center text-sm font-bold">
-                      {line.quantity}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon-sm"
-                      aria-label="+"
-                      onClick={() => setQuantity(line.key, line.quantity + 1)}
-                    >
-                      <Plus className="size-3.5" />
+                      <Trash2 className="size-4" />
                     </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t.common.delete}
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => removeLine(line.key)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </li>
-              ))}
+
+                  {multiOptions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 ps-[68px] text-xs">
+                      <span className="text-muted-foreground">
+                        {t.menu.withOption}
+                      </span>
+                      {multiOptions.map((option) => (
+                        <span
+                          key={option.id}
+                          className="flex items-center gap-1 rounded-full bg-surface-container px-2.5 py-1 font-semibold"
+                        >
+                          {option.id}
+                          <button
+                            type="button"
+                            aria-label={t.common.delete}
+                            onClick={() => removeLineOption(line.key, option.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  </li>
+                );
+              })}
             </ul>
 
             {/* notes come before the fulfillment switch: what you want changed

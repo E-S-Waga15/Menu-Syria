@@ -35,7 +35,7 @@ import type {
   CatalogOptionGroup,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useCartStore } from "@/stores/cart-store";
+import { useCartStore, type CartOption } from "@/stores/cart-store";
 
 export function DishModal({
   item,
@@ -61,7 +61,7 @@ export function DishModal({
   const { t, lang, dir } = useI18n();
   const addItem = useCartStore((s) => s.addItem);
 
-  const [selected, setSelected] = useState<CatalogOption[]>([]);
+  const [selected, setSelected] = useState<CartOption[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [api, setApi] = useState<CarouselApi>();
   const [slide, setSlide] = useState(0);
@@ -111,11 +111,13 @@ export function DishModal({
       if (group.selectionType === "single") {
         // exclusive within this group — tapping the already-picked option
         // clears the group back to nothing, same as any other option
-        return wasSelected ? withoutGroup : [...withoutGroup, option];
+        return wasSelected
+          ? withoutGroup
+          : [...withoutGroup, { ...option, selectionType: "single" }];
       }
       return wasSelected
         ? prev.filter((o) => o.id !== option.id)
-        : [...prev, option];
+        : [...prev, { ...option, selectionType: "multiple" }];
     });
 
   const badgeLabel =

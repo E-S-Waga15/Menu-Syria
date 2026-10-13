@@ -82,11 +82,23 @@ export function buildWhatsAppOrderUrl({
     fmt(copy.whatsappGreeting, { restaurant: business.name[lang] }),
     "",
     ...lines.map((line) => {
-      const options =
-        line.options.length > 0
-          ? ` (${line.options.map((o) => o.id).join("، ")})`
-          : "";
-      return `• ${line.quantity}× ${line.item.name[lang]}${options} — ${formatPrice(
+      // a single-choice pick (size) reads as part of the dish's own name —
+      // "Shawarma Large", not "Shawarma (Large)" — since its price already
+      // replaced the base price rather than adding to it; a multiple-choice
+      // pick (add-ons) stays a separate "with X with Y" clause, since those
+      // genuinely stack on whatever price came before them
+      const singleOption = line.options.find((o) => o.selectionType === "single");
+      const multiOptions = line.options.filter(
+        (o) => o.selectionType === "multiple",
+      );
+      const name = [
+        line.item.name[lang],
+        singleOption?.id,
+        ...multiOptions.map((o) => `${copy.withOption} ${o.id}`),
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return `• ${line.quantity}× ${name} — ${formatPrice(
         lineUnitPrice(line) * line.quantity,
         line.item.currency ?? currency,
         lang,
