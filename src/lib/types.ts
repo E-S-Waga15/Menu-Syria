@@ -128,6 +128,13 @@ export interface Business {
    * the authenticated `/branches?businessId=` read instead.
    */
   branches?: PublicBranch[];
+  /**
+   * The structured business sub-type (from `getBusinessSubTypes`) — present
+   * on the owner's own `/me/restaurant`/`/me/store` read (the backend spreads
+   * the raw entity, which carries this FK column) but absent from every
+   * public storefront endpoint, which has no joined sub-type name to send.
+   */
+  subTypeId?: string;
 }
 
 export interface DayHours {

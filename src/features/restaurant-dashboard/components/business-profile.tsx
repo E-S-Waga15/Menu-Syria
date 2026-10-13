@@ -323,11 +323,7 @@ function AccountInfoSection({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(restaurant.name[lang]);
   const [description, setDescription] = useState(recovered.description);
-  const [specialty, setSpecialty] = useState(restaurant.cuisine[lang]);
-  // the structured subtype isn't part of `GET /me/business`'s response, so
-  // there's no "current value" to preselect — same blank start as the
-  // registration form until the owner actively picks one
-  const [subTypeId, setSubTypeId] = useState("");
+  const [subTypeId, setSubTypeId] = useState(restaurant.subTypeId ?? "");
   const [phone, setPhone] = useState(restaurant.phone);
   const [address, setAddress] = useState(
     restaurant.address[lang] || recovered.address || "",
@@ -344,7 +340,6 @@ function AccountInfoSection({
   const snapshot = useRef({
     name,
     description,
-    specialty,
     subTypeId,
     phone,
     address,
@@ -368,7 +363,6 @@ function AccountInfoSection({
         snapshot.current = {
           name,
           description,
-          specialty,
           subTypeId,
           phone,
           address,
@@ -383,9 +377,6 @@ function AccountInfoSection({
         await save({
           name,
           description,
-          // a store's "specialty" is its business type, which the platform
-          // assigns — only a food business has an editable cuisine
-          ...(isStore ? {} : { cuisineType: specialty }),
           ...(subTypeId ? { subTypeId } : {}),
           address,
           districtId: regionId || undefined,
@@ -403,7 +394,6 @@ function AccountInfoSection({
       onCancel={() => {
         setName(snapshot.current.name);
         setDescription(snapshot.current.description);
-        setSpecialty(snapshot.current.specialty);
         setSubTypeId(snapshot.current.subTypeId);
         setPhone(snapshot.current.phone);
         setAddress(snapshot.current.address);
@@ -426,42 +416,27 @@ function AccountInfoSection({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="p-specialty">
-            {isStore
-              ? t.dashboard.categorySpecialtyLabel
-              : t.dashboard.cuisineLabel}
-          </Label>
-          <Input
-            id="p-specialty"
-            className="h-11"
+          <Label htmlFor="p-subtype">{t.auth.restaurantTypeLabel}</Label>
+          <Select
+            value={subTypeId || null}
+            onValueChange={(v) => v && setSubTypeId(v)}
+            items={Object.fromEntries(
+              (subTypes ?? []).map((st) => [st.id, st.name]),
+            )}
             disabled={!editing}
-            value={specialty}
-            onChange={(e) => setSpecialty(e.target.value)}
-          />
+          >
+            <SelectTrigger id="p-subtype" className="h-11! w-full">
+              <SelectValue placeholder={t.auth.businessTypePlaceholder} />
+            </SelectTrigger>
+            <SelectContent>
+              {(subTypes ?? []).map((st) => (
+                <SelectItem key={st.id} value={st.id}>
+                  {st.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-
-      <div className="mt-5 space-y-2">
-        <Label htmlFor="p-subtype">{t.auth.restaurantTypeLabel}</Label>
-        <Select
-          value={subTypeId || null}
-          onValueChange={(v) => v && setSubTypeId(v)}
-          items={Object.fromEntries(
-            (subTypes ?? []).map((st) => [st.id, st.name]),
-          )}
-          disabled={!editing}
-        >
-          <SelectTrigger id="p-subtype" className="h-11! w-full">
-            <SelectValue placeholder={t.auth.businessTypePlaceholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {(subTypes ?? []).map((st) => (
-              <SelectItem key={st.id} value={st.id}>
-                {st.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="mt-5 space-y-2">
