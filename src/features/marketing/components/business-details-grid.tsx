@@ -197,7 +197,7 @@ export function BusinessDetailsGrid({
             row's far end, same level as the name, right next to where the
             map column starts beside it — not stacked above the map. */}
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-wrap items-start gap-4">
+          <div className="flex flex-wrap items-start gap-4 ps-5">
             <div className="relative z-10 -mt-8">
               <Image
                 src={restaurant.logoUrl}

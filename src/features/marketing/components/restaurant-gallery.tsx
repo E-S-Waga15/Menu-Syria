@@ -110,7 +110,7 @@ export function RestaurantGallery({ images }: { images: string[] }) {
           {/* photo count — pinned to the bottom corner, opposite end from the
               centred dot-pagination strip below, so neither competes with
               the identity bar that overlaps the gallery just below */}
-          <div className="absolute end-4 bottom-4 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
+          <div className="absolute start-4 bottom-4 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
             <Camera className="size-3.5" />
             <span dir="ltr">
               {slide + 1}/{images.length}
