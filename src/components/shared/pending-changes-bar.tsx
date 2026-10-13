@@ -34,7 +34,7 @@ export function PendingChangesBar({
             type="button"
             variant="ghost"
             size="sm"
-            className="text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
+            className="rounded-full text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
             onClick={onDiscard}
           >
             {discardLabel}
@@ -43,6 +43,7 @@ export function PendingChangesBar({
             type="button"
             variant="secondary"
             size="sm"
+            className="rounded-full"
             loading={pending}
             onClick={onSave}
           >

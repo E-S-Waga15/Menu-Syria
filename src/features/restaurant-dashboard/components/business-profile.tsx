@@ -19,6 +19,7 @@ import {
   Printer,
   QrCode,
   Share2,
+  Trash2,
   Truck,
   User,
   X,
@@ -26,11 +27,17 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
 
+import {
+  FacebookIcon,
+  InstagramIcon,
+  WhatsAppIcon,
+} from "@/components/shared/brand-icons";
 import { ColorField } from "@/components/shared/color-field";
 import { GoogleLocationPicker } from "@/components/shared/google-location-picker";
 import { GovernorateRegionSelect } from "@/components/shared/governorate-region-select";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PendingChangesBar } from "@/components/shared/pending-changes-bar";
+import { RowActions } from "@/components/shared/row-actions";
 import { SafeImage } from "@/components/shared/safe-image";
 import {
   AlertDialog,
@@ -215,6 +222,104 @@ function ProfileSection({
                   setIsSaving(false);
                 } else {
                   onCancel();
+                }
+                setConfirmAction(null);
+              }}
+            >
+              {confirmAction === "save" ? t.common.save : t.dashboard.discardChanges}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
+/**
+ * A section whose controls are always live — no pencil gate — for cases
+ * where staging a single field behind an "edit" click adds a step without
+ * adding safety (adding/removing a photo or a QR code is already its own
+ * deliberate action). The floating save/discard bar still shows, driven by
+ * a `dirty` flag the caller computes, with the same confirm-dialog step as
+ * `ProfileSection` before either one actually commits.
+ */
+function AlwaysEditableSection({
+  title,
+  icon: Icon,
+  dirty,
+  onSave,
+  onDiscard,
+  children,
+  t,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  dirty: boolean;
+  onSave: () => Promise<void> | void;
+  onDiscard: () => void;
+  children: React.ReactNode;
+  t: I18n["t"];
+}) {
+  const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
+    null,
+  );
+  const [isSaving, setIsSaving] = useState(false);
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <Icon className="size-5 text-primary" />
+        {title}
+      </h2>
+      <div className="mt-5">{children}</div>
+
+      {dirty && (
+        <PendingChangesBar
+          message={t.dashboard.unsavedChanges}
+          saveLabel={t.dashboard.saveChanges}
+          discardLabel={t.dashboard.discardChanges}
+          onSave={() => setConfirmAction("save")}
+          onDiscard={() => setConfirmAction("discard")}
+        />
+      )}
+
+      <AlertDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "save"
+                ? t.dashboard.confirmSaveChangesTitle
+                : t.dashboard.confirmDiscardChangesTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "save"
+                ? t.dashboard.confirmSaveChangesBody
+                : t.dashboard.confirmDiscardChangesBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmAction(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={confirmAction === "discard" ? "destructive" : "default"}
+              loading={confirmAction === "save" && isSaving}
+              onClick={async () => {
+                if (confirmAction === "save") {
+                  setIsSaving(true);
+                  try {
+                    await onSave();
+                  } catch {
+                    setIsSaving(false);
+                    setConfirmAction(null);
+                    return;
+                  }
+                  setIsSaving(false);
+                } else {
+                  onDiscard();
                 }
                 setConfirmAction(null);
               }}
@@ -620,40 +725,52 @@ function SocialMediaSection({
         setEditing(false);
       }}
     >
-      <div className="grid gap-5 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="p-wa">{t.auth.whatsappLabel}</Label>
+      <div className="space-y-3">
+        <div className="relative">
+          <WhatsAppIcon className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-[#128C4A] dark:text-[#4cd97f]" />
+          <Label htmlFor="p-wa" className="sr-only">
+            {t.auth.whatsappLabel}
+          </Label>
           <Input
             id="p-wa"
             dir="ltr"
-            className="h-11"
+            placeholder={t.auth.whatsappLabel}
+            className="h-10 ps-9"
             disabled={!editing}
             value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value)}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="p-ig">{t.auth.instagramLabel}</Label>
+        <div className="relative">
+          <InstagramIcon className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-[#c13584]" />
+          <Label htmlFor="p-ig" className="sr-only">
+            {t.auth.instagramLabel}
+          </Label>
           <Input
             id="p-ig"
             dir="ltr"
-            className="h-11"
+            placeholder={t.auth.instagramLabel}
+            className="h-10 ps-9"
             disabled={!editing}
             value={instagram}
             onChange={(e) => setInstagram(e.target.value)}
           />
         </div>
-      </div>
-      <div className="mt-5 space-y-2">
-        <Label htmlFor="p-fb">{t.auth.facebookLabel}</Label>
-        <Input
-          id="p-fb"
-          dir="ltr"
-          className="h-11"
-          disabled={!editing}
-          value={facebook}
-          onChange={(e) => setFacebook(e.target.value)}
-        />
+        <div className="relative">
+          <FacebookIcon className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-[#1462c4] dark:text-[#6ba8f5]" />
+          <Label htmlFor="p-fb" className="sr-only">
+            {t.auth.facebookLabel}
+          </Label>
+          <Input
+            id="p-fb"
+            dir="ltr"
+            placeholder={t.auth.facebookLabel}
+            className="h-10 ps-9"
+            disabled={!editing}
+            value={facebook}
+            onChange={(e) => setFacebook(e.target.value)}
+          />
+        </div>
       </div>
     </ProfileSection>
   );
@@ -668,12 +785,15 @@ function GallerySection({
   t: I18n["t"];
   save: SaveProfile;
 }) {
-  const [editing, setEditing] = useState(false);
   const [images, setImages] = useState(restaurant.coverImages);
+  const [saved, setSaved] = useState(restaurant.coverImages);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const snapshot = useRef(images);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const dirty =
+    images.length !== saved.length || images.some((src, i) => src !== saved[i]);
 
   const pickImage = (file: File | undefined) => {
     if (!file) return;
@@ -703,24 +823,23 @@ function GallerySection({
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const confirmDelete = () => {
+    if (deleteIndex === null) return;
+    setImages((prev) => prev.filter((_, idx) => idx !== deleteIndex));
+    setDeleteIndex(null);
+  };
+
   return (
-    <ProfileSection
+    <AlwaysEditableSection
       title={t.restaurant.gallery}
       icon={ImageIcon}
-      editing={editing}
+      dirty={dirty}
       t={t}
-      onEdit={() => {
-        snapshot.current = images;
-        setEditing(true);
-      }}
       onSave={async () => {
         await save({ images });
-        setEditing(false);
+        setSaved(images);
       }}
-      onCancel={() => {
-        setImages(snapshot.current);
-        setEditing(false);
-      }}
+      onDiscard={() => setImages(saved)}
     >
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {images.map((src, i) => (
@@ -736,39 +855,31 @@ function GallerySection({
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover"
             />
-            {editing && (
-              <button
-                type="button"
-                aria-label={t.dashboard.removePhoto}
-                onClick={() =>
-                  setImages((prev) => prev.filter((_, idx) => idx !== i))
-                }
-                className="absolute top-2 end-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80"
-              >
-                <X className="size-4" />
-              </button>
-            )}
+            <button
+              type="button"
+              aria-label={t.dashboard.removePhoto}
+              onClick={() => setDeleteIndex(i)}
+              className="absolute top-2 end-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80"
+            >
+              <X className="size-4" />
+            </button>
           </div>
         ))}
-        {editing && (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
-          >
-            <Plus className="size-6" />
-            <span className="text-xs font-semibold">
-              {t.dashboard.addPhoto}
-            </span>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => pickImage(e.target.files?.[0])}
-            />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+        >
+          <Plus className="size-6" />
+          <span className="text-xs font-semibold">{t.dashboard.addPhoto}</span>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => pickImage(e.target.files?.[0])}
+          />
+        </button>
       </div>
 
       <ImagePreviewDialog
@@ -777,7 +888,31 @@ function GallerySection({
         onCancel={cancelImage}
         t={t}
       />
-    </ProfileSection>
+
+      <AlertDialog
+        open={deleteIndex !== null}
+        onOpenChange={(open) => !open && setDeleteIndex(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t.dashboard.confirmRemovePhotoTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.dashboard.confirmRemovePhotoBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteIndex(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmDelete}>
+              {t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AlwaysEditableSection>
   );
 }
 
@@ -795,49 +930,59 @@ function PaymentQrSection({
   t: I18n["t"];
   save: SaveProfile;
 }) {
-  const [editing, setEditing] = useState(false);
   const [qrUrl, setQrUrl] = useState(restaurant.paymentQrCode ?? "");
-  const [uploading, setUploading] = useState(false);
-  const snapshot = useRef(qrUrl);
+  const [saved, setSaved] = useState(restaurant.paymentQrCode ?? "");
+  const [pendingQr, setPendingQr] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const pickQr = async (file: File | undefined) => {
+  const dirty = qrUrl !== saved;
+
+  const pickQr = (file: File | undefined) => {
     if (!file) return;
-    setUploading(true);
-    try {
-      const { url } = await uploadImage(file, "businesses");
-      setQrUrl(url);
-    } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
-    } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
+    setPendingFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPendingQr(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const confirmQr = async () => {
+    if (pendingFile) {
+      try {
+        const { url } = await uploadImage(pendingFile, "businesses");
+        setQrUrl(url);
+      } catch (error) {
+        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+      }
     }
+    setPendingQr(null);
+    setPendingFile(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const cancelQr = () => {
+    setPendingQr(null);
+    setPendingFile(null);
+    if (inputRef.current) inputRef.current.value = "";
   };
 
   return (
-    <ProfileSection
+    <AlwaysEditableSection
       title={t.dashboard.paymentQrTitle}
       icon={QrCode}
-      editing={editing}
+      dirty={dirty}
       t={t}
-      onEdit={() => {
-        snapshot.current = qrUrl;
-        setEditing(true);
-      }}
       onSave={async () => {
         await save({ paymentQrCode: qrUrl });
-        setEditing(false);
+        setSaved(qrUrl);
       }}
-      onCancel={() => {
-        setQrUrl(snapshot.current);
-        setEditing(false);
-      }}
+      onDiscard={() => setQrUrl(saved)}
     >
       <p className="text-sm text-muted-foreground">{t.dashboard.paymentQrHint}</p>
-      <div className="mt-4 flex flex-wrap items-center gap-4">
+      <div className="mt-4">
         {qrUrl ? (
-          <div className="relative size-32 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-white p-2">
+          <div className="relative size-32 overflow-hidden rounded-xl border border-border/60 bg-white p-2">
             <SafeImage
               src={qrUrl}
               alt=""
@@ -846,51 +991,78 @@ function PaymentQrSection({
               unoptimized={qrUrl.startsWith("data:")}
               className="object-contain"
             />
-            {editing && (
-              <button
-                type="button"
-                aria-label={t.dashboard.removeQrCode}
-                onClick={() => setQrUrl("")}
-                className="absolute top-1 end-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
+            <div className="absolute top-1 end-1">
+              <RowActions
+                triggerClassName="size-7 bg-black/60 text-white hover:bg-black/75"
+                actions={[
+                  {
+                    label: t.dashboard.replaceQrCode,
+                    icon: Pencil,
+                    onSelect: () => inputRef.current?.click(),
+                  },
+                  {
+                    label: t.dashboard.removeQrCode,
+                    icon: Trash2,
+                    danger: true,
+                    onSelect: () => setConfirmingRemove(true),
+                  },
+                ]}
+              />
+            </div>
           </div>
         ) : (
-          <div className="flex size-32 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-border text-muted-foreground">
-            <QrCode className="size-8" />
-          </div>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="flex size-32 flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+          >
+            <Plus className="size-6" />
+            <span className="text-xs font-semibold">
+              {t.dashboard.addQrCode}
+            </span>
+          </button>
         )}
-
-        {editing ? (
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              loading={uploading}
-              onClick={() => inputRef.current?.click()}
-            >
-              {qrUrl ? t.dashboard.replaceQrCode : t.dashboard.addQrCode}
-            </Button>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => void pickQr(e.target.files?.[0])}
-            />
-          </div>
-        ) : (
-          !qrUrl && (
-            <p className="text-sm text-muted-foreground">
-              {t.dashboard.noQrCode}
-            </p>
-          )
-        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => pickQr(e.target.files?.[0])}
+        />
       </div>
-    </ProfileSection>
+
+      <ImagePreviewDialog
+        src={pendingQr}
+        onConfirm={confirmQr}
+        onCancel={cancelQr}
+        t={t}
+      />
+
+      <AlertDialog open={confirmingRemove} onOpenChange={setConfirmingRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.dashboard.confirmRemoveQrTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.dashboard.confirmRemoveQrBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmingRemove(false)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setQrUrl("");
+                setConfirmingRemove(false);
+              }}
+            >
+              {t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AlwaysEditableSection>
   );
 }
 
@@ -1362,12 +1534,6 @@ export function BusinessProfile() {
               {t.dashboard.deliveryTab}
             </TabsTrigger>
             <TabsTrigger
-              value="social"
-              className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-            >
-              {t.dashboard.socialMediaTab}
-            </TabsTrigger>
-            <TabsTrigger
               value="gallery"
               className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
             >
@@ -1377,7 +1543,7 @@ export function BusinessProfile() {
               value="appearance"
               className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
             >
-              {t.dashboard.appearanceTab}
+              {t.dashboard.appearanceSocialTab}
             </TabsTrigger>
             <TabsTrigger
               value="plan"
@@ -1403,14 +1569,17 @@ export function BusinessProfile() {
         <TabsContent value="delivery">
           <DeliveryFeeSection restaurant={restaurant} t={t} save={save} />
         </TabsContent>
-        <TabsContent value="social">
-          <SocialMediaSection restaurant={restaurant} t={t} save={save} />
-        </TabsContent>
         <TabsContent value="gallery">
           <GallerySection restaurant={restaurant} t={t} save={save} />
         </TabsContent>
         <TabsContent value="appearance">
-          <AppearanceSection restaurant={restaurant} t={t} save={save} />
+          {/* social media first, appearance below it — side by side as two
+              columns from the laptop breakpoint up, stacked with a small
+              gap on narrower screens */}
+          <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
+            <SocialMediaSection restaurant={restaurant} t={t} save={save} />
+            <AppearanceSection restaurant={restaurant} t={t} save={save} />
+          </div>
         </TabsContent>
         <TabsContent value="plan">
           <SubscriptionSection restaurant={restaurant} t={t} lang={lang} />
