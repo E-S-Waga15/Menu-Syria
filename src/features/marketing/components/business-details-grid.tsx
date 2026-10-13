@@ -295,7 +295,7 @@ export function BusinessDetailsGrid({
 
         <Panel title={aboutTitle}>
           {description ? (
-            <p className="leading-relaxed text-muted-foreground md:text-lg">
+            <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
               {description}
             </p>
           ) : (
@@ -323,7 +323,7 @@ export function BusinessDetailsGrid({
                   <tile.icon className="size-3.5 shrink-0" />
                   <span className="label-eyebrow">{tile.label}</span>
                 </div>
-                <p className="mt-1 text-xs font-bold break-words sm:text-sm">
+                <p className="mt-1 text-[11px] font-bold break-words sm:text-xs">
                   {tile.value}
                 </p>
               </div>
@@ -441,7 +441,7 @@ export function BusinessDetailsGrid({
                   <span className="text-xs text-muted-foreground">
                     {t.restaurant.addressLabel}
                   </span>
-                  <span className="text-sm font-bold">{address}</span>
+                  <span className="text-xs font-bold">{address}</span>
                 </span>
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   <MapPin className="size-4" />
@@ -478,10 +478,7 @@ export function BusinessDetailsGrid({
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <MapPin className="size-3.5" />
               </span>
-              <span className="pt-1.5 text-muted-foreground">
-                {address}
-                {branchRegionName && ` · ${branchRegionName}`}
-              </span>
+              <span className="pt-1.5 text-muted-foreground">{address}</span>
             </p>
           )}
           <div className="mt-3">
