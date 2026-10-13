@@ -144,6 +144,18 @@ export function BusinessDetailsGrid({
       ? [governorateName, regionName].filter(Boolean).join(separator)
       : null;
 
+  const openBadgeClassName = restaurant.isOpen
+    ? "bg-success/10 px-2 py-0.5 text-[11px] text-success md:px-2.5 md:text-xs"
+    : "bg-muted px-2 py-0.5 text-[11px] text-muted-foreground md:px-2.5 md:text-xs";
+  const openBadgeContent = (
+    <>
+      <span
+        className={`me-1 size-1.5 rounded-full ${restaurant.isOpen ? "bg-success" : "bg-muted-foreground"}`}
+      />
+      {restaurant.isOpen ? t.restaurant.openNow : t.restaurant.closedNow}
+    </>
+  );
+
   const quickFactTiles = [
     typeLabel && { icon: Tag, label: t.restaurant.typeTileLabel, value: typeLabel },
     areaLabel && {
@@ -197,7 +209,7 @@ export function BusinessDetailsGrid({
             row's far end, same level as the name, right next to where the
             map column starts beside it — not stacked above the map. */}
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-wrap items-start gap-4 ps-5">
+          <div className="flex flex-wrap items-start gap-4 ps-5 md:ps-10">
             <div className="relative z-10 -mt-8">
               <Image
                 src={restaurant.logoUrl}
@@ -212,21 +224,19 @@ export function BusinessDetailsGrid({
                 <h1 className="text-display text-xl md:text-3xl">
                   {restaurant.name[lang]}
                 </h1>
-                <Badge
-                  className={
-                    restaurant.isOpen
-                      ? "shrink-0 bg-success/10 px-2 py-0.5 text-[11px] text-success md:px-2.5 md:text-xs"
-                      : "shrink-0 bg-muted px-2 py-0.5 text-[11px] text-muted-foreground md:px-2.5 md:text-xs"
-                  }
-                >
-                  <span
-                    className={`me-1 size-1.5 rounded-full ${restaurant.isOpen ? "bg-success" : "bg-muted-foreground"}`}
-                  />
-                  {restaurant.isOpen
-                    ? t.restaurant.openNow
-                    : t.restaurant.closedNow}
+                {/* inline beside the name on desktop; on mobile it drops to
+                    its own line below the name, freeing the row so the
+                    action buttons fit beside the name instead of wrapping
+                    under it */}
+                <Badge className={cn("hidden shrink-0 md:inline-flex", openBadgeClassName)}>
+                  {openBadgeContent}
                 </Badge>
               </div>
+              <Badge
+                className={cn("mt-1.5 w-fit shrink-0 md:hidden", openBadgeClassName)}
+              >
+                {openBadgeContent}
+              </Badge>
             </div>
           </div>
 
