@@ -60,6 +60,7 @@ interface DraftGroup {
   id: string;
   selectionType: OptionSelectionType;
   required: boolean;
+  priceMode: "delta" | "absolute";
   options: DraftOption[];
 }
 
@@ -69,6 +70,7 @@ function toDraftGroups(groups: CatalogOptionGroup[] | undefined): DraftGroup[] {
     id: g.id,
     selectionType: g.selectionType,
     required: g.required,
+    priceMode: g.priceMode ?? "delta",
     options: g.options.map((o) => ({
       key: crypto.randomUUID(),
       id: o.id,
@@ -144,6 +146,11 @@ export function MenuDishDialog({
   // the option price-delta fields show this beside each one, so an owner
   // never has to guess which currency a +2,000 means
   const currencyValue = useWatch({ control, name: "currency" });
+  // base price, live — an "absolute" group converts each option's final
+  // price to/from this on the fly, so it has to track the price field as
+  // the owner edits it, not just its value when the dialog opened
+  const priceValueRaw = useWatch({ control, name: "price" });
+  const basePrice = Number(priceValueRaw) || 0;
   const currencySuffix =
     lang === "ar"
       ? currencyValue === "USD"
@@ -200,6 +207,9 @@ export function MenuDishDialog({
         id: presetId,
         selectionType: preset === "custom" ? "multiple" : "single",
         required: preset !== "custom",
+        // "size" is the classic final-price-per-option case ("Large" = 350);
+        // color/custom groups default to the familiar additive delta
+        priceMode: preset === "size" ? "absolute" : "delta",
         options: [],
       },
     ]);
@@ -460,7 +470,13 @@ export function MenuDishDialog({
                             key={type}
                             type="button"
                             onClick={() =>
-                              updateGroup(group.key, { selectionType: type })
+                              updateGroup(group.key, {
+                                selectionType: type,
+                                // "absolute" prices don't combine — only a
+                                // single-pick group can mean one final price
+                                priceMode:
+                                  type === "multiple" ? "delta" : group.priceMode,
+                              })
                             }
                             className={cn(
                               "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
@@ -487,8 +503,45 @@ export function MenuDishDialog({
                     </label>
                   </div>
 
+                  {group.selectionType === "single" && (
+                    <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
+                      {(["delta", "absolute"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => updateGroup(group.key, { priceMode: mode })}
+                          className={cn(
+                            "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
+                            group.priceMode === mode
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-accent",
+                          )}
+                        >
+                          {mode === "delta"
+                            ? t.dashboard.priceModeDelta
+                            : t.dashboard.priceModeAbsolute}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {group.selectionType === "single" &&
+                    group.priceMode === "absolute" && (
+                      <p className="text-xs text-muted-foreground">
+                        {t.dashboard.priceModeHint}
+                      </p>
+                    )}
+
                   <div className="space-y-2">
-                    {group.options.map((option) => (
+                    {group.options.map((option) => {
+                      // "absolute" mode shows/edits the option's own final
+                      // price; what's actually stored (`priceDelta`) stays
+                      // the difference from the base price either way, since
+                      // that's the only shape the order's price math reads
+                      const displayValue =
+                        group.priceMode === "absolute"
+                          ? basePrice + option.priceDelta
+                          : option.priceDelta;
+                      return (
                       <div key={option.key} className="flex items-center gap-2">
                         <Input
                           value={option.id}
@@ -504,15 +557,19 @@ export function MenuDishDialog({
                           type="number"
                           dir="ltr"
                           // blank rather than a sitting "0" — the owner types
-                          // the actual difference instead of clearing a value
+                          // the actual value instead of clearing a value
                           // that was never theirs
-                          value={option.priceDelta === 0 ? "" : option.priceDelta}
-                          onChange={(e) =>
+                          value={displayValue === 0 ? "" : displayValue}
+                          onChange={(e) => {
+                            const entered =
+                              e.target.value === "" ? 0 : Number(e.target.value);
                             updateOption(group.key, option.key, {
                               priceDelta:
-                                e.target.value === "" ? 0 : Number(e.target.value),
-                            })
-                          }
+                                group.priceMode === "absolute"
+                                  ? entered - basePrice
+                                  : entered,
+                            });
+                          }}
                           placeholder="0"
                           className="h-8 w-20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
@@ -530,7 +587,8 @@ export function MenuDishDialog({
                           <X className="size-3.5" />
                         </Button>
                       </div>
-                    ))}
+                      );
+                    })}
                     <Button
                       type="button"
                       variant="ghost"

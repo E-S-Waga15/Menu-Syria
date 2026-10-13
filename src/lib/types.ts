@@ -197,6 +197,19 @@ export interface CatalogOptionGroup {
   selectionType: OptionSelectionType;
   required: boolean;
   options: CatalogOption[];
+  /**
+   * Purely a dashboard-editing convenience — the order/price math (backend
+   * and `dish-modal.tsx` alike) only ever reads `priceDelta`, unconditionally
+   * added to the item's base price; this field never reaches that math.
+   * "delta" (default, and what every option predating this field means):
+   * the owner types the difference from the base price directly.
+   * "absolute": the owner types the option's own final price (e.g. a
+   * "Large" that should cost 350 when the base is 250) and the editor
+   * converts it to/from `priceDelta` on save/load — only sensible for a
+   * `selectionType: "single"` group, since several "absolute" picks can't
+   * combine into one final price the way add-ons do.
+   */
+  priceMode?: "delta" | "absolute";
 }
 
 /**

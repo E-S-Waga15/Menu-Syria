@@ -305,10 +305,20 @@ export function DishModal({
                             ))}
                         </span>
                         <span className="flex-1 text-start">{option.id}</span>
-                        {option.priceDelta > 0 && (
+                        {group.priceMode === "absolute" ? (
                           <span className="shrink-0 text-xs font-bold text-[var(--menu-primary)]">
-                            +{formatPrice(option.priceDelta, item.currency ?? "SYP", lang)}
+                            {formatPrice(
+                              item.price + option.priceDelta,
+                              item.currency ?? "SYP",
+                              lang,
+                            )}
                           </span>
+                        ) : (
+                          option.priceDelta > 0 && (
+                            <span className="shrink-0 text-xs font-bold text-[var(--menu-primary)]">
+                              +{formatPrice(option.priceDelta, item.currency ?? "SYP", lang)}
+                            </span>
+                          )
                         )}
                       </button>
                     </li>
