@@ -496,10 +496,12 @@ export function BusinessDetailsGrid({
 
         <Panel title={contactInfoTitle} icon={Phone}>
           <div className="flex items-center gap-3 rounded-xl bg-muted/40 px-4 py-3">
-            <Phone className="size-4 shrink-0 text-[#90003b] dark:text-[#ff8aa6]" />
-            <span dir="ltr" className="flex-1 truncate text-sm font-semibold">
-              {branchPhone}
-            </span>
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <Phone className="size-4 shrink-0 text-[#90003b] dark:text-[#ff8aa6]" />
+              <span dir="ltr" className="truncate text-sm font-semibold">
+                {branchPhone}
+              </span>
+            </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <button
                 type="button"
@@ -530,10 +532,12 @@ export function BusinessDetailsGrid({
           </div>
 
           <div className="mt-3 flex items-center gap-3 rounded-xl bg-muted/40 px-4 py-3">
-            <WhatsAppIcon className="size-4 shrink-0 text-[#128C4A] dark:text-[#4cd97f]" />
-            <span dir="ltr" className="flex-1 truncate text-sm font-semibold">
-              {branchWhatsapp}
-            </span>
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <WhatsAppIcon className="size-4 shrink-0 text-[#128C4A] dark:text-[#4cd97f]" />
+              <span dir="ltr" className="truncate text-sm font-semibold">
+                {branchWhatsapp}
+              </span>
+            </div>
             <a
               href={`https://wa.me/${branchWhatsapp.replace(/[+\s]/g, "")}`}
               target="_blank"

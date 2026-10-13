@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -119,6 +126,27 @@ const SECONDARY_COLOR_PRESETS = [
 type SaveProfile = (input: BusinessProfileInput) => Promise<unknown>;
 
 /**
+ * Tracks which `ProfileSection` cards currently have unsaved edits in
+ * progress, by a stable id each one registers itself under (its own
+ * title — distinct per section on this page). A Set rather than one
+ * shared boolean because more than one card can be mid-edit at once; the
+ * tab bar and the browser's own leave-page prompt both read the combined
+ * "is anything dirty" state from this instead of each section having to
+ * know about tabs or navigation itself.
+ */
+const EditingGuardContext = createContext<{
+  registerEditing: (id: string, editing: boolean) => void;
+} | null>(null);
+
+function useRegisterEditing(id: string, editing: boolean) {
+  const ctx = useContext(EditingGuardContext);
+  useEffect(() => {
+    ctx?.registerEditing(id, editing);
+    return () => ctx?.registerEditing(id, false);
+  }, [ctx, id, editing]);
+}
+
+/**
  * Card wrapper every section shares: a title, an "Edit" trigger while at
  * rest, and — once the section is being edited — a floating save/discard bar
  * (the same fixed pill the storefront cart uses) instead of a quiet dropdown
@@ -150,6 +178,7 @@ function ProfileSection({
     null,
   );
   const [isSaving, setIsSaving] = useState(false);
+  useRegisterEditing(title, editable && editing);
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
@@ -225,113 +254,9 @@ function ProfileSection({
                 setConfirmAction(null);
               }}
             >
-              {confirmAction === "save" ? t.common.save : t.dashboard.discardChanges}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </section>
-  );
-}
-
-/**
- * A section whose controls are always live — no pencil gate — for cases
- * where staging a single field behind an "edit" click adds a step without
- * adding safety (adding/removing a photo or a QR code is already its own
- * deliberate action). The floating save/discard bar still shows, driven by
- * a `dirty` flag the caller computes, with the same confirm-dialog step as
- * `ProfileSection` before either one actually commits.
- */
-function AlwaysEditableSection({
-  title,
-  icon: Icon,
-  dirty,
-  onSave,
-  onDiscard,
-  children,
-  t,
-  headerAction,
-}: {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  dirty: boolean;
-  onSave: () => Promise<void> | void;
-  onDiscard: () => void;
-  children: React.ReactNode;
-  t: I18n["t"];
-  /** sits opposite the title, in the spot a `ProfileSection`'s pencil
-   * trigger would occupy — for a section whose own controls (e.g. a
-   * three-dot menu) replace that gate instead of an edit toggle */
-  headerAction?: React.ReactNode;
-}) {
-  const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
-    null,
-  );
-  const [isSaving, setIsSaving] = useState(false);
-
-  return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-          <Icon className="size-5 text-primary" />
-          {title}
-        </h2>
-        {headerAction}
-      </div>
-      <div className="mt-5">{children}</div>
-
-      {dirty && (
-        <PendingChangesBar
-          message={t.dashboard.unsavedChanges}
-          saveLabel={t.dashboard.saveChanges}
-          discardLabel={t.dashboard.discardChanges}
-          onSave={() => setConfirmAction("save")}
-          onDiscard={() => setConfirmAction("discard")}
-        />
-      )}
-
-      <AlertDialog
-        open={confirmAction !== null}
-        onOpenChange={(open) => !open && setConfirmAction(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
               {confirmAction === "save"
-                ? t.dashboard.confirmSaveChangesTitle
-                : t.dashboard.confirmDiscardChangesTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmAction === "save"
-                ? t.dashboard.confirmSaveChangesBody
-                : t.dashboard.confirmDiscardChangesBody}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmAction(null)}>
-              {t.common.cancel}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant={confirmAction === "discard" ? "destructive" : "default"}
-              loading={confirmAction === "save" && isSaving}
-              onClick={async () => {
-                if (confirmAction === "save") {
-                  setIsSaving(true);
-                  try {
-                    await onSave();
-                  } catch {
-                    setIsSaving(false);
-                    setConfirmAction(null);
-                    return;
-                  }
-                  setIsSaving(false);
-                } else {
-                  onDiscard();
-                }
-                setConfirmAction(null);
-              }}
-            >
-              {confirmAction === "save" ? t.common.save : t.dashboard.discardChanges}
+                ? t.common.save
+                : t.dashboard.discardChanges}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -368,7 +293,13 @@ function ImagePreviewDialog({
         </DialogHeader>
         {src && (
           <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border/60">
-            <SafeImage src={src} alt="" fill unoptimized className="object-cover" />
+            <SafeImage
+              src={src}
+              alt=""
+              fill
+              unoptimized
+              className="object-cover"
+            />
           </div>
         )}
         <div className="flex gap-2">
@@ -495,7 +426,12 @@ function AccountInfoSection({
           phones: [
             { numberType: "mobile", number: phone },
             ...(restaurant.whatsapp
-              ? [{ numberType: "whatsapp" as const, number: restaurant.whatsapp }]
+              ? [
+                  {
+                    numberType: "whatsapp" as const,
+                    number: restaurant.whatsapp,
+                  },
+                ]
               : []),
           ],
           latitude: lat,
@@ -783,6 +719,13 @@ function SocialMediaSection({
   );
 }
 
+/**
+ * Add and delete each write straight through — no staged save/discard bar.
+ * Unlike a form field, a photo add/delete is already its own deliberate,
+ * single-purpose action (each one has its own confirm step — the preview
+ * dialog for an add, an AlertDialog for a delete), so queuing it behind a
+ * second "now save the section" step would just be a redundant extra click.
+ */
 function GallerySection({
   restaurant,
   t,
@@ -793,14 +736,12 @@ function GallerySection({
   save: SaveProfile;
 }) {
   const [images, setImages] = useState(restaurant.coverImages);
-  const [saved, setSaved] = useState(restaurant.coverImages);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [adding, setAdding] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const dirty =
-    images.length !== saved.length || images.some((src, i) => src !== saved[i]);
 
   const pickImage = (file: File | undefined) => {
     if (!file) return;
@@ -811,17 +752,26 @@ function GallerySection({
   };
 
   const confirmImage = async () => {
-    if (pendingFile) {
-      try {
-        const { url } = await uploadImage(pendingFile, "businesses");
-        setImages((prev) => [...prev, url]);
-      } catch (error) {
-        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
-      }
+    if (!pendingFile) {
+      setPendingImage(null);
+      return;
     }
-    setPendingImage(null);
-    setPendingFile(null);
-    if (inputRef.current) inputRef.current.value = "";
+    setAdding(true);
+    try {
+      const { url } = await uploadImage(pendingFile, "businesses");
+      const next = [...images, url];
+      await save({ images: next });
+      setImages(next);
+      setPendingImage(null);
+      setPendingFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : t.common.saveFailed,
+      );
+    } finally {
+      setAdding(false);
+    }
   };
 
   const cancelImage = () => {
@@ -830,25 +780,31 @@ function GallerySection({
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteIndex === null) return;
-    setImages((prev) => prev.filter((_, idx) => idx !== deleteIndex));
-    setDeleteIndex(null);
+    const next = images.filter((_, idx) => idx !== deleteIndex);
+    setDeleting(true);
+    try {
+      await save({ images: next });
+      setImages(next);
+      setDeleteIndex(null);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : t.common.saveFailed,
+      );
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
-    <AlwaysEditableSection
-      title={t.restaurant.gallery}
-      icon={ImageIcon}
-      dirty={dirty}
-      t={t}
-      onSave={async () => {
-        await save({ images });
-        setSaved(images);
-      }}
-      onDiscard={() => setImages(saved)}
-    >
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <ImageIcon className="size-5 text-primary" />
+        {t.restaurant.gallery}
+      </h2>
+
+      <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {images.map((src, i) => (
           <div
             key={`${src}-${i}`}
@@ -893,12 +849,13 @@ function GallerySection({
         src={pendingImage}
         onConfirm={confirmImage}
         onCancel={cancelImage}
+        confirming={adding}
         t={t}
       />
 
       <AlertDialog
         open={deleteIndex !== null}
-        onOpenChange={(open) => !open && setDeleteIndex(null)}
+        onOpenChange={(open) => !open && !deleting && setDeleteIndex(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -910,16 +867,23 @@ function GallerySection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteIndex(null)}>
+            <AlertDialogCancel
+              disabled={deleting}
+              onClick={() => setDeleteIndex(null)}
+            >
               {t.common.cancel}
             </AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={confirmDelete}>
+            <AlertDialogAction
+              variant="destructive"
+              loading={deleting}
+              onClick={confirmDelete}
+            >
               {t.common.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AlwaysEditableSection>
+    </section>
   );
 }
 
@@ -938,13 +902,12 @@ function PaymentQrSection({
   save: SaveProfile;
 }) {
   const [qrUrl, setQrUrl] = useState(restaurant.paymentQrCode ?? "");
-  const [saved, setSaved] = useState(restaurant.paymentQrCode ?? "");
   const [pendingQr, setPendingQr] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [adding, setAdding] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const dirty = qrUrl !== saved;
 
   const pickQr = (file: File | undefined) => {
     if (!file) return;
@@ -955,17 +918,25 @@ function PaymentQrSection({
   };
 
   const confirmQr = async () => {
-    if (pendingFile) {
-      try {
-        const { url } = await uploadImage(pendingFile, "businesses");
-        setQrUrl(url);
-      } catch (error) {
-        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
-      }
+    if (!pendingFile) {
+      setPendingQr(null);
+      return;
     }
-    setPendingQr(null);
-    setPendingFile(null);
-    if (inputRef.current) inputRef.current.value = "";
+    setAdding(true);
+    try {
+      const { url } = await uploadImage(pendingFile, "businesses");
+      await save({ paymentQrCode: url });
+      setQrUrl(url);
+      setPendingQr(null);
+      setPendingFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : t.common.saveFailed,
+      );
+    } finally {
+      setAdding(false);
+    }
   };
 
   const cancelQr = () => {
@@ -974,19 +945,29 @@ function PaymentQrSection({
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const confirmRemove = async () => {
+    setRemoving(true);
+    try {
+      await save({ paymentQrCode: "" });
+      setQrUrl("");
+      setConfirmingRemove(false);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : t.common.saveFailed,
+      );
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   return (
-    <AlwaysEditableSection
-      title={t.dashboard.paymentQrTitle}
-      icon={QrCode}
-      dirty={dirty}
-      t={t}
-      onSave={async () => {
-        await save({ paymentQrCode: qrUrl });
-        setSaved(qrUrl);
-      }}
-      onDiscard={() => setQrUrl(saved)}
-      headerAction={
-        qrUrl ? (
+    <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+          <QrCode className="size-5 text-primary" />
+          {t.dashboard.paymentQrTitle}
+        </h2>
+        {qrUrl && (
           <RowActions
             actions={[
               {
@@ -1002,10 +983,12 @@ function PaymentQrSection({
               },
             ]}
           />
-        ) : undefined
-      }
-    >
-      <p className="text-sm text-muted-foreground">{t.dashboard.paymentQrHint}</p>
+        )}
+      </div>
+
+      <p className="mt-5 text-sm text-muted-foreground">
+        {t.dashboard.paymentQrHint}
+      </p>
       <div className="mt-4">
         {qrUrl ? (
           <div className="relative size-32 overflow-hidden rounded-xl border border-border/60 bg-white p-2">
@@ -1043,34 +1026,43 @@ function PaymentQrSection({
         src={pendingQr}
         onConfirm={confirmQr}
         onCancel={cancelQr}
+        confirming={adding}
         t={t}
       />
 
-      <AlertDialog open={confirmingRemove} onOpenChange={setConfirmingRemove}>
+      <AlertDialog
+        open={confirmingRemove}
+        onOpenChange={(open) =>
+          !open && !removing && setConfirmingRemove(false)
+        }
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.dashboard.confirmRemoveQrTitle}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t.dashboard.confirmRemoveQrTitle}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {t.dashboard.confirmRemoveQrBody}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmingRemove(false)}>
+            <AlertDialogCancel
+              disabled={removing}
+              onClick={() => setConfirmingRemove(false)}
+            >
               {t.common.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={() => {
-                setQrUrl("");
-                setConfirmingRemove(false);
-              }}
+              loading={removing}
+              onClick={confirmRemove}
             >
               {t.common.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AlwaysEditableSection>
+    </section>
   );
 }
 
@@ -1270,7 +1262,9 @@ function SubscriptionSection({
       await createSubscriptionRequest({ planId });
       toast.success(t.admin.renewalRequested);
     } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+      toast.error(
+        error instanceof ApiError ? error.message : t.common.saveFailed,
+      );
     } finally {
       setRenewing(false);
     }
@@ -1283,9 +1277,9 @@ function SubscriptionSection({
       editing={false}
       editable={false}
       t={t}
-      onEdit={() => { }}
-      onSave={() => { }}
-      onCancel={() => { }}
+      onEdit={() => {}}
+      onSave={() => {}}
+      onCancel={() => {}}
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -1351,6 +1345,32 @@ export function BusinessProfile() {
   const [isSavingLogo, setIsSavingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  const [activeTab, setActiveTab] = useState("account");
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
+  const hasUnsavedChanges = editingIds.size > 0;
+  const registerEditing = useCallback((id: string, editing: boolean) => {
+    setEditingIds((prev) => {
+      if (prev.has(id) === editing) return prev;
+      const next = new Set(prev);
+      if (editing) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // closing the tab, refreshing, or typing a new URL — the browser's own
+  // prompt is the only one that can actually block that, a custom toast
+  // can't run once navigation has already started
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedChanges]);
+
   if (!restaurant) return <LoadingSpinner />;
 
   const publicUrl =
@@ -1381,7 +1401,9 @@ export function BusinessProfile() {
         ({ url } = await uploadImage(logoFile, "businesses"));
       } catch (error) {
         // the upload itself has no mutation to toast for it
-        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+        toast.error(
+          error instanceof ApiError ? error.message : t.common.saveFailed,
+        );
         setIsSavingLogo(false);
         return;
       }
@@ -1415,189 +1437,205 @@ export function BusinessProfile() {
     if (navigator.share) {
       await navigator
         .share({ title: restaurant.name[lang], url: publicUrl })
-        .catch(() => { });
+        .catch(() => {});
     } else {
       await copyLink();
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="relative shrink-0">
-            <SafeImage
-              src={restaurant.logoUrl}
-              alt=""
-              width={112}
-              height={112}
-              // a freshly picked logo is a data URL, which next/image cannot optimise
-              unoptimized={
-                typeof restaurant.logoUrl === "string" &&
-                restaurant.logoUrl.startsWith("data:")
-              }
-              className="size-16 rounded-2xl border border-border object-cover sm:size-24 md:size-28"
-            />
-            <button
-              type="button"
-              aria-label={t.dashboard.updatePhoto}
-              onClick={() => logoInputRef.current?.click()}
-              className="absolute bottom-0 end-0 flex size-6 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground sm:size-8"
-            >
-              <Camera className="size-3.5 sm:size-4" />
-            </button>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => pickLogo(e.target.files?.[0])}
-            />
-          </div>
-          <div className="min-w-0">
-            <h1 className="truncate font-heading text-lg font-bold sm:text-xl md:text-2xl">
-              {restaurant.name[lang]}
-            </h1>
-            {locationLabel && (
-              <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
-                <MapPin className="size-3.5 shrink-0" />
-                <span className="truncate">{locationLabel}</span>
-              </p>
-            )}
-          </div>
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
-                aria-label="⋯"
+    <EditingGuardContext.Provider value={{ registerEditing }}>
+      <div className="space-y-6">
+        {/* header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="relative shrink-0">
+              <SafeImage
+                src={restaurant.logoUrl}
+                alt=""
+                width={112}
+                height={112}
+                // a freshly picked logo is a data URL, which next/image cannot optimise
+                unoptimized={
+                  typeof restaurant.logoUrl === "string" &&
+                  restaurant.logoUrl.startsWith("data:")
+                }
+                className="size-16 rounded-2xl border border-border object-cover sm:size-24 md:size-28"
               />
-            }
-          >
-            <MoreVertical className="size-5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-64">
-            <DropdownMenuItem
+              <button
+                type="button"
+                aria-label={t.dashboard.updatePhoto}
+                onClick={() => logoInputRef.current?.click()}
+                className="absolute bottom-0 end-0 flex size-6 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground sm:size-8"
+              >
+                <Camera className="size-3.5 sm:size-4" />
+              </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => pickLogo(e.target.files?.[0])}
+              />
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate font-heading text-lg font-bold sm:text-xl md:text-2xl">
+                {restaurant.name[lang]}
+              </h1>
+              {locationLabel && (
+                <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+                  <MapPin className="size-3.5 shrink-0" />
+                  <span className="truncate">{locationLabel}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
               render={
-                <a href={publicUrl} target="_blank" rel="noopener noreferrer" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  aria-label="⋯"
+                />
               }
             >
-              <User className="size-4" />
-              {t.dashboard.viewAsPublic}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => logoInputRef.current?.click()}>
-              <Camera className="size-4" />
-              {t.dashboard.updatePhoto}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={copyLink}>
-              <Link2 className="size-4" />
-              {t.dashboard.copyProfileLink}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={shareProfile}>
-              <Share2 className="size-4" />
-              {t.dashboard.shareProfile}
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<a href={`/${lang}/dashboard/qr`} />}>
-              <QrCode className="size-4" />
-              {t.dashboard.showQrCode}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => window.print()}>
-              <Printer className="size-4" />
-              {t.dashboard.printProfile}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <ImagePreviewDialog
-        src={logoPreview}
-        onConfirm={confirmLogo}
-        onCancel={cancelLogo}
-        confirming={isSavingLogo}
-        t={t}
-      />
-
-      {/* sections */}
-      <Tabs defaultValue="account" className="gap-6">
-        <div className="scrollbar-none overflow-x-auto">
-          <TabsList className="w-max flex-nowrap rounded-xl p-2 group-data-horizontal/tabs:h-14">
-            <TabsTrigger
-              value="account"
-              className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-            >
-              {t.dashboard.accountInfoTab}
-            </TabsTrigger>
-            <TabsTrigger
-              value="paymentQr"
-              className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-            >
-              {t.dashboard.paymentQrTab}
-            </TabsTrigger>
-            <TabsTrigger
-              value="delivery"
-              className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-            >
-              {t.dashboard.deliveryTab}
-            </TabsTrigger>
-            <TabsTrigger
-              value="gallery"
-              className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-            >
-              {t.restaurant.gallery}
-            </TabsTrigger>
-            <TabsTrigger
-              value="appearance"
-              className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-            >
-              {t.dashboard.appearanceSocialTab}
-            </TabsTrigger>
-            <TabsTrigger
-              value="plan"
-              className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
-            >
-              {t.dashboard.planTab}
-            </TabsTrigger>
-          </TabsList>
+              <MoreVertical className="size-5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-64">
+              <DropdownMenuItem
+                render={
+                  <a
+                    href={publicUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                <User className="size-4" />
+                {t.dashboard.viewAsPublic}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => logoInputRef.current?.click()}>
+                <Camera className="size-4" />
+                {t.dashboard.updatePhoto}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={copyLink}>
+                <Link2 className="size-4" />
+                {t.dashboard.copyProfileLink}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={shareProfile}>
+                <Share2 className="size-4" />
+                {t.dashboard.shareProfile}
+              </DropdownMenuItem>
+              <DropdownMenuItem render={<a href={`/${lang}/dashboard/qr`} />}>
+                <QrCode className="size-4" />
+                {t.dashboard.showQrCode}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => window.print()}>
+                <Printer className="size-4" />
+                {t.dashboard.printProfile}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <TabsContent value="account">
-          <AccountInfoSection
-            restaurant={restaurant}
-            isStore={isStore}
-            t={t}
-            lang={lang}
-            save={save}
-          />
-        </TabsContent>
-        <TabsContent value="paymentQr">
-          <PaymentQrSection restaurant={restaurant} t={t} save={save} />
-        </TabsContent>
-        <TabsContent value="delivery">
-          <DeliveryFeeSection restaurant={restaurant} t={t} save={save} />
-        </TabsContent>
-        <TabsContent value="gallery">
-          <GallerySection restaurant={restaurant} t={t} save={save} />
-        </TabsContent>
-        <TabsContent value="appearance">
-          {/* social media first, appearance below it — side by side as two
+        <ImagePreviewDialog
+          src={logoPreview}
+          onConfirm={confirmLogo}
+          onCancel={cancelLogo}
+          confirming={isSavingLogo}
+          t={t}
+        />
+
+        {/* sections */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            if (hasUnsavedChanges) {
+              toast.warning(t.dashboard.unsavedChangesBlockSwitch);
+              return;
+            }
+            setActiveTab(value);
+          }}
+          className="gap-6"
+        >
+          <div className="scrollbar-none overflow-x-auto">
+            <TabsList className="w-max flex-nowrap rounded-xl p-2 group-data-horizontal/tabs:h-14">
+              <TabsTrigger
+                value="account"
+                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
+              >
+                {t.dashboard.accountInfoTab}
+              </TabsTrigger>
+              <TabsTrigger
+                value="paymentQr"
+                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
+              >
+                {t.dashboard.paymentQrTab}
+              </TabsTrigger>
+              <TabsTrigger
+                value="delivery"
+                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
+              >
+                {t.dashboard.deliveryTab}
+              </TabsTrigger>
+              <TabsTrigger
+                value="gallery"
+                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
+              >
+                {t.restaurant.gallery}
+              </TabsTrigger>
+              <TabsTrigger
+                value="appearance"
+                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
+              >
+                {t.dashboard.appearanceSocialTab}
+              </TabsTrigger>
+              <TabsTrigger
+                value="plan"
+                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
+              >
+                {t.dashboard.planTab}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="account">
+            <AccountInfoSection
+              restaurant={restaurant}
+              isStore={isStore}
+              t={t}
+              lang={lang}
+              save={save}
+            />
+          </TabsContent>
+          <TabsContent value="paymentQr">
+            <PaymentQrSection restaurant={restaurant} t={t} save={save} />
+          </TabsContent>
+          <TabsContent value="delivery">
+            <DeliveryFeeSection restaurant={restaurant} t={t} save={save} />
+          </TabsContent>
+          <TabsContent value="gallery">
+            <GallerySection restaurant={restaurant} t={t} save={save} />
+          </TabsContent>
+          <TabsContent value="appearance">
+            {/* social media first, appearance below it — side by side as two
               columns from the laptop breakpoint up, stacked with a small
               gap on narrower screens */}
-          <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
-            <SocialMediaSection restaurant={restaurant} t={t} save={save} />
-            <AppearanceSection restaurant={restaurant} t={t} save={save} />
-          </div>
-        </TabsContent>
-        <TabsContent value="plan">
-          <SubscriptionSection restaurant={restaurant} t={t} lang={lang} />
-        </TabsContent>
-      </Tabs>
-    </div>
+            <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
+              <SocialMediaSection restaurant={restaurant} t={t} save={save} />
+              <AppearanceSection restaurant={restaurant} t={t} save={save} />
+            </div>
+          </TabsContent>
+          <TabsContent value="plan">
+            <SubscriptionSection restaurant={restaurant} t={t} lang={lang} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </EditingGuardContext.Provider>
   );
 }

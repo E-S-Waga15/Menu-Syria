@@ -95,14 +95,31 @@ export function MenuScreen({
   const clearCart = useCartStore((s) => s.clear);
   const cartCount = useCartStore(selectCartCount);
 
-  // the cart is scoped to a single visit to this storefront: checkout itself
-  // stays on this page (the sheet is an overlay, not a route), so the only
-  // way to "leave" is to navigate elsewhere — at which point a cart left
-  // behind in storage would otherwise resurface, unexplained, whenever the
-  // customer next lands on any menu page
+  // a cart left over from a different business should never surface here —
+  // scrub it the moment this screen mounts, before its stale count/items
+  // can flash on screen ahead of anything the customer adds themselves
   useEffect(() => {
-    return () => {
+    const current = useCartStore.getState();
+    if (current.restaurantId && current.restaurantId !== business.id) {
+      clearCart();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [business.id]);
+
+  // the cart is scoped to a single visit to this storefront: checkout itself
+  // stays on this page (the sheet is an overlay, not a route), so "leaving"
+  // means either navigating elsewhere (unmount) or closing/refreshing the
+  // tab (pagehide — unmount never runs for that case) — either way a cart
+  // left behind in storage would otherwise resurface, unexplained, whenever
+  // the customer next lands on any menu page
+  useEffect(() => {
+    const clearIfOwn = () => {
       if (useCartStore.getState().restaurantId === business.id) clearCart();
+    };
+    window.addEventListener("pagehide", clearIfOwn);
+    return () => {
+      window.removeEventListener("pagehide", clearIfOwn);
+      clearIfOwn();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business.id]);

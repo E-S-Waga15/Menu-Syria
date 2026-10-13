@@ -766,6 +766,7 @@
     "confirmDiscardOrderTitle": "Discard the order changes?",
     "confirmDiscardOrderBody": "All ordering changes you made will be lost and won't be saved.",
     "unsavedChanges": "You have unsaved changes",
+    "unsavedChangesBlockSwitch": "You have unsaved changes — save or discard them before continuing",
     "saveChanges": "Save changes",
     "discardChanges": "Discard changes",
     "confirmSaveChangesTitle": "Save these changes?",

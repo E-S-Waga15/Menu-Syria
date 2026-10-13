@@ -34,6 +34,49 @@ function authHeaders(): HeadersInit {
 }
 
 /**
+ * Pulls a usable file record out of whatever envelope the upload endpoint
+ * wrapped it in, trying the field names different upload responses commonly
+ * use for the saved file's URL. A response this can't make sense of throws
+ * instead of silently handing back `undefined` as the "url" — which is how
+ * this used to fail: a blank/undefined URL would ride all the way into a
+ * saved gallery or QR image with no error anywhere, leaving a dead image on
+ * the live page with nothing in the logs to say why.
+ */
+function extractUploadFile(raw: unknown): UploadFileResponse {
+  const record =
+    raw && typeof raw === "object" && "data" in raw
+      ? (raw as { data: unknown }).data
+      : raw;
+
+  if (!record || typeof record !== "object") {
+    console.error("Unrecognized upload response shape:", raw);
+    throw new ApiError(500, "Upload succeeded but returned no file info");
+  }
+
+  const r = record as Record<string, unknown>;
+  const url = [r.url, r.path, r.fileUrl, r.location, r.secure_url, r.Location].find(
+    (v): v is string => typeof v === "string" && v.length > 0,
+  );
+
+  if (!url) {
+    console.error("Upload response has no recognizable URL field:", raw);
+    throw new ApiError(500, "Upload succeeded but the server didn't return a file URL");
+  }
+
+  return {
+    url,
+    filename:
+      typeof r.filename === "string"
+        ? r.filename
+        : (url.split("/").pop() ?? url),
+    originalName:
+      typeof r.originalName === "string" ? r.originalName : undefined,
+    mimetype: typeof r.mimetype === "string" ? r.mimetype : undefined,
+    size: typeof r.size === "number" ? r.size : undefined,
+  };
+}
+
+/**
  * Uploads a single image file via multipart/form-data and returns the saved
  * public URL (e.g. `/public/items/<uuid>.png`).
  */
@@ -61,10 +104,7 @@ export async function uploadImage(
     throw new ApiError(response.status, message, details);
   }
 
-  const payload = (await response.json()) as
-    | UploadFileResponse
-    | { data: UploadFileResponse };
-  return "data" in payload ? payload.data : payload;
+  return extractUploadFile(await response.json());
 }
 
 /**

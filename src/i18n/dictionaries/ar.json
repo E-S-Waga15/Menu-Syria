@@ -766,6 +766,7 @@
     "confirmDiscardOrderTitle": "تراجع عن الترتيب؟",
     "confirmDiscardOrderBody": "ستُفقد كل التغييرات التي أجريتها على الترتيب ولن تُحفظ.",
     "unsavedChanges": "لديك تغييرات لم تُحفظ بعد",
+    "unsavedChangesBlockSwitch": "لديك تغييرات لم تُحفظ — احفظها أو تجاهلها أولاً قبل المتابعة",
     "saveChanges": "حفظ التغييرات",
     "discardChanges": "تجاهل التغييرات",
     "confirmSaveChangesTitle": "حفظ التغييرات؟",
