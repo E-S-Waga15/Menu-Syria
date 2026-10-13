@@ -1,105 +1,108 @@
-# Backend changes needed — fulfillment modes, delivery fee, payment code
+# Backend changes needed — agent linkage, subscription details, item statistics
 
-This documents the backend contract changes the frontend now expects. Everything here is additive to the existing `Business` resource (`GET /restaurants/:slug`, `GET /stores/:slug`, `GET /me/restaurant`, `PATCH /businesses/:businessId`) — no existing field is renamed or removed.
+Everything here is additive to existing resources — no existing field is renamed or removed. The earlier fulfillment-modes/delivery-fee/payment-code work (previous version of this document) is already shipped and confirmed working; this is a fresh list for the next batch of frontend work.
 
-## ✅ Resolved — delivery-fee validation was firing on unrelated requests
+## 1. Which agent onboarded a business — new `agent` field on `Business`
 
-**Was:** toggling dine-in/pickup while delivery was already enabled only by default (never explicitly chosen) got rejected with 422, because the validation compared against the raw stored column (often `null`) instead of the resolved value after applying the type-based default — so a business that had never touched this setting looked like it was "newly adding delivery" on every unrelated PATCH.
+**Why:** the owner's dashboard now has a "your subscription was activated by agent X — contact them for anything" section, plus a dedicated support page that points to the same agent. Today there's no durable link from an approved business back to the agent who referred it — only the transient `RegistrationRequest.agent` field (admin-only, pre-approval) and a governorate-proximity guess used for the public agent-profile page. Neither is a real foreign key.
 
-**Fixed:** the validation now compares against the actual previous state (via the same default-resolving function), so the fee is only required when delivery is truly transitioning from absent to present in that request. Verified on production for both the original bug (dine-in toggle no longer 422s) and the real case (enabling delivery without a fee still correctly 422s).
-
-The frontend's temporary workaround (re-sending `deliveryFee` on every toggle) has been removed now that this is fixed at the source.
-
-## 1. Fulfillment modes — which of dine-in / pickup / delivery a business offers
-
-**Problem today:** the frontend infers available fulfillment modes purely from business type (restaurant → dine-in + pickup + delivery; store → pickup + delivery). There is no way for an individual restaurant to turn dine-in or pickup off, or for a store to turn delivery off.
-
-### New field on `Business`
+### New field, on `GET /me/restaurant` and `GET /me/store` only (never on public storefront reads)
 
 ```jsonc
 {
-  "fulfillmentModes": ["dineIn", "pickup", "delivery"] // subset, owner-configurable
+  "agent": {
+    "id": "a1",
+    "name": "أحمد الحموي",
+    "governorateId": "damascus",
+    "regionId": "bab-touma",
+    "phone": "+963944100200",
+    "whatsapp": "+963944100200",
+    "instagram": "ahmad.menusyria",   // optional
+    "facebook": "AhmadMenuSyria"      // optional
+  }
 }
 ```
 
-- Type: `("dineIn" | "pickup" | "delivery")[]`.
-- `dineIn` is only ever valid for a restaurant (a store can never offer it — reject it server-side if a store tries to set it).
-- Must contain at least one mode — reject a PATCH that would leave it empty.
-- Default for a newly-registered business: restaurant → `["dineIn", "pickup", "delivery"]`, store → `["pickup", "delivery"]` (matches today's hardcoded behavior, so nothing changes for a business that has never touched this setting).
-- **Absent/`null` on a GET response** (e.g. a business created before this field existed) means "use the type-based default above" — the frontend already falls back to this, so a migration/backfill is optional but recommended for consistency.
+- `null`/absent means this business wasn't signed up through an agent (self-registered, or predates this field).
+- This is a read-only, server-resolved field — the frontend never writes it. It should resolve from whatever already links a `RegistrationRequest` to an agent today (the same relationship `RegistrationRequest.agent` already carries pre-approval) — once a request is approved into a real `Business`, that same agent reference needs to persist onto the business record itself.
 
-### Write path
+## 2. Plan name and start date — new fields on `Business`
 
+**Why:** the subscription tab showed a hardcoded `"Premium"` and no start date at all — neither was ever a real field.
+
+```jsonc
+{
+  "planName": "Premium",
+  "planStartedAt": "2026-01-10T09:00:00.000Z"
+}
 ```
-PATCH /businesses/:businessId
-{ "fulfillmentModes": ["pickup", "delivery"] }
+
+- `planName`: the active plan's display name. Absent/empty falls back to a generic label on the frontend, so this is safe to roll out gradually.
+- `planStartedAt`: ISO datetime the current plan period began. Should be set to the moment an admin approves a registration request or a renewal (see §3) — paired with the existing `planExpiresAt` for "X days remaining" and a start/end display.
+
+## 3. Subscription duration at approval time — extend the registration-request approval endpoint
+
+**Why:** today `PATCH /registration-requests/:id/status` only takes `{ status, planId }` — the subscription's length is implied entirely by the plan's own `durationDays`. The dashboard now needs an admin to explicitly choose how long the subscription runs when approving, independent of the plan tier: monthly (a chosen number of months), a specific end date, or yearly — capped at one year no matter which is picked.
+
+### Extended request body
+
+```jsonc
+// PATCH /registration-requests/:id/status
+{
+  "status": "approved",
+  "planId": "plan_premium",
+  "durationType": "monthly",   // "monthly" | "custom" | "yearly"
+  "durationMonths": 3,         // only when durationType = "monthly", 1-12
+  "endDate": "2026-12-31"      // only when durationType = "custom", ISO date, ≤ 1 year from now
+}
 ```
 
 Validation:
-- Every entry must be one of the three known values.
-- `dineIn` rejected with 422 if the business is a store.
-- Empty array rejected with 422 ("at least one fulfillment mode is required").
-- If `delivery` is being added and the business has no `deliveryFee` set yet (see §2), reject with 422 — delivery cannot be turned on before a fee is configured, even "free" (0 counts as configured, see below).
+- `durationType` required when `status: "approved"`.
+- `monthly`: `durationMonths` required, integer 1-12.
+- `custom`: `endDate` required, must be in the future and no more than 365 days from the approval moment.
+- `yearly`: no extra field needed — always exactly 1 year from approval.
+- The subscription's `startDate` is always the approval timestamp (now), never admin-specified — only the length/end is chosen.
+- Reject (422) any combination where the computed period would exceed one year.
 
-## 2. Delivery fee — now mandatory once delivery is enabled
-
-**Problem today:** `deliveryFee` is `number | null`, and `null`/`0`/absent are all treated as "free delivery" — there's no way to tell "owner explicitly set free delivery" apart from "owner never touched this at all." The frontend now needs to force the owner to make an explicit choice before delivery can be turned on.
-
-### New field on `Business`
+On success, apply the computed `startDate`/`endDate` to the business's `planStartedAt`/`planExpiresAt` (§2), and ideally echo them back on the updated `RegistrationRequest`:
 
 ```jsonc
 {
-  "deliveryFeeConfigured": true, // owner has explicitly saved a fee (even 0/free) at least once
-  "deliveryFee": 0               // 0 = free delivery, >0 = flat charge in SYP
+  "subscriptionStartDate": "2026-10-14T08:00:00.000Z",
+  "subscriptionEndDate": "2027-01-14T08:00:00.000Z"
 }
 ```
 
-- `deliveryFeeConfigured` is `false`/absent until the owner saves this section for the first time; becomes `true` on the first successful `PATCH` that includes `deliveryFee`, and stays `true` from then on (even if the owner later disables delivery and re-enables it — the last chosen fee is remembered, same UX as today's `lastFee` behavior on the frontend, just now backed by a real flag instead of inferred from "fee happens to be nonzero").
-- `deliveryFee` itself keeps its existing meaning: `0` = free, `>0` = flat SYP charge. No change to this part.
+## 4. Per-item statistics endpoint — not implemented yet
 
-### Enforcement
+**Confirmed via code comment already in the frontend:** `GET /statistics/items/:id` is called (`getItemStatistics` in `src/features/restaurant-dashboard/services.ts`) but always 404s — there is no mock stub masking this, it's a real gap. Every *other* analytics endpoint in the same dashboard area (`/statistics/business`, `/statistics/overview`, `/statistics/best-selling`, `/statistics/categories`, `/statistics/peak-times`, `/statistics/live-activity`, `/statistics/insights`) is already implemented and working — this is the one missing piece, not a broader analytics gap.
 
-- `PATCH /businesses/:businessId` with `fulfillmentModes` that include `"delivery"`: if the business does not already have `deliveryFeeConfigured: true` **and** the same request does not also include a `deliveryFee`, reject with 422 ("set a delivery fee, free or priced, before enabling delivery").
-- A request may set both in one call: `{ "fulfillmentModes": [...,"delivery"], "deliveryFee": 0 }` — this is the primary path the dashboard now uses (the delivery-enable switch and the fee field save together).
-- Turning delivery back off (`fulfillmentModes` without `"delivery"`) never requires touching `deliveryFee` — the stored fee and `deliveryFeeConfigured` flag are left untouched so re-enabling later remembers the last value.
+### Requested shape — `GET /statistics/items/:itemId`
 
-## 3. Payment code — a typed/copyable Sham Cash transfer code, alongside the existing QR image
-
-**Problem today:** `paymentQrCode` (image) is the only way a business shows customers how to pay via Sham Cash. Many customers prefer to copy a short code into the Sham Cash app directly rather than scan+save an image.
-
-### New field on `Business`
+Matches the `ItemStatistics` type already defined in the frontend (`src/lib/types.ts`):
 
 ```jsonc
 {
-  "paymentCode": "SC-7421-9930-ALEP" // opaque string, owner-typed; "" or absent = not set
+  "viewCount": 128,
+  "cartAddCount": 34,
+  "quantitySold": 52,
+  "revenue": 780000,
+  "conversionRate": 0.27,      // cartAddCount / viewCount, or however it's best computed server-side
+  "favoriteCount": 9
 }
 ```
 
-- Type: `string`, optional/nullable. No format constraint from the backend's side — it's an opaque string the owner types in (their Sham Cash transfer code/account identifier), the frontend just displays and copies it verbatim.
-- Independent of `paymentQrCode` — a business can have either, both, or neither. The frontend shows whichever of the two is present; if both are present it shows both (QR card + a copy-code row).
-- Reasonable length cap recommended server-side (e.g. 120 chars) to stop abuse, but no specific format is assumed.
+- 403 should still mean "the business's plan doesn't include item-level statistics" (the frontend already distinguishes this from "not available yet" — see `ItemStatsModal`'s existing 403 handling).
+- 404 for an item id that doesn't belong to the authenticated business, same as other item-scoped endpoints.
 
-### Write path
+## 5. Summary of all new fields
 
-```
-PATCH /businesses/:businessId
-{ "paymentCode": "SC-7421-9930-ALEP" }
-```
-
-Same PATCH endpoint as everything else in this document — `paymentCode: ""` clears it, same convention as `paymentQrCode`.
-
-## 4. Summary of all new/changed `Business` fields
-
-| Field | Type | Notes |
-|---|---|---|
-| `fulfillmentModes` | `("dineIn" \| "pickup" \| "delivery")[]` | new, owner-configurable, see §1 |
-| `deliveryFeeConfigured` | `boolean` | new, see §2 |
-| `deliveryFee` | `number \| null` | unchanged meaning, now gated by §1/§2 validation |
-| `paymentCode` | `string` (optional) | new, see §3 |
-| `paymentQrCode` | `string` (optional) | unchanged |
-
-No existing field is removed or renamed. A client that doesn't send any of the new fields continues to behave exactly as it does today (restaurant/store-type-based fulfillment, `deliveryFee` treated as "0/absent = free").
-
-## 5. Order payload — no changes required
-
-`branchId` on order placement keeps its existing meaning (`undefined`/absent = main branch, a real branch id = that branch) — this document doesn't change the order-submission contract, only the business profile read/write contract above it.
+| Field | Resource | Type | Notes |
+|---|---|---|---|
+| `agent` | `Business` (owner reads only) | `BusinessAgent \| null` | §1 |
+| `planName` | `Business` | `string` (optional) | §2 |
+| `planStartedAt` | `Business` | `string` (ISO, optional) | §2 |
+| `durationType`, `durationMonths`, `endDate` | request body of `PATCH /registration-requests/:id/status` | — | §3, only when approving |
+| `subscriptionStartDate`, `subscriptionEndDate` | `RegistrationRequest` response | `string` (ISO, optional) | §3 |
+| `GET /statistics/items/:itemId` | new endpoint | `ItemStatistics` | §4 |

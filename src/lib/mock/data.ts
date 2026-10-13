@@ -191,6 +191,20 @@ export const restaurants: Restaurant[] = [
     isOpen: true,
     status: "active",
     planExpiresAt: "2026-12-01",
+    planStartedAt: "2026-01-10",
+    planName: "Premium",
+    // demonstrates the dashboard's agent-contact card — only this mock
+    // restaurant has one, so the other five exercise the no-agent state
+    agent: {
+      id: "a1",
+      name: "أحمد الحموي",
+      governorateId: "damascus",
+      regionId: "bab-touma",
+      phone: "+963 944 100 200",
+      whatsapp: "+963 944 100 200",
+      instagram: "ahmad.menusyria",
+      facebook: "AhmadMenuSyria",
+    },
     // one storefront publishes hours so both states are exercised: the rest
     // omit the field and render the "not added yet" case
     openingHours: [

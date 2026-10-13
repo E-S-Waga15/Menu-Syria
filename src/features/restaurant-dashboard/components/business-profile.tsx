@@ -19,12 +19,14 @@ import {
   Crown,
   Globe,
   Image as ImageIcon,
+  LifeBuoy,
   Link2,
   MapPin,
   MoreVertical,
   PackageOpen,
   Palette,
   Pencil,
+  Phone,
   Plus,
   Printer,
   QrCode,
@@ -102,7 +104,13 @@ import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { uploadImage } from "@/lib/api/upload";
 import { recoverBusinessFields } from "@/lib/business-text";
-import type { FulfillmentMode, Restaurant } from "@/lib/types";
+import type {
+  BusinessAgent,
+  FulfillmentMode,
+  Governorate,
+  Region,
+  Restaurant,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type I18n = ReturnType<typeof useI18n>;
@@ -1566,12 +1574,104 @@ function AppearanceSection({
   );
 }
 
+/**
+ * The same "how to reach your agent" card shows on both the subscription
+ * tab (where the activation came from) and the dedicated support page
+ * (where it's the whole point) — one component so the two never drift.
+ */
+function AgentContactCard({
+  agent,
+  governorates,
+  regions,
+  t,
+  lang,
+}: {
+  agent: BusinessAgent;
+  governorates?: Governorate[];
+  regions?: Region[];
+  t: I18n["t"];
+  lang: I18n["lang"];
+}) {
+  const governorateName = governorates?.find((g) => g.id === agent.governorateId)
+    ?.name[lang];
+  const regionName = regions?.find((r) => r.id === agent.regionId)?.name[lang];
+  const location = [governorateName, regionName].filter(Boolean).join(
+    lang === "ar" ? "، " : ", ",
+  );
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <User className="size-5 text-primary" />
+        {t.dashboard.yourAgentTitle}
+      </h2>
+
+      <div className="mt-4 flex items-center gap-3">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <User className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{agent.name}</p>
+          {location && (
+            <p className="truncate text-sm text-muted-foreground">{location}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a
+          href={`tel:${agent.phone.replace(/\s/g, "")}`}
+          className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <Phone className="size-4" />
+          {t.restaurant.call}
+        </a>
+        <a
+          href={`https://wa.me/${agent.whatsapp.replace(/[+\s]/g, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#1fb855]"
+        >
+          <WhatsAppIcon className="size-4" />
+          {t.restaurant.chat}
+        </a>
+        {agent.facebook && (
+          <a
+            href={`https://facebook.com/${agent.facebook}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex size-9 items-center justify-center rounded-full bg-[#1877F2]/10 text-[#1462c4] transition-colors hover:bg-[#1877F2]/20 dark:text-[#6ba8f5]"
+            aria-label={t.restaurant.facebook}
+          >
+            <FacebookIcon className="size-4" />
+          </a>
+        )}
+        {agent.instagram && (
+          <a
+            href={`https://instagram.com/${agent.instagram}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex size-9 items-center justify-center rounded-full bg-gradient-to-r from-[#f9ce34]/15 via-[#ee2a7b]/15 to-[#6228d7]/15 text-[#c13584] transition-colors hover:from-[#f9ce34]/25 hover:via-[#ee2a7b]/25 hover:to-[#6228d7]/25"
+            aria-label={t.restaurant.instagram}
+          >
+            <InstagramIcon className="size-4" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SubscriptionSection({
   restaurant,
+  governorates,
+  regions,
   t,
   lang,
 }: {
   restaurant: Restaurant;
+  governorates?: Governorate[];
+  regions?: Region[];
   t: I18n["t"];
   lang: I18n["lang"];
 }) {
@@ -1597,49 +1697,177 @@ function SubscriptionSection({
     }
   };
 
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(lang === "ar" ? "ar-SY" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil(
+      (new Date(restaurant.planExpiresAt).getTime() - new Date().getTime()) /
+        86_400_000,
+    ),
+  );
+  const agent = restaurant.agent;
+
   return (
-    <ProfileSection
-      title={t.dashboard.planTab}
-      icon={Crown}
-      editing={false}
-      editable={false}
-      t={t}
-      onEdit={() => {}}
-      onSave={() => {}}
-      onCancel={() => {}}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <span className="flex size-12 items-center justify-center rounded-xl bg-zest-soft text-zest-soft-foreground">
-            <Crown className="size-6" />
-          </span>
-          <div>
+    <div className="space-y-5">
+      {agent && (
+        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <p className="text-sm font-semibold">
+            {fmt(t.dashboard.subscriptionByAgentNotice, {
+              agentName: agent.name,
+              region:
+                regions?.find((r) => r.id === agent.regionId)?.name[lang] ??
+                governorates?.find((g) => g.id === agent.governorateId)
+                  ?.name[lang] ??
+                "",
+            })}
+          </p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {t.dashboard.subscriptionAgentContactHint}
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-border/60 bg-card p-6">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+          <Crown className="size-5 text-primary" />
+          {t.dashboard.planTab}
+        </h2>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-zest-soft text-zest-soft-foreground">
+              <Crown className="size-6" />
+            </span>
             <p className="flex items-center gap-2 font-heading font-bold">
-              Premium
-              <Badge className="bg-success/10 text-success">
-                {t.common.active}
+              {restaurant.planName || t.dashboard.defaultPlanName}
+              <Badge
+                className={cn(
+                  restaurant.status === "active"
+                    ? "bg-success/10 text-success"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {t.common[restaurant.status]}
               </Badge>
             </p>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <CalendarClock className="size-4" />
-              {fmt(t.dashboard.planExpires, {
-                date: new Date(restaurant.planExpiresAt).toLocaleDateString(
-                  lang === "ar" ? "ar-SY" : "en-US",
-                  { year: "numeric", month: "long", day: "numeric" },
-                ),
-              })}
+          </div>
+          {!agent && (
+            <Button
+              className="min-w-36"
+              onClick={() => void renew()}
+              disabled={renewing || plans.length === 0}
+            >
+              {t.dashboard.renewPlan}
+            </Button>
+          )}
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-muted/40 px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              {t.dashboard.daysRemaining}
+            </p>
+            <p className="mt-0.5 text-base font-bold" dir="ltr">
+              {daysRemaining}
+            </p>
+          </div>
+          <div className="rounded-xl bg-muted/40 px-4 py-3">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarClock className="size-3.5" />
+              {t.dashboard.planStarted}
+            </p>
+            <p className="mt-0.5 text-sm font-bold">
+              {restaurant.planStartedAt
+                ? formatDate(restaurant.planStartedAt)
+                : "—"}
+            </p>
+          </div>
+          <div className="rounded-xl bg-muted/40 px-4 py-3">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarClock className="size-3.5" />
+              {t.dashboard.planEnds}
+            </p>
+            <p className="mt-0.5 text-sm font-bold">
+              {formatDate(restaurant.planExpiresAt)}
             </p>
           </div>
         </div>
-        <Button
-          className="min-w-36"
-          onClick={() => void renew()}
-          disabled={renewing || plans.length === 0}
-        >
-          {t.dashboard.renewPlan}
-        </Button>
       </div>
-    </ProfileSection>
+
+      {agent && (
+        <AgentContactCard
+          agent={agent}
+          governorates={governorates}
+          regions={regions}
+          t={t}
+          lang={lang}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The account's one line to Menu Syria support — but there is no Menu
+ * Syria support contact here, deliberately: the agent who onboarded this
+ * business owns that relationship, so this page points there instead of
+ * duplicating (or competing with) the subscription tab's own agent card.
+ */
+function SupportSection({
+  restaurant,
+  governorates,
+  regions,
+  t,
+  lang,
+}: {
+  restaurant: Restaurant;
+  governorates?: Governorate[];
+  regions?: Region[];
+  t: I18n["t"];
+  lang: I18n["lang"];
+}) {
+  const agent = restaurant.agent;
+  const region =
+    regions?.find((r) => r.id === agent?.regionId)?.name[lang] ??
+    governorates?.find((g) => g.id === agent?.governorateId)?.name[lang] ??
+    "";
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-border/60 bg-card p-6">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+          <LifeBuoy className="size-5 text-primary" />
+          {t.dashboard.supportTab}
+        </h2>
+        {agent ? (
+          <Badge className="mt-4 bg-primary/10 text-primary">
+            {fmt(t.dashboard.supportActivatedByAgent, {
+              agentName: agent.name,
+              region,
+            })}
+          </Badge>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t.dashboard.supportNoAgentHint}
+          </p>
+        )}
+      </div>
+
+      {agent && (
+        <AgentContactCard
+          agent={agent}
+          governorates={governorates}
+          regions={regions}
+          t={t}
+          lang={lang}
+        />
+      )}
+    </div>
   );
 }
 
@@ -1928,6 +2156,12 @@ export function BusinessProfile() {
               >
                 {t.dashboard.planTab}
               </TabsTrigger>
+              <TabsTrigger
+                value="support"
+                className="shrink-0 rounded-lg px-6 py-2.5 font-semibold"
+              >
+                {t.dashboard.supportTab}
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1964,7 +2198,22 @@ export function BusinessProfile() {
             </div>
           </TabsContent>
           <TabsContent value="plan">
-            <SubscriptionSection restaurant={restaurant} t={t} lang={lang} />
+            <SubscriptionSection
+              restaurant={restaurant}
+              governorates={governorates}
+              regions={regions}
+              t={t}
+              lang={lang}
+            />
+          </TabsContent>
+          <TabsContent value="support">
+            <SupportSection
+              restaurant={restaurant}
+              governorates={governorates}
+              regions={regions}
+              t={t}
+              lang={lang}
+            />
           </TabsContent>
         </Tabs>
       </div>
