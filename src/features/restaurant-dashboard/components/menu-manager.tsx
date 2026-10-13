@@ -23,6 +23,8 @@ import {
 } from "@/features/restaurant-dashboard/components/menu-category-bar";
 import { MenuDishDialog } from "@/features/restaurant-dashboard/components/menu-dish-dialog";
 import { ItemStatsModal } from "@/features/restaurant-dashboard/components/item-stats-modal";
+import { ItemPreviewModal } from "@/features/restaurant-dashboard/components/item-preview-modal";
+import { ItemOptionsModal } from "@/features/restaurant-dashboard/components/item-options-modal";
 import {
   MenuItemCard,
   MenuItemRow,
@@ -67,6 +69,8 @@ export function MenuManager() {
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<MenuItem | null>(null);
   const [statsItem, setStatsItem] = useState<MenuItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<MenuItem | null>(null);
+  const [optionsItem, setOptionsItem] = useState<MenuItem | null>(null);
   // staged item order, within the single category being reordered — only
   // written once the owner confirms, never on the drag/click that drew it
   const [stagedOrderIds, setStagedOrderIds] = useState<string[] | null>(null);
@@ -216,6 +220,8 @@ export function MenuManager() {
       onEdit: () => openEdit(item),
       onDelete: () => setDeletingItem(item),
       onShowStats: () => setStatsItem(item),
+      onPreview: () => setPreviewItem(item),
+      onEditOptions: () => setOptionsItem(item),
     };
   };
 
@@ -286,6 +292,23 @@ export function MenuManager() {
         onOpenChange={(open) => !open && setStatsItem(null)}
       />
 
+      <ItemPreviewModal
+        item={previewItem}
+        open={previewItem !== null}
+        onOpenChange={(open) => !open && setPreviewItem(null)}
+      />
+
+      <ItemOptionsModal
+        item={optionsItem}
+        open={optionsItem !== null}
+        onOpenChange={(open) => !open && setOptionsItem(null)}
+        isStore={isStore}
+        onSave={(optionGroups) => {
+          if (optionsItem) itemMutations.edit(optionsItem.id, { optionGroups });
+          setOptionsItem(null);
+        }}
+      />
+
       <AlertDialog
         open={confirmOrderAction !== null}
         onOpenChange={(open) => !open && setConfirmOrderAction(null)}
@@ -341,8 +364,9 @@ export function MenuManager() {
             description: dish.descText ?? "",
             price: dish.price ?? 0,
             currency: dish.currency,
-            optionGroups: dish.optionGroups ?? [],
-            // an empty gallery is meaningful: the owner took every photo off
+            // option groups are edited on their own now, from the item
+            // card's kebab menu (ItemOptionsModal) — this dialog no longer
+            // touches them, so they aren't in its payload
             images: dish.images ?? [],
           };
           // the mutation's own onSuccess toasts once the server actually

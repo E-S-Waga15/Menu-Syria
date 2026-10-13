@@ -754,7 +754,12 @@
     "favoriteCount": "مرات الإضافة للمفضلة",
     "productStatsHint": "أداء هذا المنتج بين زبائنك خلال آخر 30 يوماً",
     "productStatsUnavailable": "لا تتوفر إحصائيات تفصيلية لهذا المنتج بعد — ستظهر هنا بعد ربط الخادم بهذه الميزة",
-    "productStatsLocked": "إحصائيات المنتجات غير متاحة في خطتك الحالية"
+    "productStatsLocked": "إحصائيات المنتجات غير متاحة في خطتك الحالية",
+    "viewProduct": "عرض المنتج",
+    "itemOptionsAction": "الخيارات",
+    "optionsSaved": "تم حفظ خيارات المنتج",
+    "previewUnavailable": "لا تتوفر صورة لهذا المنتج",
+    "closePreview": "إغلاق المعاينة"
   },
   "agent": {
     "dashboard": "لوحة الوكيل",
@@ -970,7 +975,17 @@
     "whatsappPairingTitle": "ربط رقم جديد",
     "whatsappReplacingTitle": "تبديل الرقم",
     "whatsappStarting": "جارٍ بدء الاقتران…",
-    "whatsappNoNumber": "لا يوجد رقم مرتبط"
+    "whatsappNoNumber": "لا يوجد رقم مرتبط",
+    "viewUserDetails": "عرض التفاصيل",
+    "banUser": "حظر المستخدم",
+    "unbanUser": "إلغاء الحظر",
+    "userOptions": "خيارات المستخدم",
+    "confirmBanUserTitle": "حظر هذا المستخدم؟",
+    "confirmBanUserBody": "لن يتمكن {name} من تسجيل الدخول حتى تُلغي الحظر.",
+    "confirmUnbanUserTitle": "إلغاء حظر هذا المستخدم؟",
+    "confirmUnbanUserBody": "سيتمكن {name} من تسجيل الدخول مجدداً.",
+    "userBanned": "تم حظر المستخدم",
+    "userUnbanned": "تم إلغاء حظر المستخدم"
   },
   "orderHistory": {
     "title": "طلباتي السابقة",

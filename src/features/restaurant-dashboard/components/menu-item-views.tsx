@@ -1,21 +1,26 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
   BarChart3,
+  Eye,
   GripVertical,
   ImageOff,
   Pencil,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 
+import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { SafeImage } from "@/components/shared/safe-image";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
-import type { MenuItem } from "@/lib/types";
+import { queryKeys } from "@/lib/api/query-keys";
+import type { ItemStatistics, MenuItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** everything a row or card needs; the parent owns the data and the actions */
@@ -36,6 +41,10 @@ export interface MenuItemViewProps {
   onEdit: () => void;
   onDelete: () => void;
   onShowStats: () => void;
+  /** opens the read-only customer-facing preview (grid card only) */
+  onPreview: () => void;
+  /** opens the dedicated option-groups modal (grid card only) */
+  onEditOptions: () => void;
 }
 
 /** shared drag wiring, so the row and the card cannot drift apart */
@@ -159,9 +168,47 @@ export function MenuItemRow(props: MenuItemViewProps) {
   );
 }
 
+/**
+ * Grid card: image + kebab on top (the admin console's businesses grid uses
+ * the same glass-chip-over-the-photo placement for its own `RowActions`),
+ * then name/price, then a bottom row for the views badge, the availability
+ * switch and the reorder arrows — the PersonCard rhythm (avatar+kebab top →
+ * title → badges/controls row) rather than the old icon-button strip.
+ */
 export function MenuItemCard(props: MenuItemViewProps) {
   const { t, lang } = useI18n();
   const { item } = props;
+  const queryClient = useQueryClient();
+
+  // Reuses whatever `ItemStatsModal` already cached for this item instead of
+  // firing a second request per card — a grid of 20 cards would otherwise be
+  // 20 extra calls to an endpoint the backend may not even have deployed yet.
+  // No cache entry (never opened) means no number is shown, same honest
+  // degradation `ItemStatsModal` itself uses for a missing endpoint.
+  const cachedStats = queryClient.getQueryData<ItemStatistics | undefined>(
+    queryKeys.statistics.item(item.id),
+  );
+
+  const actions: RowAction[] = [
+    { label: t.dashboard.viewProduct, icon: Eye, onSelect: props.onPreview },
+    {
+      label: t.dashboard.productStats,
+      icon: BarChart3,
+      onSelect: props.onShowStats,
+    },
+    { label: t.common.edit, icon: Pencil, onSelect: props.onEdit },
+    {
+      label: t.dashboard.itemOptionsAction,
+      icon: SlidersHorizontal,
+      onSelect: props.onEditOptions,
+    },
+    {
+      label: t.common.delete,
+      icon: Trash2,
+      onSelect: props.onDelete,
+      danger: true,
+    },
+  ];
 
   return (
     <div
@@ -188,6 +235,16 @@ export function MenuItemCard(props: MenuItemViewProps) {
         {props.draggable && (
           <GripVertical className="absolute start-2 top-2 size-4 shrink-0 cursor-grab text-white" />
         )}
+        <div
+          className="absolute end-2 top-2"
+          onMouseDown={(e) => e.stopPropagation()}
+          onDragStart={(e) => e.preventDefault()}
+        >
+          <RowActions
+            actions={actions}
+            triggerClassName="size-8 bg-white/80 text-foreground backdrop-blur hover:bg-white dark:bg-black/55 dark:text-white dark:hover:bg-black/75"
+          />
+        </div>
       </div>
       <div className="p-3">
         <p className="truncate text-sm font-bold">{item.name[lang]}</p>
@@ -195,15 +252,21 @@ export function MenuItemCard(props: MenuItemViewProps) {
           {formatPrice(item.price, item.currency ?? "SYP", lang)}
         </p>
         <div
-          className="mt-2.5 flex items-center justify-between"
+          className="mt-2.5 flex items-center justify-between gap-2 border-t border-border/60 pt-2.5"
           onMouseDown={(e) => e.stopPropagation()}
           onDragStart={(e) => e.preventDefault()}
         >
-          <Switch
-            checked={item.isAvailable}
-            onCheckedChange={props.onToggleAvailability}
-            className="data-[checked]:bg-success"
-          />
+          <span
+            className="flex items-center gap-1 text-xs font-semibold text-muted-foreground"
+            title={t.dashboard.viewCount}
+          >
+            <Eye className="size-3.5" />
+            {cachedStats
+              ? cachedStats.viewCount.toLocaleString(
+                  lang === "ar" ? "ar-SY" : "en-US",
+                )
+              : "—"}
+          </span>
           <div className="flex items-center gap-1">
             {props.draggable && (
               <>
@@ -227,31 +290,11 @@ export function MenuItemCard(props: MenuItemViewProps) {
                 </Button>
               </>
             )}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t.dashboard.productStats}
-              onClick={props.onShowStats}
-            >
-              <BarChart3 className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t.common.edit}
-              onClick={props.onEdit}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t.common.delete}
-              className="text-muted-foreground hover:text-destructive"
-              onClick={props.onDelete}
-            >
-              <Trash2 className="size-4" />
-            </Button>
+            <Switch
+              checked={item.isAvailable}
+              onCheckedChange={props.onToggleAvailability}
+              className="data-[checked]:bg-success"
+            />
           </div>
         </div>
       </div>

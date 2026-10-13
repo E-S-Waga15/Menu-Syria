@@ -266,6 +266,27 @@ export async function updateAdminBusinessStatus(
   });
 }
 
+/**
+ * Bans/unbans a platform account — `PATCH /users/:id/status`, confirmed
+ * against the live backend's `UsersController`/`UpdateUserStatusDto`, which
+ * only ever accepts `{ status: "active" | "banned" }`. There is no delete
+ * endpoint for a user in that controller (just `GET /users`, `GET /users/:id`
+ * and this status patch), so the admin card's kebab menu has no delete
+ * action — see the Users controller, which only exposes those three routes.
+ */
+export async function updateAdminUserStatus(
+  userId: string,
+  status: "active" | "banned",
+  auth: AdminAuth = {},
+): Promise<{ message?: string } | undefined> {
+  if (IS_MOCK) return mockDelay(undefined, 150);
+  return apiFetch(`/users/${userId}/status`, {
+    method: "PATCH",
+    headers: authHeaders(auth),
+    body: { status },
+  });
+}
+
 export async function getRegistrationRequests(
   auth: AdminAuth = {},
 ): Promise<RegistrationRequest[]> {

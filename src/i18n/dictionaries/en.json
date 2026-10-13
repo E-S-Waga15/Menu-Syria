@@ -754,7 +754,12 @@
     "favoriteCount": "Added to favorites",
     "productStatsHint": "This product's performance with your customers over the last 30 days",
     "productStatsUnavailable": "Detailed statistics for this product aren't available yet — they'll appear here once the server supports this feature",
-    "productStatsLocked": "Product statistics aren't available on your current plan"
+    "productStatsLocked": "Product statistics aren't available on your current plan",
+    "viewProduct": "View product",
+    "itemOptionsAction": "Options",
+    "optionsSaved": "Item options saved",
+    "previewUnavailable": "No image available for this item",
+    "closePreview": "Close preview"
   },
   "agent": {
     "dashboard": "Agent dashboard",
@@ -970,7 +975,17 @@
     "whatsappPairingTitle": "Link a new number",
     "whatsappReplacingTitle": "Replace number",
     "whatsappStarting": "Starting pairing…",
-    "whatsappNoNumber": "No number linked"
+    "whatsappNoNumber": "No number linked",
+    "viewUserDetails": "View details",
+    "banUser": "Ban user",
+    "unbanUser": "Unban",
+    "userOptions": "User options",
+    "confirmBanUserTitle": "Ban this user?",
+    "confirmBanUserBody": "{name} won't be able to sign in until unbanned.",
+    "confirmUnbanUserTitle": "Unban this user?",
+    "confirmUnbanUserBody": "{name} will be able to sign in again.",
+    "userBanned": "User banned",
+    "userUnbanned": "User unbanned"
   },
   "orderHistory": {
     "title": "Past orders",

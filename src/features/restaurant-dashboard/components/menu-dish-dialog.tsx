@@ -3,13 +3,12 @@
 import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, X } from "lucide-react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { X } from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
 
 import { FieldError } from "@/components/shared/field-error";
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -33,68 +32,7 @@ import {
 } from "@/features/restaurant-dashboard/schemas";
 import { useI18n } from "@/i18n/client";
 import { uploadImage } from "@/lib/api/upload";
-import type {
-  CatalogOptionGroup,
-  MenuCategory,
-  MenuItem,
-  OptionSelectionType,
-} from "@/lib/types";
-import { cn } from "@/lib/utils";
-
-/**
- * The backend's `CatalogOption`/`CatalogOptionGroup` carry only `id` — the
- * owner's own typed text doubles as the label, there is no separate name
- * field. That `id` is exactly what this form edits live on every keystroke,
- * so it cannot also be the React key (the list would remount, and every
- * input would drop focus after one character). `key` below is a draft-only,
- * never-submitted identity that solves that; `toOptionGroups` strips it back
- * out to the real shape on save.
- */
-interface DraftOption {
-  key: string;
-  id: string;
-  priceDelta: number;
-}
-interface DraftGroup {
-  key: string;
-  id: string;
-  selectionType: OptionSelectionType;
-  required: boolean;
-  priceMode: "delta" | "absolute";
-  options: DraftOption[];
-}
-
-function toDraftGroups(groups: CatalogOptionGroup[] | undefined): DraftGroup[] {
-  return (groups ?? []).map((g) => ({
-    key: crypto.randomUUID(),
-    id: g.id,
-    selectionType: g.selectionType,
-    required: g.required,
-    priceMode: g.priceMode ?? "delta",
-    options: g.options.map((o) => ({
-      key: crypto.randomUUID(),
-      id: o.id,
-      priceDelta: o.priceDelta,
-    })),
-  }));
-}
-
-/**
- * Drops any group or option the owner left blank before it ever reaches the
- * server. `id` doubles as the label here, so an empty one isn't a valid row
- * to save — sending it anyway is what used to come back as an
- * auto-generated placeholder like "og1791734539202" instead of real text.
- */
-function toOptionGroups(groups: DraftGroup[]): CatalogOptionGroup[] {
-  return groups
-    .filter((g) => g.id.trim() !== "")
-    .map(({ key: _key, options, ...g }) => ({
-      ...g,
-      options: options
-        .filter((o) => o.id.trim() !== "")
-        .map(({ key: _optKey, ...o }) => o),
-    }));
-}
+import type { MenuCategory, MenuItem } from "@/lib/types";
 
 /**
  * Create/edit panel for a single menu item, lifted out of MenuManager so the
@@ -118,7 +56,6 @@ export function MenuDishDialog({
     nameText?: string;
     descText?: string;
     price?: number;
-    optionGroups?: CatalogOptionGroup[];
     categoryId: string;
     currency: "SYP" | "USD";
     /** gallery, first entry first — the parent maps [0] onto imageUrl */
@@ -139,26 +76,8 @@ export function MenuDishDialog({
     mode: "onTouched",
   });
 
-  const [groups, setGroups] = useState<DraftGroup[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState("");
-
-  // the option price-delta fields show this beside each one, so an owner
-  // never has to guess which currency a +2,000 means
-  const currencyValue = useWatch({ control, name: "currency" });
-  // base price, live — an "absolute" group converts each option's final
-  // price to/from this on the fly, so it has to track the price field as
-  // the owner edits it, not just its value when the dialog opened
-  const priceValueRaw = useWatch({ control, name: "price" });
-  const basePrice = Number(priceValueRaw) || 0;
-  const currencySuffix =
-    lang === "ar"
-      ? currencyValue === "USD"
-        ? "دولار"
-        : "ل.س"
-      : currencyValue === "USD"
-        ? "$"
-        : "SYP";
 
   // Re-seed the fields whenever a different dish is opened (during render, no effect)
   const [seededFor, setSeededFor] = useState<{
@@ -173,7 +92,6 @@ export function MenuDishDialog({
       price: editing ? String(editing.price) : "",
       currency: editing?.currency ?? "SYP",
     });
-    setGroups(toDraftGroups(editing?.optionGroups));
     setCategoryId(editing?.categoryId ?? categories[0]?.id ?? "");
     // an older item may only have the single imageUrl; treat it as a gallery
     // of one so editing never silently drops it
@@ -189,86 +107,8 @@ export function MenuDishDialog({
       price: Number(values.price) || 0,
       currency: values.currency,
       categoryId,
-      optionGroups: toOptionGroups(groups),
       images,
     });
-
-  const addGroup = (preset: "size" | "color" | "custom") => {
-    const presetId =
-      preset === "size"
-        ? t.dashboard.presetSize
-        : preset === "color"
-          ? t.dashboard.presetColor
-          : "";
-    setGroups((prev) => [
-      ...prev,
-      {
-        key: crypto.randomUUID(),
-        id: presetId,
-        selectionType: preset === "custom" ? "multiple" : "single",
-        required: preset !== "custom",
-        // "size" is the classic final-price-per-option case ("Large" = 350);
-        // color/custom groups default to the familiar additive delta
-        priceMode: preset === "size" ? "absolute" : "delta",
-        options: [],
-      },
-    ]);
-  };
-
-  const updateGroup = (key: string, patch: Partial<DraftGroup>) => {
-    setGroups((prev) =>
-      prev.map((g) => (g.key === key ? { ...g, ...patch } : g)),
-    );
-  };
-
-  const removeGroup = (key: string) => {
-    setGroups((prev) => prev.filter((g) => g.key !== key));
-  };
-
-  const addOption = (groupKey: string) => {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.key === groupKey
-          ? {
-            ...g,
-            options: [
-              ...g.options,
-              { key: crypto.randomUUID(), id: "", priceDelta: 0 },
-            ],
-          }
-          : g,
-      ),
-    );
-  };
-
-  const updateOption = (
-    groupKey: string,
-    optionKey: string,
-    patch: Partial<DraftOption>,
-  ) => {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.key !== groupKey
-          ? g
-          : {
-            ...g,
-            options: g.options.map((o) =>
-              o.key === optionKey ? { ...o, ...patch } : o,
-            ),
-          },
-      ),
-    );
-  };
-
-  const removeOption = (groupKey: string, optionKey: string) => {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.key === groupKey
-          ? { ...g, options: g.options.filter((o) => o.key !== optionKey) }
-          : g,
-      ),
-    );
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -430,210 +270,6 @@ export function MenuDishDialog({
                     setImages((prev) => [...prev, url]);
                 }}
               />
-            </div>
-
-            {/* option groups */}
-            <div className="space-y-3 border-t border-border/60 pt-4">
-              <Label>{t.dashboard.itemOptions}</Label>
-
-              {groups.map((group) => (
-                <div
-                  key={group.key}
-                  className="space-y-3 rounded-xl border border-border/60 p-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={group.id}
-                      onChange={(e) =>
-                        updateGroup(group.key, { id: e.target.value })
-                      }
-                      placeholder={t.dashboard.optionGroupNamePlaceholder}
-                      className="h-9 flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t.common.delete}
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => removeGroup(group.key)}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
-                      {(["single", "multiple"] as OptionSelectionType[]).map(
-                        (type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() =>
-                              updateGroup(group.key, {
-                                selectionType: type,
-                                // "absolute" prices don't combine — only a
-                                // single-pick group can mean one final price
-                                priceMode:
-                                  type === "multiple" ? "delta" : group.priceMode,
-                              })
-                            }
-                            className={cn(
-                              "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
-                              group.selectionType === type
-                                ? "bg-primary text-primary-foreground"
-                                : "text-muted-foreground hover:bg-accent",
-                            )}
-                          >
-                            {type === "single"
-                              ? t.dashboard.selectionSingle
-                              : t.dashboard.selectionMultiple}
-                          </button>
-                        ),
-                      )}
-                    </div>
-                    <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                      <Checkbox
-                        checked={group.required}
-                        onCheckedChange={(v) =>
-                          updateGroup(group.key, { required: v === true })
-                        }
-                      />
-                      {t.dashboard.optionRequired}
-                    </label>
-                  </div>
-
-                  {group.selectionType === "single" && (
-                    <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
-                      {(["delta", "absolute"] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => updateGroup(group.key, { priceMode: mode })}
-                          className={cn(
-                            "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
-                            group.priceMode === mode
-                              ? "bg-primary text-primary-foreground"
-                              : "text-muted-foreground hover:bg-accent",
-                          )}
-                        >
-                          {mode === "delta"
-                            ? t.dashboard.priceModeDelta
-                            : t.dashboard.priceModeAbsolute}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {group.selectionType === "single" &&
-                    group.priceMode === "absolute" && (
-                      <p className="text-xs text-muted-foreground">
-                        {t.dashboard.priceModeHint}
-                      </p>
-                    )}
-
-                  <div className="space-y-2">
-                    {group.options.map((option) => {
-                      // "absolute" mode shows/edits the option's own final
-                      // price; what's actually stored (`priceDelta`) stays
-                      // the difference from the base price either way, since
-                      // that's the only shape the order's price math reads
-                      const displayValue =
-                        group.priceMode === "absolute"
-                          ? basePrice + option.priceDelta
-                          : option.priceDelta;
-                      return (
-                      <div key={option.key} className="flex items-center gap-2">
-                        <Input
-                          value={option.id}
-                          onChange={(e) =>
-                            updateOption(group.key, option.key, {
-                              id: e.target.value,
-                            })
-                          }
-                          placeholder={t.dashboard.optionNamePlaceholder}
-                          className="h-8 flex-1"
-                        />
-                        <Input
-                          type="number"
-                          dir="ltr"
-                          // blank rather than a sitting "0" — the owner types
-                          // the actual value instead of clearing a value
-                          // that was never theirs
-                          value={displayValue === 0 ? "" : displayValue}
-                          onChange={(e) => {
-                            const entered =
-                              e.target.value === "" ? 0 : Number(e.target.value);
-                            updateOption(group.key, option.key, {
-                              priceDelta:
-                                group.priceMode === "absolute"
-                                  ? entered - basePrice
-                                  : entered,
-                            });
-                          }}
-                          placeholder="0"
-                          className="h-8 w-20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                        />
-                        <span className="text-xs font-semibold whitespace-nowrap text-muted-foreground">
-                          {currencySuffix}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={t.common.delete}
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() => removeOption(group.key, option.key)}
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      </div>
-                      );
-                    })}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-primary"
-                      onClick={() => addOption(group.key)}
-                    >
-                      <Plus className="size-3.5" />
-                      {t.dashboard.addOption}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addGroup("size")}
-                >
-                  <Plus className="size-3.5" />
-                  {t.dashboard.presetSize}
-                </Button>
-                {isStore && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addGroup("color")}
-                  >
-                    <Plus className="size-3.5" />
-                    {t.dashboard.presetColor}
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addGroup("custom")}
-                >
-                  <Plus className="size-3.5" />
-                  {t.dashboard.addOptionGroup}
-                </Button>
-              </div>
             </div>
           </div>
           <DialogFooter className="px-4 pb-4">
