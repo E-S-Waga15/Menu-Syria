@@ -26,14 +26,17 @@ import {
   itemOptionsSchema,
   type ItemOptionsValues,
 } from "@/features/restaurant-dashboard/schemas";
-import { useI18n } from "@/i18n/client";
+import { fmt, useI18n } from "@/i18n/client";
 import type { CatalogOptionGroup, MenuItem, OptionSelectionType } from "@/lib/types";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 /**
  * Drops any group or option the owner left blank before it ever reaches the
  * server — `id` doubles as the label here, so an empty one is not a valid
- * row to save (moved here unchanged from the old dish dialog).
+ * row to save (moved here unchanged from the old dish dialog). A group that
+ * ends up with no options left after that is dropped too: the backend
+ * rejects an empty `options` array outright (`ItemsService.assertOptionGroups`).
  */
 function toOptionGroups(groups: ItemOptionsValues["groups"]): CatalogOptionGroup[] {
   return groups
@@ -41,7 +44,8 @@ function toOptionGroups(groups: ItemOptionsValues["groups"]): CatalogOptionGroup
     .map((g) => ({
       ...g,
       options: g.options.filter((o) => o.id.trim() !== ""),
-    }));
+    }))
+    .filter((g) => g.options.length > 0);
 }
 
 function toFormGroups(groups: CatalogOptionGroup[] | undefined): ItemOptionsValues["groups"] {
@@ -281,8 +285,30 @@ export function ItemOptionsModal({
         : "SYP";
 
   const submit = async (values: ItemOptionsValues) => {
+    const groups = toOptionGroups(values.groups);
+
+    // The backend rejects any option whose priceDelta comes out negative
+    // (menu_syria_backend's ItemsService.assertOptionGroups) — which a
+    // single-choice group's own "type the final price" entry produces the
+    // moment an option costs less than the item's base price (e.g. a
+    // "Small" cheaper than the base). Caught here, with the real cause
+    // named, instead of letting the save fail with the backend's generic
+    // "بيانات خيار المنتج غير صحيحة" and no clue which field is wrong.
+    for (const group of groups) {
+      const cheaper = group.options.find((o) => o.priceDelta < 0);
+      if (cheaper) {
+        toast.error(
+          fmt(t.dashboard.optionPriceBelowBase, {
+            option: cheaper.id,
+            base: basePrice,
+          }),
+        );
+        return;
+      }
+    }
+
     try {
-      await onSave(toOptionGroups(values.groups));
+      await onSave(groups);
       onOpenChange(false);
     } catch {
       // the mutation's own onError already toasted — keep the dialog open

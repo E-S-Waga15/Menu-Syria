@@ -81,12 +81,23 @@ function ItemEntryBody(props: MenuItemViewProps) {
     queryKeys.statistics.item(item.id),
   );
 
-  // Stats/options/edit move out to their own tappable icons in the footer
-  // row (one tap, not two) — the kebab only keeps preview and delete, the
-  // two actions that are either low-frequency or destructive enough to
-  // deserve the extra step.
+  // Stats/options/edit also sit as their own tappable icons in the footer
+  // row (one tap instead of two), but the kebab keeps the full set — some
+  // owners reach for the menu out of habit, and it should never show less
+  // than what the card itself can do.
   const actions: RowAction[] = [
     { label: t.dashboard.viewProduct, icon: Eye, onSelect: props.onPreview },
+    {
+      label: t.dashboard.productStats,
+      icon: BarChart3,
+      onSelect: props.onShowStats,
+    },
+    { label: t.common.edit, icon: Pencil, onSelect: props.onEdit },
+    {
+      label: t.dashboard.itemOptionsAction,
+      icon: SlidersHorizontal,
+      onSelect: props.onEditOptions,
+    },
     {
       label: t.common.delete,
       icon: Trash2,
