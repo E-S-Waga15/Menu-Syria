@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Bell, LayoutDashboard, ShoppingBag, Store } from "lucide-react";
+import { Bell, LayoutDashboard, ShoppingBag, Sparkles, Store } from "lucide-react";
 
 import { AccountMenu } from "@/components/shared/account-menu";
 import {
@@ -35,6 +35,7 @@ export function AgentDashboardShell({
     { href: base, label: t.agent.earnings, icon: LayoutDashboard, exact: true },
     { href: `${base}/restaurants`, label: t.agent.myRestaurants, icon: Store },
     { href: `${base}/stores`, label: t.agent.myStores, icon: ShoppingBag },
+    { href: `${base}/plans`, label: t.agent.plansTab, icon: Sparkles },
     {
       href: `${base}/notifications`,
       label: t.notifications.title,

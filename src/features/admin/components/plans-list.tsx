@@ -69,6 +69,7 @@ const emptyDraft: Draft = {
 export function AdminPlansList({ plans }: { plans: Plan[] }) {
   const { t, lang } = useI18n();
   const [rows, setRows] = useState(plans);
+  const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleting, setDeleting] = useState<Plan | null>(null);
@@ -85,66 +86,52 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
       isPopular: Boolean(plan.isPopular),
     });
 
+  // only the monthly price and the plan's own metadata are ever sent —
+  // the yearly price, both agent prices, and every savings figure come
+  // back already computed on the saved `Plan` and are used as-is below,
+  // never recalculated here
   const save = async () => {
     if (!draft) return;
     const name = draft.name.trim();
     if (!name) return;
 
-    const features = draft.features
-      .map((f) => f.trim())
-      .filter(Boolean)
-      .map((f) => ({ ar: f, en: f }));
+    const priceMonthly = Number(draft.priceMonthly) || 0;
+    const features = draft.features.map((f) => f.trim()).filter(Boolean);
 
-    const nextPlan: Plan = {
-      id: draft.id ?? `p${Date.now()}`,
-      name: { ar: name, en: name },
-      priceMonthly: Number(draft.priceMonthly) || 0,
-      features,
-      subscriberCount:
-        rows.find((p) => p.id === draft.id)?.subscriberCount ?? 0,
-      isPopular: draft.isPopular,
-    };
-
-    let message: string | undefined;
     setIsSaving(true);
     try {
-      if (draft.id) {
-        const result = await updateAdminPlan(draft.id, {
-          name,
-          price: nextPlan.priceMonthly,
-          agentPrice: 0,
-          durationDays: 30,
-        });
-        message = (result as { message?: string })?.message;
-      } else {
-        const result = await createAdminPlan({
-          name,
-          price: nextPlan.priceMonthly,
-          agentPrice: 0,
-          durationDays: 30,
-        });
-        message = (result as { message?: string })?.message;
-      }
+      const result = draft.id
+        ? await updateAdminPlan(draft.id, {
+            name,
+            priceMonthly,
+            features,
+            isPopular: draft.isPopular,
+          })
+        : await createAdminPlan({
+            name,
+            priceMonthly,
+            features,
+            isPopular: draft.isPopular,
+          });
+
+      setRows((prev) => {
+        // only one tier can be the highlighted one
+        const cleared = draft.isPopular
+          ? prev.map((p) => ({ ...p, isPopular: false }))
+          : prev;
+
+        return draft.id
+          ? cleared.map((p) => (p.id === draft.id ? result : p))
+          : [...cleared, result];
+      });
+
+      toast.success((result as { message?: string })?.message ?? t.admin.planSaved);
+      setDraft(null);
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
       setIsSaving(false);
-      return;
     }
-
-    setRows((prev) => {
-      // only one tier can be the highlighted one
-      const cleared = draft.isPopular
-        ? prev.map((p) => ({ ...p, isPopular: false }))
-        : prev;
-
-      return draft.id
-        ? cleared.map((p) => (p.id === draft.id ? nextPlan : p))
-        : [...cleared, nextPlan];
-    });
-
-    setIsSaving(false);
-    setDraft(null);
-    toast.success(message ?? t.admin.planSaved);
   };
 
   const confirmRemove = async () => {
@@ -188,59 +175,128 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
         }
       />
 
-      <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {rows.map((plan) => (
-          <li
-            key={plan.id}
+      {/* one switch drives every card's displayed cycle — the standard
+          SaaS-pricing-page pattern, instead of a per-card toggle */}
+      <div className="flex justify-center">
+        <div className="inline-flex rounded-full bg-muted p-1">
+          <button
+            type="button"
+            onClick={() => setCycle("monthly")}
             className={cn(
-              "flex flex-col rounded-2xl border bg-card p-5 md:p-6",
-              plan.isPopular ? "border-primary" : "border-border/60",
+              "rounded-full px-5 py-2 text-sm font-semibold transition-colors",
+              cycle === "monthly"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground",
             )}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h2 className="font-heading text-lg font-bold">
-                  {plan.name[lang]}
-                </h2>
-                {plan.isPopular && (
-                  <Badge className="mt-1.5 bg-berry-soft text-berry-soft-foreground">
-                    <Sparkles className="me-1 size-3" />
-                    {t.admin.mostPopular}
+            {t.admin.billingMonthly}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCycle("yearly")}
+            className={cn(
+              "rounded-full px-5 py-2 text-sm font-semibold transition-colors",
+              cycle === "yearly"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground",
+            )}
+          >
+            {t.admin.billingYearly}
+          </button>
+        </div>
+      </div>
+
+      <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {rows.map((plan) => {
+          const price = cycle === "monthly" ? plan.priceMonthly : plan.priceYearly;
+          const agentPrice =
+            cycle === "monthly" ? plan.agentPriceMonthly : plan.agentPriceYearly;
+          return (
+            <li
+              key={plan.id}
+              className={cn(
+                "flex flex-col rounded-2xl border bg-card p-5 md:p-6",
+                plan.isPopular ? "border-primary" : "border-border/60",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h2 className="font-heading text-lg font-bold">
+                    {plan.name[lang]}
+                  </h2>
+                  {plan.isPopular && (
+                    <Badge className="mt-1.5 bg-berry-soft text-berry-soft-foreground">
+                      <Sparkles className="me-1 size-3" />
+                      {t.admin.mostPopular}
+                    </Badge>
+                  )}
+                </div>
+                <RowActions actions={actionsFor(plan)} />
+              </div>
+
+              <div className="mt-3">
+                {cycle === "yearly" && (
+                  <span
+                    className="block text-sm text-muted-foreground line-through"
+                    dir="ltr"
+                  >
+                    {formatPrice(plan.yearlyOriginalPrice, t.common.currency)}
+                  </span>
+                )}
+                <p className="flex items-baseline gap-1.5">
+                  <span className="font-heading text-2xl font-bold text-primary">
+                    {formatPrice(price, t.common.currency)}
+                  </span>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {cycle === "monthly" ? t.admin.pricePerMonth : t.admin.pricePerYear}
+                  </span>
+                </p>
+                {cycle === "yearly" && (
+                  <Badge className="mt-1.5 bg-success/10 text-success">
+                    {fmt(t.admin.yearlySavingsBadge, {
+                      months: plan.yearlySavingsMonths,
+                    })}
                   </Badge>
                 )}
               </div>
-              <RowActions actions={actionsFor(plan)} />
-            </div>
 
-            <p className="mt-3 flex items-baseline gap-1.5">
-              <span className="font-heading text-2xl font-bold text-primary">
-                {formatPrice(plan.priceMonthly, t.common.currency)}
-              </span>
-              <span className="text-xs font-semibold text-muted-foreground">
-                {t.admin.pricePerMonth}
-              </span>
-            </p>
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3.5 py-2.5">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {t.admin.agentPriceLabel}
+                </span>
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-sm font-bold" dir="ltr">
+                    {formatPrice(agentPrice, t.common.currency)}
+                  </span>
+                  <span className="text-[11px] font-semibold text-muted-foreground">
+                    {fmt(t.admin.agentDiscountBadge, {
+                      percent: plan.agentDiscountPercent,
+                    })}
+                  </span>
+                </span>
+              </div>
 
-            <p className="mt-1 text-sm font-semibold text-muted-foreground">
-              {fmt(t.admin.subscribers, { count: plan.subscriberCount })}
-            </p>
+              <p className="mt-2.5 text-sm font-semibold text-muted-foreground">
+                {fmt(t.admin.subscribers, { count: plan.subscriberCount })}
+              </p>
 
-            <h3 className="label-eyebrow mt-5 text-muted-foreground">
-              {t.admin.planFeatures}
-            </h3>
-            <ul className="mt-2.5 flex-1 space-y-2">
-              {plan.features.map((feature) => (
-                <li
-                  key={feature.en}
-                  className="flex items-start gap-2 text-sm text-muted-foreground"
-                >
-                  <Check className="mt-0.5 size-4 shrink-0 text-success" />
-                  {feature[lang]}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
+              <h3 className="label-eyebrow mt-5 text-muted-foreground">
+                {t.admin.planFeatures}
+              </h3>
+              <ul className="mt-2.5 flex-1 space-y-2">
+                {plan.features.map((feature) => (
+                  <li
+                    key={feature.en}
+                    className="flex items-start gap-2 text-sm text-muted-foreground"
+                  >
+                    <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                    {feature[lang]}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
 
       <Dialog

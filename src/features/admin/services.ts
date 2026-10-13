@@ -384,13 +384,43 @@ export async function renewSubscription(
   });
 }
 
+/**
+ * What an admin actually sets when writing a plan — just the name, the one
+ * monthly price, and its feature list/flags. The yearly price, the agent's
+ * discounted prices on both cycles, and every savings figure are all
+ * computed server-side from `priceMonthly` and the platform's standing
+ * yearly-discount/agent-discount policy — the write side never sends them,
+ * and the frontend never derives them either; it only ever displays
+ * whatever the read side (`Plan`) comes back with.
+ */
 export interface AdminPlanWriteInput {
   name: string;
-  price: number;
-  agentPrice: number;
-  durationDays: number;
+  priceMonthly: number;
+  features?: string[];
   hasCart?: boolean;
   hasStatistics?: boolean;
+  isPopular?: boolean;
+}
+
+// mock-only stand-in for the backend's own pricing computation (yearly
+// discount, agent discount) — real responses carry these fields already
+// computed, this just fakes that shape so the mock branch has something to
+// return
+function mockComputedPricing(priceMonthly: number) {
+  const priceYearly = priceMonthly * 10;
+  const yearlyOriginalPrice = priceMonthly * 12;
+  const agentPriceMonthly = Math.round(priceMonthly * 0.7);
+  const agentPriceYearly = Math.round(priceYearly * 0.7);
+  return {
+    priceYearly,
+    yearlyOriginalPrice,
+    yearlySavingsMonths: 2,
+    yearlySavingsAmount: yearlyOriginalPrice - priceYearly,
+    agentPriceMonthly,
+    agentPriceYearly,
+    agentYearlySavingsAmount: priceYearly - agentPriceYearly,
+    agentDiscountPercent: 30,
+  };
 }
 
 export async function createAdminPlan(
@@ -401,10 +431,11 @@ export async function createAdminPlan(
     return mockDelay({
       id: `p${Date.now()}`,
       name: { ar: input.name, en: input.name },
-      priceMonthly: input.price,
-      features: [],
+      priceMonthly: input.priceMonthly,
+      ...mockComputedPricing(input.priceMonthly),
+      features: (input.features ?? []).map((f) => ({ ar: f, en: f })),
       subscriberCount: 0,
-      isPopular: false,
+      isPopular: input.isPopular ?? false,
     });
   }
   return apiFetch("/subscription-plans", {
@@ -420,13 +451,15 @@ export async function updateAdminPlan(
   auth: AdminAuth = {},
 ): Promise<Plan> {
   if (IS_MOCK) {
+    const priceMonthly = input.priceMonthly ?? 0;
     return mockDelay({
       id,
       name: { ar: input.name ?? "", en: input.name ?? "" },
-      priceMonthly: input.price ?? 0,
-      features: [],
+      priceMonthly,
+      ...mockComputedPricing(priceMonthly),
+      features: (input.features ?? []).map((f) => ({ ar: f, en: f })),
       subscriberCount: 0,
-      isPopular: false,
+      isPopular: input.isPopular ?? false,
     });
   }
   return apiFetch(`/subscription-plans/${id}`, {

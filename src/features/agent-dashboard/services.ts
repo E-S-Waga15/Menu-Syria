@@ -1,6 +1,12 @@
 import { apiFetch, IS_MOCK, mockDelay } from "@/lib/api/client";
-import { agents, agentTransactions, restaurants, stores } from "@/lib/mock/data";
-import type { Agent, Restaurant, Store, Transaction } from "@/lib/types";
+import {
+  agents,
+  agentTransactions,
+  plans,
+  restaurants,
+  stores,
+} from "@/lib/mock/data";
+import type { Agent, Plan, Restaurant, Store, Transaction } from "@/lib/types";
 
 /**
  * An agent asks the platform to renew (or upgrade) a referred business's
@@ -43,6 +49,16 @@ export async function getMyTransactions(
 ): Promise<Transaction[]> {
   if (IS_MOCK) return mockDelay(agentTransactions);
   return apiFetch("/me/agent/transactions", { headers: authHeaders(auth) });
+}
+
+/**
+ * The plans an agent can sell, at the agent's own (discounted) price —
+ * every number here, monthly or yearly, is already computed server-side;
+ * this just reads the same `Plan` shape the admin console does.
+ */
+export async function getAgentPlans(auth: AgentAuth = {}): Promise<Plan[]> {
+  if (IS_MOCK) return mockDelay(plans);
+  return apiFetch("/subscription-plans", { headers: authHeaders(auth) });
 }
 
 export async function getMyReferredRestaurants(

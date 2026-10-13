@@ -1634,11 +1634,23 @@ export const platformUsers: PlatformUser[] = [
 ];
 
 /** Subscription tiers the platform sells to businesses. */
+// every price below (yearly, agent monthly/yearly, savings) stands in for
+// what the real backend would compute and return — the mock data mirrors
+// that response shape rather than deriving these numbers at runtime, same
+// as the real API call would
 export const plans: Plan[] = [
   {
     id: "p1",
     name: { ar: "الأساسية", en: "Basic" },
     priceMonthly: 150000,
+    priceYearly: 1500000,
+    yearlyOriginalPrice: 1800000,
+    yearlySavingsMonths: 2,
+    yearlySavingsAmount: 300000,
+    agentPriceMonthly: 105000,
+    agentPriceYearly: 1050000,
+    agentYearlySavingsAmount: 450000,
+    agentDiscountPercent: 30,
     subscriberCount: 128,
     features: [
       { ar: "منيو رقمي برمز QR", en: "Digital menu with QR" },
@@ -1650,6 +1662,14 @@ export const plans: Plan[] = [
     id: "p2",
     name: { ar: "الاحترافية", en: "Professional" },
     priceMonthly: 280000,
+    priceYearly: 2800000,
+    yearlyOriginalPrice: 3360000,
+    yearlySavingsMonths: 2,
+    yearlySavingsAmount: 560000,
+    agentPriceMonthly: 196000,
+    agentPriceYearly: 1960000,
+    agentYearlySavingsAmount: 840000,
+    agentDiscountPercent: 30,
     subscriberCount: 264,
     isPopular: true,
     features: [
@@ -1666,6 +1686,14 @@ export const plans: Plan[] = [
     id: "p3",
     name: { ar: "المتكاملة", en: "Complete" },
     priceMonthly: 450000,
+    priceYearly: 4500000,
+    yearlyOriginalPrice: 5400000,
+    yearlySavingsMonths: 2,
+    yearlySavingsAmount: 900000,
+    agentPriceMonthly: 315000,
+    agentPriceYearly: 3150000,
+    agentYearlySavingsAmount: 1350000,
+    agentDiscountPercent: 30,
     subscriberCount: 71,
     features: [
       { ar: "كل مزايا الاحترافية", en: "Everything in Professional" },

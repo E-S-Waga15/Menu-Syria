@@ -571,11 +571,43 @@ export interface PlatformUser {
 }
 
 /** A subscription tier the platform sells. */
+/**
+ * A subscription tier, with every price already computed server-side —
+ * the yearly price (discounted — "two months free" for committing to a
+ * year), the agent's own cost on both billing cycles (30% off), and the
+ * savings figures shown alongside them. The frontend only ever displays
+ * these fields; it never multiplies/discounts a price itself, so admin
+ * and agent screens can't drift from whatever the backend decided.
+ */
 export interface Plan {
   id: string;
   name: LocalizedText;
-  /** SYP per month */
+  /** the one price an admin actually sets when creating a plan — SYP per
+   * month */
   priceMonthly: number;
+  /** backend-computed from the monthly price and the yearly-discount
+   * policy (currently: 10 months' worth for a full year) */
+  priceYearly: number;
+  /** `priceMonthly * 12` — the "before discount" reference price shown
+   * struck through next to `priceYearly`, computed and returned as its
+   * own field so the frontend never has to multiply it out itself */
+  yearlyOriginalPrice: number;
+  /** how many months' worth the yearly price waives, e.g. 2 — a display
+   * fact, not something the frontend derives from the two prices */
+  yearlySavingsMonths: number;
+  /** the SYP amount `priceMonthly * 12 - priceYearly` works out to —
+   * computed and returned as-is */
+  yearlySavingsAmount: number;
+  /** what an agent pays for this plan — `priceMonthly`/`priceYearly`
+   * after the agent discount (see `agentDiscountPercent`) */
+  agentPriceMonthly: number;
+  agentPriceYearly: number;
+  /** the SYP amount `priceYearly - agentPriceYearly` works out to */
+  agentYearlySavingsAmount: number;
+  /** the discount rate applied to get the agent prices above, e.g. 30
+   * (meaning 30%) — shown as "X% off" without the frontend computing it
+   * from the two price pairs */
+  agentDiscountPercent: number;
   features: LocalizedText[];
   /** how many businesses are on it right now */
   subscriberCount: number;

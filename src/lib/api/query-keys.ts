@@ -53,6 +53,7 @@ export const queryKeys = {
     detail: (id: string) => ["agents", id] as const,
     restaurants: (id: string) => ["agents", id, "restaurants"] as const,
     transactions: (id: string) => ["agents", id, "transactions"] as const,
+    plans: ["agents", "plans"] as const,
   },
   admin: {
     stats: ["admin", "stats"] as const,

@@ -1,6 +1,8 @@
-# Backend changes needed — agent linkage, subscription details, item statistics
+# Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
-Everything here is additive to existing resources — no existing field is renamed or removed. The earlier fulfillment-modes/delivery-fee/payment-code work (previous version of this document) is already shipped and confirmed working; this is a fresh list for the next batch of frontend work.
+Everything here is additive to existing resources — no existing field is renamed or removed. The earlier fulfillment-modes/delivery-fee/payment-code work (previous version of this document) is already shipped and confirmed working; §1-4 below are the batch after that; §6 is the latest addition (plan pricing).
+
+**Standing rule for all of §6: every price shown anywhere in the frontend — monthly, yearly, agent monthly, agent yearly, savings amounts — is a field the backend returns, never a value the frontend computes by multiplying or subtracting another price. If a number appears on screen, it has its own field in the API response.**
 
 ## 1. Which agent onboarded a business — new `agent` field on `Business`
 
@@ -106,3 +108,65 @@ Matches the `ItemStatistics` type already defined in the frontend (`src/lib/type
 | `durationType`, `durationMonths`, `endDate` | request body of `PATCH /registration-requests/:id/status` | — | §3, only when approving |
 | `subscriptionStartDate`, `subscriptionEndDate` | `RegistrationRequest` response | `string` (ISO, optional) | §3 |
 | `GET /statistics/items/:itemId` | new endpoint | `ItemStatistics` | §4 |
+
+## 6. Subscription plan pricing — monthly, yearly, and agent prices, all server-computed
+
+**Why:** an admin creates a plan with one price (the agreed monthly rate) and nothing else — the yearly price, the agent's discounted price on both cycles, and every savings figure shown on the pricing cards (admin console and the agent's own "plans at my price" page) all need to come back from the API already computed. The frontend does not multiply, discount, or subtract anything; every number it displays is its own field.
+
+### Pricing policy (apply server-side)
+
+- **Yearly price** = 10 × monthly price (i.e. the customer gets 2 months free for committing to a year). Not 12×.
+- **Agent price** = 70% of the customer price, on both monthly and yearly (a flat 30% discount), so an agent can resell at the normal customer price and keep the 30% margin. Example: monthly price 15 → agent monthly price 10.5.
+
+### `Plan` read shape — `GET /subscription-plans` (and the admin's `GET /admin/plans`, same endpoint today per `getAdminPlans`)
+
+```jsonc
+{
+  "id": "p2",
+  "name": { "ar": "الاحترافية", "en": "Professional" },
+  "priceMonthly": 280000,
+  "priceYearly": 2800000,
+  "yearlyOriginalPrice": 3360000,     // priceMonthly * 12, for the struck-through "before" price next to priceYearly
+  "yearlySavingsMonths": 2,
+  "yearlySavingsAmount": 560000,      // yearlyOriginalPrice - priceYearly
+  "agentPriceMonthly": 196000,
+  "agentPriceYearly": 1960000,
+  "agentYearlySavingsAmount": 840000, // priceYearly - agentPriceYearly
+  "agentDiscountPercent": 30,
+  "features": [{ "ar": "...", "en": "..." }],
+  "subscriberCount": 264,
+  "isPopular": true
+}
+```
+
+Every field from `priceYearly` down through `agentDiscountPercent` is backend-computed from `priceMonthly` and the policy above — none of them are ever sent by the frontend on write.
+
+### Write shape — `POST /subscription-plans`, `PATCH /subscription-plans/:id`
+
+```jsonc
+{
+  "name": "Professional",
+  "priceMonthly": 280000,
+  "features": ["Unlimited items", "Orders from app and WhatsApp"],
+  "isPopular": true
+}
+```
+
+Only the fields an admin actually decides. The response to this write should be the full `Plan` shape above, with every computed field filled in — the admin console's plan list updates directly from this response, so a write that omits any of the computed fields will show stale/blank pricing until the next full list reload.
+
+### Agent-facing read — `GET /subscription-plans` from an authenticated agent session
+
+Same endpoint, same shape — an agent only ever reads `agentPriceMonthly`/`agentPriceYearly`/`agentYearlySavingsAmount`/`agentDiscountPercent` from it (never `priceMonthly`/`priceYearly`, which are the customer-facing numbers) — no separate endpoint needed unless it's cleaner on your end to not expose customer pricing to an agent's token at all, in which case a role-scoped response (omitting `priceMonthly`/`priceYearly`/`yearlyOriginalPrice`/`yearlySavingsAmount` for an agent caller) would also work with the same frontend code, since it only reads the `agent*` fields on that page.
+
+### Summary of new `Plan` fields
+
+| Field | Type | Formula (server-side) |
+|---|---|---|
+| `priceYearly` | `number` | `priceMonthly * 10` |
+| `yearlyOriginalPrice` | `number` | `priceMonthly * 12` |
+| `yearlySavingsMonths` | `number` | `2` (policy constant) |
+| `yearlySavingsAmount` | `number` | `yearlyOriginalPrice - priceYearly` |
+| `agentPriceMonthly` | `number` | `round(priceMonthly * 0.7)` |
+| `agentPriceYearly` | `number` | `round(priceYearly * 0.7)` |
+| `agentYearlySavingsAmount` | `number` | `priceYearly - agentPriceYearly` |
+| `agentDiscountPercent` | `number` | `30` (policy constant) |
