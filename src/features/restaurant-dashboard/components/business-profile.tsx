@@ -893,6 +893,14 @@ function GallerySection({
  * gallery — uploaded straight to `paymentQrCode`, which rides the business's
  * existing PATCH rather than a route of its own; an empty string clears it.
  */
+/**
+ * The QR image and the typed transfer code are one unit on the backend —
+ * a write touching either one must send both, and neither can be cleared
+ * while the other stays (see update.md §3). So instead of two independent
+ * immediate-save controls, this is a single add/edit dialog: pick/replace
+ * the image and type the code together, then one `save()` call carries
+ * both. Removing clears both together too.
+ */
 function PaymentQrSection({
   restaurant,
   t,
@@ -903,78 +911,70 @@ function PaymentQrSection({
   save: SaveProfile;
 }) {
   const [qrUrl, setQrUrl] = useState(restaurant.paymentQrCode ?? "");
-  const [pendingQr, setPendingQr] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [code, setCode] = useState(restaurant.paymentCode ?? "");
+  const hasPayment = !!qrUrl && !!code;
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  // the dialog's own draft state — seeded from the saved values on open,
+  // discarded on cancel so a half-finished edit never leaks back out
+  const [draftPreview, setDraftPreview] = useState<string | null>(null);
+  const [draftFile, setDraftFile] = useState<File | null>(null);
+  const [draftCode, setDraftCode] = useState("");
+  const [saving, setSaving] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [paymentCode, setPaymentCode] = useState(restaurant.paymentCode ?? "");
-  const [savedCode, setSavedCode] = useState(restaurant.paymentCode ?? "");
-  const [savingCode, setSavingCode] = useState(false);
-  const codeDirty = paymentCode.trim() !== savedCode;
-
-  const saveCode = async () => {
-    setSavingCode(true);
-    try {
-      const value = paymentCode.trim();
-      await save({ paymentCode: value });
-      setPaymentCode(value);
-      setSavedCode(value);
-    } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
-    } finally {
-      setSavingCode(false);
-    }
+  const openDialog = () => {
+    setDraftPreview(qrUrl || null);
+    setDraftFile(null);
+    setDraftCode(code);
+    setDialogOpen(true);
   };
 
-  const pickQr = (file: File | undefined) => {
+  const closeDialog = () => {
+    if (saving) return;
+    setDialogOpen(false);
+  };
+
+  const pickFile = (file: File | undefined) => {
     if (!file) return;
-    setPendingFile(file);
+    setDraftFile(file);
     const reader = new FileReader();
-    reader.onload = () => setPendingQr(reader.result as string);
+    reader.onload = () => setDraftPreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const confirmQr = async () => {
-    if (!pendingFile) {
-      setPendingQr(null);
-      return;
-    }
-    setAdding(true);
-    try {
-      const { url } = await uploadImage(pendingFile, "businesses");
-      await save({ paymentQrCode: url });
-      setQrUrl(url);
-      setPendingQr(null);
-      setPendingFile(null);
-      if (inputRef.current) inputRef.current.value = "";
-    } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : t.common.saveFailed,
-      );
-    } finally {
-      setAdding(false);
-    }
-  };
+  const canSave = !!draftPreview && !!draftCode.trim();
 
-  const cancelQr = () => {
-    setPendingQr(null);
-    setPendingFile(null);
-    if (inputRef.current) inputRef.current.value = "";
+  const confirmSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    try {
+      const url = draftFile
+        ? (await uploadImage(draftFile, "businesses")).url
+        : qrUrl;
+      const trimmedCode = draftCode.trim();
+      await save({ paymentQrCode: url, paymentCode: trimmedCode });
+      setQrUrl(url);
+      setCode(trimmedCode);
+      setDialogOpen(false);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const confirmRemove = async () => {
     setRemoving(true);
     try {
-      await save({ paymentQrCode: "" });
+      await save({ paymentQrCode: "", paymentCode: "" });
       setQrUrl("");
+      setCode("");
       setConfirmingRemove(false);
     } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : t.common.saveFailed,
-      );
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
       setRemoving(false);
     }
@@ -987,16 +987,16 @@ function PaymentQrSection({
           <QrCode className="size-5 text-primary" />
           {t.dashboard.paymentQrTitle}
         </h2>
-        {qrUrl && (
+        {hasPayment && (
           <RowActions
             actions={[
               {
-                label: t.dashboard.replaceQrCode,
+                label: t.dashboard.editPaymentInfo,
                 icon: Pencil,
-                onSelect: () => inputRef.current?.click(),
+                onSelect: openDialog,
               },
               {
-                label: t.dashboard.removeQrCode,
+                label: t.dashboard.removePaymentInfo,
                 icon: Trash2,
                 danger: true,
                 onSelect: () => setConfirmingRemove(true),
@@ -1009,70 +1009,134 @@ function PaymentQrSection({
       <p className="mt-5 text-sm text-muted-foreground">
         {t.dashboard.paymentQrHint}
       </p>
+
       <div className="mt-4">
-        {qrUrl ? (
-          <div className="relative size-32 overflow-hidden rounded-xl border border-border/60 bg-white p-2">
-            <SafeImage
-              src={qrUrl}
-              alt=""
-              fill
-              sizes="128px"
-              unoptimized={qrUrl.startsWith("data:")}
-              className="object-contain"
-            />
+        {hasPayment ? (
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="relative size-28 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-white p-2">
+              <SafeImage
+                src={qrUrl}
+                alt=""
+                fill
+                sizes="112px"
+                unoptimized={qrUrl.startsWith("data:")}
+                className="object-contain"
+              />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="text-xs font-semibold text-muted-foreground">
+                {t.dashboard.paymentCodeLabel}
+              </p>
+              <div
+                dir="ltr"
+                className="rounded-lg border border-border/60 bg-surface-container-low px-3 py-2 font-mono text-sm break-all"
+              >
+                {code}
+              </div>
+            </div>
           </div>
         ) : (
           <button
             type="button"
-            onClick={() => inputRef.current?.click()}
-            className="flex size-32 flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+            onClick={openDialog}
+            className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-8 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
           >
             <Plus className="size-6" />
             <span className="text-xs font-semibold">
-              {t.dashboard.addQrCode}
+              {t.dashboard.addPaymentInfo}
             </span>
           </button>
         )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={(e) => pickQr(e.target.files?.[0])}
-        />
       </div>
 
-      <div className="mt-5 space-y-2 border-t border-border/60 pt-5">
-        <Label htmlFor="payment-code">{t.dashboard.paymentCodeLabel}</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            id="payment-code"
-            dir="ltr"
-            placeholder={t.dashboard.paymentCodePlaceholder}
-            className="h-10 font-mono"
-            value={paymentCode}
-            onChange={(e) => setPaymentCode(e.target.value)}
-          />
-          {codeDirty && (
+      <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {hasPayment
+                ? t.dashboard.editPaymentInfo
+                : t.dashboard.addPaymentInfo}
+            </DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            {t.dashboard.paymentInfoRequiredHint}
+          </p>
+
+          <div className="mt-2 flex justify-center">
+            {draftPreview ? (
+              <div className="relative size-32 overflow-hidden rounded-xl border border-border/60 bg-white p-2">
+                <SafeImage
+                  src={draftPreview}
+                  alt=""
+                  fill
+                  unoptimized
+                  sizes="128px"
+                  className="object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  className="absolute inset-x-0 bottom-0 bg-black/60 py-1 text-center text-[11px] font-semibold text-white"
+                >
+                  {t.dashboard.replaceQrCode}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="flex size-32 flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              >
+                <Plus className="size-6" />
+                <span className="text-xs font-semibold">
+                  {t.dashboard.addQrCode}
+                </span>
+              </button>
+            )}
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => pickFile(e.target.files?.[0])}
+            />
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <Label htmlFor="payment-code">{t.dashboard.paymentCodeLabel}</Label>
+            <Input
+              id="payment-code"
+              dir="ltr"
+              placeholder={t.dashboard.paymentCodePlaceholder}
+              className="h-10 font-mono"
+              value={draftCode}
+              onChange={(e) => setDraftCode(e.target.value)}
+            />
+          </div>
+
+          <div className="mt-5 flex gap-2">
             <Button
               type="button"
-              size="sm"
-              loading={savingCode}
-              onClick={saveCode}
+              variant="outline"
+              className="flex-1"
+              disabled={saving}
+              onClick={closeDialog}
+            >
+              {t.common.cancel}
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              disabled={!canSave}
+              loading={saving}
+              onClick={confirmSave}
             >
               {t.common.save}
             </Button>
-          )}
-        </div>
-      </div>
-
-      <ImagePreviewDialog
-        src={pendingQr}
-        onConfirm={confirmQr}
-        onCancel={cancelQr}
-        confirming={adding}
-        t={t}
-      />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={confirmingRemove}
@@ -1083,10 +1147,10 @@ function PaymentQrSection({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t.dashboard.confirmRemoveQrTitle}
+              {t.dashboard.confirmRemovePaymentTitle}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t.dashboard.confirmRemoveQrBody}
+              {t.dashboard.confirmRemovePaymentBody}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
