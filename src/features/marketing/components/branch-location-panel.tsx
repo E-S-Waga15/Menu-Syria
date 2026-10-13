@@ -52,20 +52,29 @@ export function BranchLocationPanel({
   return (
     <div className="space-y-4">
       {branches.length > 0 && (
-        <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <div className="space-y-2">
           <button
             type="button"
             onClick={() => setSelectedId(MAIN)}
             aria-pressed={selectedId === MAIN}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+              "flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-start transition-colors duration-200",
               selectedId === MAIN
-                ? "bg-primary text-primary-foreground"
-                : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
+                ? "border-primary/40 bg-primary/5"
+                : "border-border/60 hover:bg-surface-container",
             )}
           >
-            <Building2 className="size-3.5" />
-            {t.restaurant.mainBranch}
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Building2 className="size-4" />
+            </span>
+            <span className="flex-1 text-sm font-semibold">
+              {t.restaurant.mainBranch}
+            </span>
+            {selectedId === MAIN && (
+              <span className="shrink-0 rounded-full bg-zest px-3 py-1 text-xs font-bold text-zest-foreground">
+                {t.restaurant.selectedBadge}
+              </span>
+            )}
           </button>
           {branches.map((branch) => (
             <button
@@ -74,14 +83,23 @@ export function BranchLocationPanel({
               onClick={() => setSelectedId(branch.id)}
               aria-pressed={selectedId === branch.id}
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+                "flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-start transition-colors duration-200",
                 selectedId === branch.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
+                  ? "border-primary/40 bg-primary/5"
+                  : "border-border/60 hover:bg-surface-container",
               )}
             >
-              <MapPin className="size-3.5" />
-              {branch.name}
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <MapPin className="size-4" />
+              </span>
+              <span className="flex-1 text-sm font-semibold">
+                {branch.name}
+              </span>
+              {selectedId === branch.id && (
+                <span className="shrink-0 rounded-full bg-zest px-3 py-1 text-xs font-bold text-zest-foreground">
+                  {t.restaurant.selectedBadge}
+                </span>
+              )}
             </button>
           ))}
         </div>

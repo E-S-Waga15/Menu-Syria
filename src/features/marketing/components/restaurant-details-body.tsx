@@ -1,17 +1,30 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { Clock, MapPin, Phone, Star, UtensilsCrossed } from "lucide-react";
+import {
+  Building2,
+  Clock,
+  MapPin,
+  Phone,
+  Star,
+  Tag,
+  Truck,
+  UtensilsCrossed,
+} from "lucide-react";
 
 import {
   FacebookIcon,
   InstagramIcon,
   WhatsAppIcon,
 } from "@/components/shared/brand-icons";
+import { FavoriteButton } from "@/components/shared/favorite-button";
 import { Badge } from "@/components/ui/badge";
 import { BranchLocationPanel } from "@/features/marketing/components/branch-location-panel";
+import { BusinessShareActions } from "@/features/marketing/components/business-share-actions";
 import { OpeningHours } from "@/features/marketing/components/opening-hours";
 import { ReviewsSection } from "@/features/marketing/components/reviews-section";
+import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment";
+import { formatPrice } from "@/features/public-menu/lib/format";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { recoverBusinessFields } from "@/lib/business-text";
@@ -93,6 +106,41 @@ export function RestaurantDetailsBody({
         ? (restaurant as { category: typeof restaurant.name }).category[lang]
         : null;
 
+  // the quick-facts tile only earns its place when there is a real value to
+  // show — a tile that reads a fake "0" for a business with no delivery
+  // channel at all is worse than no tile, so this gates on the fulfillment
+  // modes the business actually supports rather than assuming every
+  // business delivers
+  const supportsDelivery = getSupportedFulfillment(restaurant).includes(
+    "delivery",
+  );
+  const deliveryFeeValue =
+    supportsDelivery && restaurant.deliveryFee !== undefined
+      ? restaurant.deliveryFee && restaurant.deliveryFee > 0
+        ? formatPrice(restaurant.deliveryFee, t.common.currency, lang)
+        : t.restaurant.freeDeliveryValue
+      : null;
+
+  const areaLabel =
+    governorateName || regionName
+      ? [governorateName, regionName].filter(Boolean).join(separator)
+      : null;
+
+  /** the three small quick-fact tiles above the About card */
+  const quickFactTiles = [
+    typeLabel && { icon: Tag, label: t.restaurant.typeTileLabel, value: typeLabel },
+    areaLabel && {
+      icon: Building2,
+      label: t.restaurant.areaTileLabel,
+      value: areaLabel,
+    },
+    deliveryFeeValue && {
+      icon: Truck,
+      label: t.restaurant.deliveryFeeTileLabel,
+      value: deliveryFeeValue,
+    },
+  ].filter(Boolean) as { icon: typeof Tag; label: string; value: string }[];
+
   /** the profiles the business keeps, as opposed to ways to reach a person */
   const socialPages = [
     restaurant.facebook && {
@@ -173,9 +221,47 @@ export function RestaurantDetailsBody({
             </span>
           </div>
         </div>
+
+        {/* favorite + share/QR, grouped beside the identity bar rather than
+            buried in a panel — these are actions a visitor reaches for
+            immediately, not after reading */}
+        <div className="flex items-center gap-2 self-end pb-1">
+          <FavoriteButton itemId={restaurant.id} itemName={restaurant.name[lang]} />
+          <BusinessShareActions
+            businessName={restaurant.name[lang]}
+            businessLocation={
+              areaLabel ?? undefined
+            }
+            businessPhotoUrl={restaurant.logoUrl}
+          />
+        </div>
       </div>
 
-      <div className="mt-10 grid items-start gap-6 pb-6 lg:grid-cols-[1.2fr_1fr]">
+      {/* quick-facts row — type / governorate+area / delivery fee, each its
+          own small bordered tile rather than one dense panel, so a visitor
+          scanning the page gets the basics before reading anything */}
+      {quickFactTiles.length > 0 && (
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          {quickFactTiles.map((tile) => (
+            <div
+              key={tile.label}
+              className="flex flex-col items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-4 text-center"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <tile.icon className="size-4" />
+              </span>
+              <span className="label-eyebrow text-muted-foreground">
+                {tile.label}
+              </span>
+              <span className="line-clamp-1 text-sm font-bold">
+                {tile.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 grid items-start gap-6 pb-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="space-y-6">
           <Panel title={t.restaurant.aboutTitle}>
             {description ? (
@@ -187,6 +273,21 @@ export function RestaurantDetailsBody({
                 {t.restaurant.noDescription}
               </p>
             )}
+          </Panel>
+
+          {/* branches card — the switcher and its address/phone/map, read
+              right after About rather than tucked in the side column, per
+              the page's top-to-bottom reading order */}
+          <Panel title={t.restaurant.location} icon={MapPin}>
+            <BranchLocationPanel
+              mainAddress={address}
+              mainLocation={location}
+              mainPhone={restaurant.phone}
+              branches={branches}
+              regions={regions}
+              lang={lang}
+              t={t}
+            />
           </Panel>
 
           {/* the one action that matters — themed with the business's own colour */}
@@ -265,16 +366,39 @@ export function RestaurantDetailsBody({
         </div>
 
         <div className="space-y-6">
-          <Panel title={t.restaurant.location} icon={MapPin}>
-            <BranchLocationPanel
-              mainAddress={address}
-              mainLocation={location}
-              mainPhone={restaurant.phone}
-              branches={branches}
-              regions={regions}
-              lang={lang}
-              t={t}
-            />
+          {/* quick info — rating and the full address, each a labelled row
+              rather than folded into another panel */}
+          <Panel title={t.restaurant.quickInfoTitle}>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-3">
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground">
+                    {t.restaurant.ratingLabel}
+                  </span>
+                  <span className="text-base font-bold" dir="ltr">
+                    {restaurant.rating}/5
+                    {reviews.length > 0 && ` (${reviews.length})`}
+                  </span>
+                </span>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <Star className="size-4 fill-zest text-zest" />
+                </span>
+              </div>
+
+              {address && (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-3">
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-xs text-muted-foreground">
+                      {t.restaurant.addressLabel}
+                    </span>
+                    <span className="text-sm font-bold">{address}</span>
+                  </span>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <MapPin className="size-4" />
+                  </span>
+                </div>
+              )}
+            </div>
           </Panel>
 
           <Panel title={t.restaurant.workingHours} icon={Clock}>
