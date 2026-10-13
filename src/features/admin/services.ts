@@ -44,6 +44,22 @@ export interface RegistrationRequest {
   createdAt: string;
   district?: { name?: string };
   agent?: { name?: string };
+  /** when approved, the subscription period this request was given —
+   * absent on a still-pending request */
+  subscriptionStartDate?: string | null;
+  subscriptionEndDate?: string | null;
+}
+
+/** How long the subscription an admin grants on approval runs for — never
+ * more than a year, whichever way it's expressed. */
+export type SubscriptionDurationType = "monthly" | "custom" | "yearly";
+
+export interface SubscriptionDurationInput {
+  durationType: SubscriptionDurationType;
+  /** only for "monthly" — whole months, 1 to 12 */
+  durationMonths?: number;
+  /** only for "custom" — ISO date, at most a year from the approval moment */
+  endDate?: string;
 }
 
 export interface BusinessSubscription {
@@ -298,12 +314,15 @@ export async function updateRegistrationRequestStatus(
   id: string,
   status: RegistrationRequestStatus,
   planId?: string,
+  /** required when approving — the subscription period starts at the
+   * moment of approval, so only its length needs to be chosen */
+  duration?: SubscriptionDurationInput,
   auth: AdminAuth = {},
 ): Promise<RegistrationRequest> {
   return apiFetch(`/registration-requests/${id}/status`, {
     method: "PATCH",
     headers: authHeaders(auth),
-    body: { status, planId },
+    body: { status, planId, ...(duration ?? {}) },
   });
 }
 

@@ -84,6 +84,25 @@ export interface RestaurantTheme {
  * Shared shape for anything that sells through the platform —
  * restaurants publish menus, stores publish product catalogs.
  */
+/**
+ * Lightweight contact info for the Menu Syria agent who onboarded a
+ * business — just enough to show "who activated your subscription and how
+ * to reach them" on the owner's own dashboard. The full `Agent` profile
+ * (bio, photo, commission rate…) is a separate, public-facing type; this
+ * is deliberately narrower since it only ever appears on an owner's own
+ * `/me/restaurant`/`/me/store` read.
+ */
+export interface BusinessAgent {
+  id: string;
+  name: string;
+  governorateId: string;
+  regionId: string;
+  phone: string;
+  whatsapp: string;
+  instagram?: string;
+  facebook?: string;
+}
+
 export interface Business {
   id: string;
   slug: string;
@@ -107,6 +126,18 @@ export interface Business {
   opensAt?: LocalizedText;
   status: SubscriptionStatus;
   planExpiresAt: string;
+  /** when the current plan period started — paired with `planExpiresAt`
+   * for "X days remaining" and a start/end display. Absent on a business
+   * that predates this field. */
+  planStartedAt?: string;
+  /** the active plan's display name (e.g. "Premium") — absent falls back
+   * to a generic label instead of a hardcoded one. */
+  planName?: string;
+  /** the Menu Syria agent who onboarded this business, if any — present
+   * only on the owner's own `/me/restaurant`/`/me/store` read, never on
+   * public storefront reads. Absent/`null` means the business signed up
+   * without an agent (or predates this field). */
+  agent?: BusinessAgent | null;
   /** order channels the plan covers; omitted means both are available */
   orderChannels?: OrderChannel[];
   /**
