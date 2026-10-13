@@ -58,6 +58,16 @@ export async function submitRegistrationRequest(input: {
   subTypeId: string;
   email?: string;
   notes?: string;
+  description?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
   type: RegistrationRequestType;
   referralCode?: string;
   planId?: string;

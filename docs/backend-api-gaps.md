@@ -4,13 +4,11 @@
 
 ---
 
-## -1. طلب التسجيل العام لا يحفظ الشعار/الألوان/العنوان/الموقع/وسائل التواصل كحقول حقيقية (معروف من قبل، موثّق هنا للسياق)
+## ✅ -1. [تم التنفيذ] طلب التسجيل العام لا يحفظ الشعار/الألوان/العنوان/الموقع/وسائل التواصل كحقول حقيقية
 
-`CreateRegistrationRequestDto` (`registration-requests.dto.ts`) ليس فيه أي حقل لهذه القيم — فقط `notes` نصي حر. عند الموافقة على الطلب، `registration-requests.service.ts` (السطر ~529) ينسخ `notes` بالكامل حرفياً إلى `description` الخاص بالعمل التجاري الجديد (`description: request.notes ?? undefined`) بدل أن يحلّلها إلى الأعمدة الحقيقية الموجودة أصلاً (`logoUrl`, `primaryColor`/`secondaryColor`, `address`, `latitude`/`longitude`, `businessLinks`). والنتيجة: صاحب الحساب يختار شعاره وألوانه أثناء التسجيل، لكنها لا تُحفظ فعلياً — فقط تُكتب كسطر نص ضمن الوصف، فيضطر لإعادة اختيارها يدوياً من لوحة التحكم بعد الموافقة.
+**تم التنفيذ في الباك إند مباشرة** (بتاريخ 2026-10-13): أُضيفت `description`, `logoUrl`, `primaryColor`, `secondaryColor`, `address`, `latitude`, `longitude`, `instagram`, `facebook`, `tiktok` كحقول اختيارية حقيقية على `CreateRegistrationRequestDto` وعلى كيان `RegistrationRequest`، وأصبحت الموافقة (`registration-requests.service.ts`) تكتبها مباشرة على أعمدة `Business` الحقيقية (`logo`, `primaryColor`, `secondaryColor`, `address`, `latitude`, `longitude`) وتنشئ صفوف `BusinessLink` لوسائل التواصل، بدل تفريغها كنص ضمن `description`. الفرونت إند (`restaurant-register-form.tsx`) يرسلها الآن كحقول منفصلة بدل التفريغ النصي.
 
-**تم عمل حل مؤقت بالفرونت إند** (`src/lib/business-text.ts` — `recoverBusinessFields`/`applyRecoveredBusinessFields`): يستخرج الشعار والألوان (إضافة للعنوان والموقع الجغرافي الموجودين مسبقاً) من نص الوصف المكدّس، في كل نقطة قراءة لبيانات العمل التجاري (`/me/restaurant`, `/restaurants/:slug`, `/stores/:slug`, `/menu/:slug`, `/store-catalog/:slug`). هذا يُصلح العرض لكن ليس الأصل.
-
-**المطلوب للحل الجذري:** إضافة `logoUrl`, `primaryColor`, `secondaryColor`, `address`, `latitude`, `longitude`, `instagram`, `facebook`, `tiktok` كحقول اختيارية حقيقية على `CreateRegistrationRequestDto`، وجعل الموافقة تكتبها مباشرة على أعمدة `Business` الحقيقية بدل تفريغها بـ`notes`/`description`.
+الحل المؤقت بالفرونت إند (`recoverBusinessFields`/`applyRecoveredBusinessFields` في `src/lib/business-text.ts`) **بقي كما هو** لعرض الحسابات القديمة المعتمدة قبل هذا التعديل بشكل صحيح — لا حاجة لإزالته.
 
 ---
 
@@ -40,17 +38,9 @@ if (
 
 ---
 
-## 0.1 اسم "نوع النشاط" (subType) غير متاح علناً — صفحة التفاصيل لا تقدر تعرضه
+## ✅ 0.1 [تم التنفيذ] اسم "نوع النشاط" (subType) لم يكن متاحاً علناً
 
-لوحة التحكم تحفظ وتعدّل `subTypeId` (مثلاً "مطعم إيطالي" ضمن نوع "مطعم") بشكل صحيح فعلاً عبر `PATCH /me/business`، والقيمة الحالية تصل الآن للفرونت إند من `GET /me/restaurant` — لأن تلك النقطة ترجع كامل كائن `Business` (`{ ...business }`)، و`subTypeId` عمود حقيقي على الكيان فينتشر معها تلقائياً. **لكن لا يوجد أي مكان يرجع اسم هذا النوع (`subType.name`)** — لا في `/me/restaurant` ولا في أي من نقاط العرض العام الأربع (`/restaurants/:slug`, `/stores/:slug`, `/public/businesses/:slug`, `/menu/:slug`).
-
-السبب: علاقة `subType` على كيان `Business` (`src/database/entities/business.entity.ts`) غير محمّلة (`relations`) في أي من دوال `me.service.ts`/`public.service.ts` التي تبني استجابات هذه النقاط — فقط `subTypeId` الخام (بلا اسم) ينتقل عرضياً عبر `...business` بـ `/me/restaurant` حصراً.
-
-**المطلوب:**
-1. إضافة `subType: true` لقائمة `relations` في استعلام `getMyBusiness` (`me.service.ts`) وفي استعلام تفاصيل العمل التجاري العام المقابل (`public.service.ts`).
-2. إرجاع `subType: business.subType ? { id: business.subType.id, name: business.subType.name } : null` ضمن الاستجابة في كل من النقاط الخمس أعلاه — هذا هو "نوع النشاط" الذي يجب أن تعرضه صفحة تفاصيل المطعم/المتجر العامة بدل الاعتماد على `cuisine`/`category` النصيين الحاليين.
-
-بدون هذا، لوحة التحكم تقدر تعدّل نوع النشاط، لكن لا صاحب المطعم ولا الزبون يقدر يرى اسمه الفعلي في أي مكان سوى قائمة الاختيار بنفسها.
+**تم التنفيذ في الباك إند مباشرة** (بتاريخ 2026-10-13): علاقة `subType` أصبحت محمّلة (`relations`) في `getMyBusiness` (`me.service.ts`) وفي كل نقاط العرض العام الخمس التي تغذّيها `formatStorefrontBusiness` (`public.service.ts`: `getPublicMenu`, `getPublicStoreCatalog`, `getStoreBySlug`, `getFeaturedRestaurants`, `getStores`)، وأصبحت الاستجابة تتضمن `subType: { id, name } | null`. الفرونت إند (`restaurant-details-body.tsx`) يعرض الآن `subType.name` كنوع النشاط الحقيقي بدل `cuisine`/`category` النصيين حين يكون موجوداً.
 
 ---
 

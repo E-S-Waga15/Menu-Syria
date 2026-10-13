@@ -129,12 +129,19 @@ export interface Business {
    */
   branches?: PublicBranch[];
   /**
-   * The structured business sub-type (from `getBusinessSubTypes`) — present
-   * on the owner's own `/me/restaurant`/`/me/store` read (the backend spreads
-   * the raw entity, which carries this FK column) but absent from every
-   * public storefront endpoint, which has no joined sub-type name to send.
+   * The structured business sub-type id (from `getBusinessSubTypes`) —
+   * present on the owner's own `/me/restaurant`/`/me/store` read (the
+   * backend spreads the raw entity, which carries this FK column).
    */
   subTypeId?: string;
+  /**
+   * The same sub-type, resolved to `{id, name}` — what the public
+   * storefront endpoints send (owner-facing `/me/*` reads carry it too, via
+   * the same spread). This is the business's real "type" to display
+   * (e.g. "مطعم إيطالي"), in place of the `cuisine`/`category` free-text
+   * fallbacks below. `null`/absent means the business never picked one.
+   */
+  subType?: { id: string; name: string } | null;
 }
 
 export interface DayHours {

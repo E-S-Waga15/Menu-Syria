@@ -273,20 +273,16 @@ export function RestaurantRegisterForm({
         email: values.email.trim() || undefined,
         type: businessType,
         referralCode: values.referral.trim() || undefined,
-        notes: [
-          values.logoUrl && `Logo: ${values.logoUrl}`,
-          values.description && `Description: ${values.description}`,
-          `Colors: ${values.primaryColor}, ${values.secondaryColor}`,
-          values.address && `Address: ${values.address}`,
-          values.lat !== null && values.lng !== null
-            ? `Location: ${values.lat}, ${values.lng}`
-            : "",
-          values.instagram && `Instagram: ${values.instagram}`,
-          values.facebook && `Facebook: ${values.facebook}`,
-          values.tiktok && `TikTok: ${values.tiktok}`,
-        ]
-          .filter(Boolean)
-          .join("\n"),
+        description: values.description.trim() || undefined,
+        logoUrl: values.logoUrl || undefined,
+        primaryColor: values.primaryColor,
+        secondaryColor: values.secondaryColor,
+        address: values.address.trim() || undefined,
+        latitude: values.lat ?? undefined,
+        longitude: values.lng ?? undefined,
+        instagram: values.instagram.trim() || undefined,
+        facebook: values.facebook.trim() || undefined,
+        tiktok: values.tiktok.trim() || undefined,
       });
       toast.success(
         (result as { message?: string }).message ?? t.auth.applicationSent,

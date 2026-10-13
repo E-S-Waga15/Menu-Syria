@@ -95,16 +95,17 @@ export function RestaurantDetailsBody({
   const address = restaurant.address[lang] || recovered.address || "";
   const location = recovered.location ?? restaurant.location;
 
-  // the one field that tells a visitor *what* this place sells — a
-  // restaurant carries it as `cuisine`, a store as `category`; the shared
-  // body takes a plain `Business` so it reads whichever of the two exists
-  // rather than requiring the caller to know which kind this is
+  // the one field that tells a visitor *what* this place sells — the real
+  // sub-type the owner picked (e.g. "مطعم إيطالي") when the business has
+  // one; a restaurant without one falls back to `cuisine` (free text, often
+  // a generic "منوع" default), a store to `category`
   const typeLabel =
-    "cuisine" in restaurant
+    restaurant.subType?.name ??
+    ("cuisine" in restaurant
       ? (restaurant as { cuisine: typeof restaurant.name }).cuisine[lang]
       : "category" in restaurant
         ? (restaurant as { category: typeof restaurant.name }).category[lang]
-        : null;
+        : null);
 
   // the quick-facts tile only earns its place when there is a real value to
   // show — a tile that reads a fake "0" for a business with no delivery
