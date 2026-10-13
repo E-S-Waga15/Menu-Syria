@@ -54,24 +54,22 @@ export function RestaurantDetailsBody({
 
   return (
     <div className="container-page">
-      <div className="-mt-8 md:-mt-8">
-        <BusinessDetailsGrid
-          restaurant={restaurant}
-          description={description}
-          mainAddress={address}
-          mainLocation={location}
-          typeLabel={typeLabel}
-          governorateName={governorateName}
-          regionName={regionName}
-          branches={branches}
-          regions={regions}
-          reviewCount={reviews.length}
-          showMenuCta={showMenuCta}
-          menuHref={menuHref}
-          lang={lang}
-          t={t}
-        />
-      </div>
+      <BusinessDetailsGrid
+        restaurant={restaurant}
+        description={description}
+        mainAddress={address}
+        mainLocation={location}
+        typeLabel={typeLabel}
+        governorateName={governorateName}
+        regionName={regionName}
+        branches={branches}
+        regions={regions}
+        reviewCount={reviews.length}
+        showMenuCta={showMenuCta}
+        menuHref={menuHref}
+        lang={lang}
+        t={t}
+      />
 
       <ReviewsSection reviews={reviews} lang={lang} t={t} />
     </div>

@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 const MAIN = "main";
 /** the map/contact column's width relative to the identity/content column —
  * narrower on purpose, it holds less per panel than the other side does */
-const SIDE_COLS = "lg:grid-cols-[0.85fr_1.15fr]";
+const SIDE_COLS = "lg:grid-cols-[0.75fr_1.25fr]";
 
 /** one card shell for every block on this page — smaller, lighter headings
  * than a default <h2> for a quieter, more composed read */
@@ -186,8 +186,11 @@ export function BusinessDetailsGrid({
           second element here so it lands in the start-side column (the
           "other" side from the identity block) once the grid flows
           right-to-left. */}
-      <div className={cn("grid items-stretch gap-6", SIDE_COLS)}>
-        <div className="flex flex-wrap items-end gap-4">
+      <div className={cn("grid items-start gap-6", SIDE_COLS)}>
+        {/* the name's own -mt-8 is what lets the logo ride up over the
+            gallery's bottom edge, same as before this row gained a second
+            column — the map sits beside it, not pulled up the same way */}
+        <div className="-mt-8 flex flex-wrap items-end gap-4 md:-mt-8">
           <Image
             src={restaurant.logoUrl}
             alt=""
@@ -233,7 +236,9 @@ export function BusinessDetailsGrid({
           </div>
         </div>
 
-        <div>
+        {/* starts just under the gallery — a small gap, not pulled up into
+            it the way the identity block's logo is */}
+        <div className="mt-2.5">
           <Panel
             title={t.restaurant.location}
             icon={MapPin}
