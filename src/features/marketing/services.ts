@@ -2,6 +2,7 @@ import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/clien
 import { applyRecoveredBusinessFields } from "@/lib/business-text";
 import {
   agents,
+  branches,
   businessSubTypes,
   governorates,
   regions,
@@ -13,6 +14,7 @@ import type {
   Business,
   BusinessSubType,
   Governorate,
+  PublicBranch,
   Region,
   Restaurant,
   Review,
@@ -59,8 +61,25 @@ export async function getFeaturedRestaurants(): Promise<Restaurant[]> {
 export async function getRestaurantBySlug(
   slug: string,
 ): Promise<Restaurant | undefined> {
-  if (IS_MOCK)
-    return mockDelay(restaurants.find((r) => r.slug === slug));
+  if (IS_MOCK) {
+    const restaurant = restaurants.find((r) => r.slug === slug);
+    if (!restaurant) return mockDelay(undefined);
+    // mock `branches` is the owner-facing shape (businessId/createdAt/...);
+    // the public storefront only ever sees the PublicBranch subset
+    const restaurantBranches: PublicBranch[] = branches
+      .filter((b) => b.businessId === restaurant.id)
+      .map((b) => ({
+        id: b.id,
+        name: b.name,
+        address: b.address,
+        latitude: b.latitude,
+        longitude: b.longitude,
+        phone: b.phone,
+        governorateId: null,
+        districtId: b.districtId,
+      }));
+    return mockDelay({ ...restaurant, branches: restaurantBranches });
+  }
   const restaurant = await apiGetOrUndefined<Restaurant>(`/restaurants/${slug}`);
   return restaurant && applyRecoveredBusinessFields(restaurant);
 }

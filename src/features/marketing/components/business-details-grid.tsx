@@ -119,6 +119,8 @@ export function BusinessDetailsGrid({
     selectedId === MAIN ? null : branches.find((b) => b.id === selectedId);
 
   const address = selectedBranch?.address || mainAddress;
+  // no per-branch whatsapp in the data model — only the phone switches
+  const branchPhone = selectedBranch?.phone || restaurant.phone;
   const location =
     selectedBranch?.latitude != null && selectedBranch?.longitude != null
       ? { lat: selectedBranch.latitude, lng: selectedBranch.longitude }
@@ -188,17 +190,20 @@ export function BusinessDetailsGrid({
           place" lives here, paired against the sidebar column so the page
           reads as two persistent columns instead of stacked rows */}
       <div className="space-y-6">
-        {/* the name's own -mt-8 is what lets the logo ride up over the
-            gallery's bottom edge */}
-        <div className="-mt-8 flex flex-wrap items-end gap-4 md:-mt-8">
-          <Image
-            src={restaurant.logoUrl}
-            alt=""
-            width={96}
-            height={96}
-            className="size-20 shrink-0 rounded-2xl border-4 border-background object-cover md:size-24"
-          />
-          <div className="min-w-0 flex-1">
+        {/* logo rides up over the gallery's bottom edge on its own; the name
+            stays in normal flow with a small mt-2.5 gap below the gallery —
+            the same gap the sidebar's map panel starts with */}
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="-mt-8">
+            <Image
+              src={restaurant.logoUrl}
+              alt=""
+              width={96}
+              height={96}
+              className="size-20 shrink-0 rounded-2xl border-4 border-background object-cover md:size-24"
+            />
+          </div>
+          <div className="mt-2.5 min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
               <h1 className="text-display text-xl md:text-3xl">
                 {restaurant.name[lang]}
@@ -217,21 +222,6 @@ export function BusinessDetailsGrid({
                   ? t.restaurant.openNow
                   : t.restaurant.closedNow}
               </Badge>
-            </div>
-
-            {/* favorite + share/QR — all size-10 round buttons, one control
-                cluster right under the name rather than pinned to the gallery */}
-            <div className="mt-3 flex items-center gap-2">
-              <FavoriteButton
-                itemId={restaurant.id}
-                itemName={restaurant.name[lang]}
-                size="lg"
-              />
-              <BusinessShareActions
-                businessName={restaurant.name[lang]}
-                businessLocation={areaLabel ?? undefined}
-                businessPhotoUrl={restaurant.logoUrl}
-              />
             </div>
           </div>
         </div>
@@ -369,13 +359,13 @@ export function BusinessDetailsGrid({
               </span>
             </div>
 
-            {mainAddress && (
+            {address && (
               <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-3">
                 <span className="flex flex-col gap-0.5">
                   <span className="text-xs text-muted-foreground">
                     {t.restaurant.addressLabel}
                   </span>
-                  <span className="text-sm font-bold">{mainAddress}</span>
+                  <span className="text-sm font-bold">{address}</span>
                 </span>
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                   <MapPin className="size-4" />
@@ -392,6 +382,22 @@ export function BusinessDetailsGrid({
           of the page. mt-2.5 offsets the content column's -mt-8 identity
           overlap so both columns start at the same visual height. */}
       <div className="mt-2.5 space-y-6">
+        {/* favorite + share/QR — smaller here, opposite the name rather
+            than stacked under it, right before the map panel */}
+        <div className="flex items-center gap-2">
+          <FavoriteButton
+            itemId={restaurant.id}
+            itemName={restaurant.name[lang]}
+            size="sm"
+          />
+          <BusinessShareActions
+            businessName={restaurant.name[lang]}
+            businessLocation={areaLabel ?? undefined}
+            businessPhotoUrl={restaurant.logoUrl}
+            size="sm"
+          />
+        </div>
+
         <Panel
           title={t.restaurant.location}
           icon={MapPin}
@@ -430,13 +436,13 @@ export function BusinessDetailsGrid({
 
         <Panel title={t.restaurant.contactInfo} icon={Phone}>
           <a
-            href={`tel:${restaurant.phone.replace(/\s/g, "")}`}
+            href={`tel:${branchPhone.replace(/\s/g, "")}`}
             className="flex items-center gap-2.5 text-base font-semibold transition-colors hover:text-primary"
           >
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ffd9de] text-[#90003b]">
               <Phone className="size-4" />
             </span>
-            <span dir="ltr">{restaurant.phone}</span>
+            <span dir="ltr">{branchPhone}</span>
           </a>
 
           <a

@@ -45,10 +45,14 @@ const CARD = { w: QR_PX + PAD * 2, h: PAD * 2 + QR_PX + CAPTION_H + URL_H };
  * break SSR, and the lint rules (rightly) reject setState inside an effect.
  * The dialog only mounts once open, so the value is always there in time.
  */
+const sizeClasses = { sm: "size-8", md: "size-10" };
+const iconSizes = { sm: "size-4", md: "size-4.5" };
+
 export function BusinessShareActions({
   businessName,
   businessLocation,
   businessPhotoUrl,
+  size = "md",
 }: {
   businessName: string;
   /** e.g. "Damascus, Bab Touma" — rides along in the share text */
@@ -56,6 +60,7 @@ export function BusinessShareActions({
   /** centred in the code; falls back to the platform mark when the
    * business has none */
   businessPhotoUrl?: string;
+  size?: "sm" | "md";
 }) {
   const { t, lang } = useI18n();
   const [open, setOpen] = useState(false);
@@ -197,8 +202,7 @@ export function BusinessShareActions({
     await downloadCard();
   };
 
-  const roundButton =
-    "flex size-10 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-200 hover:border-primary/40 hover:bg-berry-soft/30 hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
+  const roundButton = `flex ${sizeClasses[size]} shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors duration-200 hover:border-primary/40 hover:bg-berry-soft/30 hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none`;
 
   return (
     <>
@@ -210,7 +214,7 @@ export function BusinessShareActions({
           title={t.restaurant.shareLabel}
           className={roundButton}
         >
-          <Share2 className="size-4.5" />
+          <Share2 className={iconSizes[size]} />
         </button>
         <button
           type="button"
@@ -219,7 +223,7 @@ export function BusinessShareActions({
           title={t.restaurant.qrLabel}
           className={roundButton}
         >
-          <QrCode className="size-4.5" />
+          <QrCode className={iconSizes[size]} />
         </button>
       </div>
 
