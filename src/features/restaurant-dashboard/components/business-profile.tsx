@@ -11,6 +11,8 @@ import {
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  Armchair,
+  Bike,
   Camera,
   CalendarClock,
   Check,
@@ -20,6 +22,7 @@ import {
   Link2,
   MapPin,
   MoreVertical,
+  PackageOpen,
   Palette,
   Pencil,
   Plus,
@@ -99,7 +102,7 @@ import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { uploadImage } from "@/lib/api/upload";
 import { recoverBusinessFields } from "@/lib/business-text";
-import type { Restaurant } from "@/lib/types";
+import type { FulfillmentMode, Restaurant } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type I18n = ReturnType<typeof useI18n>;
@@ -1177,93 +1180,234 @@ function PaymentQrSection({
 /** A flat delivery charge, added to the cart total for delivery orders only.
  * The free-delivery switch is just `fee === 0` — there is no separate flag
  * to keep in sync with the number. */
-function DeliveryFeeSection({
+/**
+ * One toggle card per fulfillment mode, styled like a status row rather
+ * than a form — flipping a switch is the whole interaction, gated by its
+ * own confirm dialog instead of the edit-pencil/floating-save-bar pattern
+ * (per owner request: toggle directly, confirm per action). Delivery gets
+ * a dedicated dialog instead of a plain yes/no confirm, because turning it
+ * on always has to carry a fee (even "free") in the same request — see
+ * update.md §2.
+ */
+function FulfillmentSection({
   restaurant,
+  isStore,
   t,
   save,
 }: {
   restaurant: Restaurant;
+  isStore: boolean;
   t: I18n["t"];
   save: SaveProfile;
 }) {
-  const [editing, setEditing] = useState(false);
-  const currentModes = getSupportedFulfillment(restaurant);
-  const [deliveryEnabled, setDeliveryEnabled] = useState(
-    currentModes.includes("delivery"),
+  const [modes, setModes] = useState<Set<FulfillmentMode>>(
+    () => new Set(getSupportedFulfillment(restaurant)),
   );
   const [fee, setFee] = useState(restaurant.deliveryFee ?? 0);
-  // the amount the switch restores when turned back off — never 0, or
-  // toggling free delivery off would just toggle it straight back on
+  // the amount a free-delivery toggle restores when switched back off —
+  // never 0, or it would just toggle itself straight back on
   const lastFee = useRef(restaurant.deliveryFee || 5000);
-  const snapshot = useRef({ deliveryEnabled, fee });
+
+  const [pending, setPending] = useState<{
+    mode: FulfillmentMode;
+    next: boolean;
+  } | null>(null);
+  const [applying, setApplying] = useState(false);
+
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
+  const [draftFee, setDraftFee] = useState(fee);
+  const [savingDelivery, setSavingDelivery] = useState(false);
+
+  const requestToggle = (mode: FulfillmentMode, next: boolean) => {
+    if (mode === "delivery" && next) {
+      setDraftFee(fee || lastFee.current);
+      setDeliveryDialogOpen(true);
+      return;
+    }
+    setPending({ mode, next });
+  };
+
+  const applyToggle = async () => {
+    if (!pending) return;
+    setApplying(true);
+    try {
+      const next = new Set(modes);
+      if (pending.next) next.add(pending.mode);
+      else next.delete(pending.mode);
+      await save({ fulfillmentModes: [...next] });
+      setModes(next);
+      setPending(null);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const confirmDelivery = async () => {
+    setSavingDelivery(true);
+    try {
+      const next = new Set(modes).add("delivery");
+      await save({ fulfillmentModes: [...next], deliveryFee: draftFee });
+      setModes(next);
+      setFee(draftFee);
+      if (draftFee !== 0) lastFee.current = draftFee;
+      setDeliveryDialogOpen(false);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setSavingDelivery(false);
+    }
+  };
+
+  const cards: {
+    mode: FulfillmentMode;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    title: string;
+    desc: string;
+  }[] = [
+    {
+      mode: "delivery",
+      icon: Bike,
+      color: "bg-[#fb7185]",
+      title: t.dashboard.deliveryModeTitle,
+      desc: t.dashboard.deliveryModeDesc,
+    },
+    ...(isStore
+      ? []
+      : [
+          {
+            mode: "dineIn" as const,
+            icon: Armchair,
+            color: "bg-[#3b82f6]",
+            title: t.dashboard.dineInModeTitle,
+            desc: t.dashboard.dineInModeDesc,
+          },
+        ]),
+    {
+      mode: "pickup",
+      icon: PackageOpen,
+      color: "bg-[#22c55e]",
+      title: t.dashboard.pickupModeTitle,
+      desc: t.dashboard.pickupModeDesc,
+    },
+  ];
 
   return (
-    <ProfileSection
-      title={t.dashboard.deliveryFeeTitle}
-      icon={Truck}
-      editing={editing}
-      t={t}
-      onEdit={() => {
-        snapshot.current = { deliveryEnabled, fee };
-        setEditing(true);
-      }}
-      onSave={async () => {
-        const modes = deliveryEnabled
-          ? [...new Set([...currentModes, "delivery" as const])]
-          : currentModes.filter((m) => m !== "delivery");
-        await save({
-          fulfillmentModes: modes,
-          // delivery can never be enabled without a fee on record, even a
-          // free one — so the fee always rides along with the mode change
-          deliveryFee: deliveryEnabled ? fee : restaurant.deliveryFee,
-        });
-        setEditing(false);
-      }}
-      onCancel={() => {
-        setDeliveryEnabled(snapshot.current.deliveryEnabled);
-        setFee(snapshot.current.fee);
-        setEditing(false);
-      }}
-    >
-      <p className="text-sm text-muted-foreground">
-        {t.dashboard.deliveryFeeHint}
-      </p>
+    <section className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Truck className="size-5 text-primary" />
+        <h2 className="font-heading text-lg font-semibold">
+          {t.dashboard.deliveryFeeTitle}
+        </h2>
+      </div>
 
-      <label className="mt-4 flex items-center gap-2.5 text-sm font-semibold">
-        <Switch
-          checked={deliveryEnabled}
-          disabled={!editing}
-          onCheckedChange={setDeliveryEnabled}
-        />
-        {t.dashboard.deliveryEnabled}
-      </label>
+      {cards.map((card) => {
+        const enabled = modes.has(card.mode);
+        return (
+          <div
+            key={card.mode}
+            className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card p-5"
+          >
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={enabled}
+                onCheckedChange={(v) => requestToggle(card.mode, v)}
+              />
+              <span
+                className={cn(
+                  "text-sm font-bold",
+                  enabled ? "text-success" : "text-destructive",
+                )}
+              >
+                {enabled ? t.dashboard.modeEnabled : t.dashboard.modeDisabled}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-end">
+                <p className="font-heading text-base font-bold">
+                  {card.title}
+                </p>
+                <p className="text-sm text-muted-foreground">{card.desc}</p>
+              </div>
+              <span
+                className={cn(
+                  "flex size-14 shrink-0 items-center justify-center rounded-2xl text-white",
+                  card.color,
+                )}
+              >
+                <card.icon className="size-6" />
+              </span>
+            </div>
+          </div>
+        );
+      })}
 
-      {deliveryEnabled && (
-        <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
-          <label className="flex items-center gap-2.5 text-sm font-semibold">
+      {/* dine-in / pickup, and turning delivery off — a plain yes/no confirm */}
+      <AlertDialog
+        open={pending !== null}
+        onOpenChange={(open) => !open && !applying && setPending(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pending?.next
+                ? t.dashboard.confirmEnableModeTitle
+                : t.dashboard.confirmDisableModeTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending?.next
+                ? t.dashboard.confirmEnableModeBody
+                : t.dashboard.confirmDisableModeBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applying} onClick={() => setPending(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction loading={applying} onClick={applyToggle}>
+              {t.common.confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* turning delivery on always carries a fee — free or priced — in the
+          same request, so this is its own dialog instead of a bare confirm */}
+      <Dialog
+        open={deliveryDialogOpen}
+        onOpenChange={(open) => !open && !savingDelivery && setDeliveryDialogOpen(false)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.dashboard.confirmEnableDeliveryTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {t.dashboard.deliveryFeeHint}
+          </p>
+          <label className="mt-4 flex items-center gap-2.5 text-sm font-semibold">
             <Switch
-              checked={fee === 0}
-              disabled={!editing}
+              checked={draftFee === 0}
               onCheckedChange={(v) => {
                 if (v) {
-                  if (fee !== 0) lastFee.current = fee;
-                  setFee(0);
+                  if (draftFee !== 0) lastFee.current = draftFee;
+                  setDraftFee(0);
                 } else {
-                  setFee(lastFee.current);
+                  setDraftFee(lastFee.current);
                 }
               }}
             />
             {t.dashboard.freeDelivery}
           </label>
-          {fee !== 0 && (
-            <div className="flex items-center gap-2">
+          {draftFee !== 0 && (
+            <div className="mt-3 flex items-center gap-2">
               <Input
                 type="number"
                 inputMode="numeric"
                 dir="ltr"
-                disabled={!editing}
-                value={fee}
-                onChange={(e) => setFee(Number(e.target.value) || 0)}
+                value={draftFee}
+                onChange={(e) => setDraftFee(Number(e.target.value) || 0)}
                 className="h-10 w-32"
               />
               <span className="text-sm text-muted-foreground">
@@ -1271,9 +1415,28 @@ function DeliveryFeeSection({
               </span>
             </div>
           )}
-        </div>
-      )}
-    </ProfileSection>
+          <div className="mt-5 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={savingDelivery}
+              onClick={() => setDeliveryDialogOpen(false)}
+            >
+              {t.common.cancel}
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              loading={savingDelivery}
+              onClick={confirmDelivery}
+            >
+              {t.common.confirm}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }
 
@@ -1750,7 +1913,12 @@ export function BusinessProfile() {
             <PaymentQrSection restaurant={restaurant} t={t} save={save} />
           </TabsContent>
           <TabsContent value="delivery">
-            <DeliveryFeeSection restaurant={restaurant} t={t} save={save} />
+            <FulfillmentSection
+              restaurant={restaurant}
+              isStore={isStore}
+              t={t}
+              save={save}
+            />
           </TabsContent>
           <TabsContent value="gallery">
             <GallerySection restaurant={restaurant} t={t} save={save} />
