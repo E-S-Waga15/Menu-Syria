@@ -3,7 +3,13 @@ import { ReviewsSection } from "@/features/marketing/components/reviews-section"
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import { recoverBusinessFields } from "@/lib/business-text";
-import type { Business, PublicBranch, Region, Review } from "@/lib/types";
+import type {
+  Business,
+  Governorate,
+  PublicBranch,
+  Region,
+  Review,
+} from "@/lib/types";
 
 export function RestaurantDetailsBody({
   restaurant,
@@ -12,6 +18,7 @@ export function RestaurantDetailsBody({
   regionName,
   branches,
   regions,
+  governorates,
   lang,
   t,
   showMenuCta = true,
@@ -24,6 +31,9 @@ export function RestaurantDetailsBody({
   /** other locations this business has, for the branches panel's switcher */
   branches: PublicBranch[];
   regions: Region[];
+  /** resolves a branch's own governorate, for the area quick-fact tile when
+   * a branch other than the main one is selected */
+  governorates: Governorate[];
   lang: Locale;
   t: Dictionary;
   showMenuCta?: boolean;
@@ -64,6 +74,7 @@ export function RestaurantDetailsBody({
         regionName={regionName}
         branches={branches}
         regions={regions}
+        governorates={governorates}
         reviewCount={reviews.length}
         showMenuCta={showMenuCta}
         menuHref={menuHref}

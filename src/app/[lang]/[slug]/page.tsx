@@ -114,6 +114,7 @@ export default async function BusinessDetailsPage({
         regionName={regionName}
         branches={branches}
         regions={regions}
+        governorates={governorates}
         lang={lang}
         t={t}
         menuHref={`/${lang}/${slug}/menu`}

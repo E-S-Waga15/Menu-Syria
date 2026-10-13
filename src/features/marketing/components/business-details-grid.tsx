@@ -30,7 +30,7 @@ import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment"
 import { formatPrice } from "@/features/public-menu/lib/format";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import type { Business, PublicBranch, Region } from "@/lib/types";
+import type { Business, Governorate, PublicBranch, Region } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const MAIN = "main";
@@ -90,6 +90,7 @@ export function BusinessDetailsGrid({
   regionName,
   branches,
   regions,
+  governorates,
   reviewCount,
   showMenuCta = true,
   menuHref,
@@ -106,6 +107,7 @@ export function BusinessDetailsGrid({
   regionName: string;
   branches: PublicBranch[];
   regions: Region[];
+  governorates: Governorate[];
   reviewCount: number;
   showMenuCta?: boolean;
   menuHref?: string;
@@ -119,14 +121,20 @@ export function BusinessDetailsGrid({
     selectedId === MAIN ? null : branches.find((b) => b.id === selectedId);
 
   const address = selectedBranch?.address || mainAddress;
-  // no per-branch whatsapp in the data model — only the phone switches
   const branchPhone = selectedBranch?.phone || restaurant.phone;
+  const branchWhatsapp = selectedBranch?.whatsapp || restaurant.whatsapp;
   const location =
     selectedBranch?.latitude != null && selectedBranch?.longitude != null
       ? { lat: selectedBranch.latitude, lng: selectedBranch.longitude }
       : mainLocation;
-  const branchRegionName = selectedBranch
-    ? (regions.find((r) => r.id === selectedBranch.districtId)?.name[lang] ?? "")
+  const branchRegion = selectedBranch
+    ? regions.find((r) => r.id === selectedBranch.districtId)
+    : undefined;
+  const branchRegionName = branchRegion?.name[lang] ?? "";
+  const branchGovernorateName = selectedBranch
+    ? (governorates.find(
+        (g) => g.id === (selectedBranch.governorateId ?? branchRegion?.governorateId),
+      )?.name[lang] ?? "")
     : "";
 
   const supportsDelivery = getSupportedFulfillment(restaurant).includes(
@@ -139,10 +147,26 @@ export function BusinessDetailsGrid({
         : t.restaurant.freeDeliveryValue
       : null;
 
+  // the area tile follows the selected branch, falling back to the main
+  // business's governorate/region when "main" (or no branches) is selected
+  const effectiveGovernorateName = selectedBranch
+    ? branchGovernorateName
+    : governorateName;
+  const effectiveRegionName = selectedBranch ? branchRegionName : regionName;
   const areaLabel =
-    governorateName || regionName
-      ? [governorateName, regionName].filter(Boolean).join(separator)
+    effectiveGovernorateName || effectiveRegionName
+      ? [effectiveGovernorateName, effectiveRegionName]
+          .filter(Boolean)
+          .join(separator)
       : null;
+
+  const isStore = "category" in restaurant;
+  const aboutTitle = isStore
+    ? t.restaurant.aboutStoreTitle
+    : t.restaurant.aboutRestaurantTitle;
+  const contactInfoTitle = selectedBranch
+    ? `${t.restaurant.contactInfo} (${selectedBranch.name})`
+    : t.restaurant.contactInfo;
 
   const openBadgeClassName = restaurant.isOpen
     ? "bg-success/10 px-2 py-0.5 text-[11px] text-success md:px-2.5 md:text-xs"
@@ -196,7 +220,7 @@ export function BusinessDetailsGrid({
   }[];
 
   return (
-    <div className={cn("grid items-start gap-6", SIDE_COLS)}>
+    <div className={cn("grid items-start gap-6 pb-2.5", SIDE_COLS)}>
       {/* main content column: identity, about, facts, branches, menu CTA,
           quick info — everything that isn't "where/how to reach this
           place" lives here, paired against the sidebar column so the page
@@ -255,7 +279,7 @@ export function BusinessDetailsGrid({
           </div>
         </div>
 
-        <Panel title={t.restaurant.aboutTitle}>
+        <Panel title={aboutTitle}>
           {description ? (
             <p className="leading-relaxed text-muted-foreground md:text-lg">
               {description}
@@ -456,7 +480,7 @@ export function BusinessDetailsGrid({
           </div>
         </Panel>
 
-        <Panel title={t.restaurant.contactInfo} icon={Phone}>
+        <Panel title={contactInfoTitle} icon={Phone}>
           <a
             href={`tel:${branchPhone.replace(/\s/g, "")}`}
             className="flex items-center gap-2.5 text-base font-semibold transition-colors hover:text-primary"
@@ -468,7 +492,7 @@ export function BusinessDetailsGrid({
           </a>
 
           <a
-            href={`https://wa.me/${restaurant.whatsapp.replace(/[+\s]/g, "")}`}
+            href={`https://wa.me/${branchWhatsapp.replace(/[+\s]/g, "")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-3 flex items-center gap-2.5 text-base font-semibold transition-colors hover:text-[#128C4A]"
@@ -476,7 +500,7 @@ export function BusinessDetailsGrid({
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#25D366]/12 text-[#128C4A] dark:text-[#4cd97f]">
               <WhatsAppIcon className="size-4" />
             </span>
-            <span dir="ltr">{restaurant.whatsapp}</span>
+            <span dir="ltr">{branchWhatsapp}</span>
           </a>
 
           {socialPages.length > 0 && (

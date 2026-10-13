@@ -38,6 +38,9 @@ export interface Branch {
   latitude: number | null;
   longitude: number | null;
   phone: string;
+  /** not every backend record has one yet — falls back to the business's
+   * own WhatsApp number wherever this is absent */
+  whatsapp?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,6 +59,9 @@ export interface PublicBranch {
   latitude: number | null;
   longitude: number | null;
   phone: string;
+  /** not every backend record has one yet — falls back to the business's
+   * own WhatsApp number wherever this is absent */
+  whatsapp?: string;
   governorateId: string | null;
   districtId: string;
 }
