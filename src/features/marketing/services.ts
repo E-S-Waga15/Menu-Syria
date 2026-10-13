@@ -75,7 +75,6 @@ export async function getRestaurantBySlug(
         latitude: b.latitude,
         longitude: b.longitude,
         phone: b.phone,
-        whatsapp: b.whatsapp,
         governorateId: null,
         districtId: b.districtId,
       }));

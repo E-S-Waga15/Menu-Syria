@@ -41,6 +41,21 @@ const MAIN = "main";
  * left track */
 const SIDE_COLS = "lg:grid-cols-[1.25fr_0.75fr]";
 
+function withProtocol(url: string) {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+/** Instagram's field takes either a bare handle ("yasmeen.house") or a full
+ * profile link — a handle never contains "instagram.com", so that's enough
+ * to tell the two apart without needing a separate field for each. */
+function toInstagramHref(value: string) {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed) || /instagram\.com/i.test(trimmed)) {
+    return withProtocol(trimmed);
+  }
+  return `https://instagram.com/${trimmed.replace(/^@/, "")}`;
+}
+
 /** one card shell for every block on this page — smaller, lighter headings
  * than a default <h2> for a quieter, more composed read */
 function Panel({
@@ -121,8 +136,9 @@ export function BusinessDetailsGrid({
     selectedId === MAIN ? null : branches.find((b) => b.id === selectedId);
 
   const address = selectedBranch?.address || mainAddress;
+  // a branch has one number that doubles as both its phone and WhatsApp
   const branchPhone = selectedBranch?.phone || restaurant.phone;
-  const branchWhatsapp = selectedBranch?.whatsapp || restaurant.whatsapp;
+  const branchWhatsapp = selectedBranch?.phone || restaurant.whatsapp;
   const location =
     selectedBranch?.latitude != null && selectedBranch?.longitude != null
       ? { lat: selectedBranch.latitude, lng: selectedBranch.longitude }
@@ -196,24 +212,22 @@ export function BusinessDetailsGrid({
 
   const socialPages = [
     restaurant.facebook && {
-      label: t.restaurant.facebook,
-      handle: restaurant.facebook,
+      key: "facebook",
       icon: FacebookIcon,
-      href: `https://facebook.com/${restaurant.facebook}`,
+      // the field is always a full page link, never a bare handle
+      href: withProtocol(restaurant.facebook),
       className:
         "bg-[#1877F2]/10 text-[#1462c4] hover:bg-[#1877F2]/20 dark:text-[#6ba8f5]",
     },
     restaurant.instagram && {
-      label: t.restaurant.instagram,
-      handle: restaurant.instagram,
+      key: "instagram",
       icon: InstagramIcon,
-      href: `https://instagram.com/${restaurant.instagram}`,
+      href: toInstagramHref(restaurant.instagram),
       className:
         "bg-gradient-to-r from-[#f9ce34]/15 via-[#ee2a7b]/15 to-[#6228d7]/15 text-[#c13584] hover:from-[#f9ce34]/25 hover:via-[#ee2a7b]/25 hover:to-[#6228d7]/25 dark:text-[#ef7cae]",
     },
   ].filter(Boolean) as {
-    label: string;
-    handle: string;
+    key: string;
     icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
     href: string;
     className: string;
@@ -511,22 +525,14 @@ export function BusinessDetailsGrid({
               <div className="mt-3 flex flex-wrap gap-2.5">
                 {socialPages.map((page) => (
                   <a
-                    key={page.label}
+                    key={page.key}
                     href={page.href}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`flex items-center gap-2.5 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors ${page.className}`}
                   >
                     <page.icon className="size-4 shrink-0" />
-                    <span className="flex flex-col leading-tight">
-                      <span>{page.label}</span>
-                      <span
-                        className="text-[11px] font-medium opacity-70"
-                        dir="ltr"
-                      >
-                        @{page.handle}
-                      </span>
-                    </span>
+                    <span>{restaurant.name[lang]}</span>
                   </a>
                 ))}
               </div>
