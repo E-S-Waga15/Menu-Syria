@@ -268,17 +268,26 @@ export function BusinessDetailsGrid({
         </Panel>
 
         {quickFactTiles.length > 0 && (
-          <div className="grid grid-cols-3 gap-3">
-            {quickFactTiles.map((tile) => (
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3">
+            {quickFactTiles.map((tile, index) => (
               <div
                 key={tile.label}
-                className="rounded-xl border border-border/60 bg-card px-3.5 py-2.5"
+                className={cn(
+                  "rounded-xl border border-border/60 bg-card px-3 py-2.5 sm:px-3.5",
+                  // an odd one out (the 3rd of 3) spans both mobile columns
+                  // instead of leaving a dangling half-empty row
+                  index === quickFactTiles.length - 1 &&
+                    quickFactTiles.length % 2 === 1 &&
+                    "col-span-2 md:col-span-1",
+                )}
               >
                 <div className="flex items-center gap-1.5 text-primary">
                   <tile.icon className="size-3.5 shrink-0" />
-                  <span className="label-eyebrow truncate">{tile.label}</span>
+                  <span className="label-eyebrow">{tile.label}</span>
                 </div>
-                <p className="mt-1 truncate text-sm font-bold">{tile.value}</p>
+                <p className="mt-1 text-xs font-bold break-words sm:text-sm">
+                  {tile.value}
+                </p>
               </div>
             ))}
           </div>
