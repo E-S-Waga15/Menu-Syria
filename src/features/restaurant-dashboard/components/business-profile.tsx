@@ -90,6 +90,7 @@ import {
   getRegions,
   getSubscriptionPlans,
 } from "@/features/marketing/services";
+import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment";
 import { createSubscriptionRequest } from "@/features/subscription-requests/services";
 import { useBusinessProfileMutations } from "@/features/restaurant-dashboard/hooks/use-business-profile";
 import { getMyRestaurant } from "@/features/restaurant-dashboard/services";
@@ -909,6 +910,25 @@ function PaymentQrSection({
   const [removing, setRemoving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [paymentCode, setPaymentCode] = useState(restaurant.paymentCode ?? "");
+  const [savedCode, setSavedCode] = useState(restaurant.paymentCode ?? "");
+  const [savingCode, setSavingCode] = useState(false);
+  const codeDirty = paymentCode.trim() !== savedCode;
+
+  const saveCode = async () => {
+    setSavingCode(true);
+    try {
+      const value = paymentCode.trim();
+      await save({ paymentCode: value });
+      setPaymentCode(value);
+      setSavedCode(value);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setSavingCode(false);
+    }
+  };
+
   const pickQr = (file: File | undefined) => {
     if (!file) return;
     setPendingFile(file);
@@ -1022,6 +1042,30 @@ function PaymentQrSection({
         />
       </div>
 
+      <div className="mt-5 space-y-2 border-t border-border/60 pt-5">
+        <Label htmlFor="payment-code">{t.dashboard.paymentCodeLabel}</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="payment-code"
+            dir="ltr"
+            placeholder={t.dashboard.paymentCodePlaceholder}
+            className="h-10 font-mono"
+            value={paymentCode}
+            onChange={(e) => setPaymentCode(e.target.value)}
+          />
+          {codeDirty && (
+            <Button
+              type="button"
+              size="sm"
+              loading={savingCode}
+              onClick={saveCode}
+            >
+              {t.common.save}
+            </Button>
+          )}
+        </div>
+      </div>
+
       <ImagePreviewDialog
         src={pendingQr}
         onConfirm={confirmQr}
@@ -1079,11 +1123,15 @@ function DeliveryFeeSection({
   save: SaveProfile;
 }) {
   const [editing, setEditing] = useState(false);
+  const currentModes = getSupportedFulfillment(restaurant);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(
+    currentModes.includes("delivery"),
+  );
   const [fee, setFee] = useState(restaurant.deliveryFee ?? 0);
   // the amount the switch restores when turned back off — never 0, or
   // toggling free delivery off would just toggle it straight back on
   const lastFee = useRef(restaurant.deliveryFee || 5000);
-  const snapshot = useRef(fee);
+  const snapshot = useRef({ deliveryEnabled, fee });
 
   return (
     <ProfileSection
@@ -1092,54 +1140,75 @@ function DeliveryFeeSection({
       editing={editing}
       t={t}
       onEdit={() => {
-        snapshot.current = fee;
+        snapshot.current = { deliveryEnabled, fee };
         setEditing(true);
       }}
       onSave={async () => {
-        await save({ deliveryFee: fee });
+        const modes = deliveryEnabled
+          ? [...new Set([...currentModes, "delivery" as const])]
+          : currentModes.filter((m) => m !== "delivery");
+        await save({
+          fulfillmentModes: modes,
+          // delivery can never be enabled without a fee on record, even a
+          // free one — so the fee always rides along with the mode change
+          deliveryFee: deliveryEnabled ? fee : restaurant.deliveryFee,
+        });
         setEditing(false);
       }}
       onCancel={() => {
-        setFee(snapshot.current);
+        setDeliveryEnabled(snapshot.current.deliveryEnabled);
+        setFee(snapshot.current.fee);
         setEditing(false);
       }}
     >
       <p className="text-sm text-muted-foreground">
         {t.dashboard.deliveryFeeHint}
       </p>
-      <div className="mt-4 flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2.5 text-sm font-semibold">
-          <Switch
-            checked={fee === 0}
-            disabled={!editing}
-            onCheckedChange={(v) => {
-              if (v) {
-                if (fee !== 0) lastFee.current = fee;
-                setFee(0);
-              } else {
-                setFee(lastFee.current);
-              }
-            }}
-          />
-          {t.dashboard.freeDelivery}
-        </label>
-        {fee !== 0 && (
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              inputMode="numeric"
-              dir="ltr"
+
+      <label className="mt-4 flex items-center gap-2.5 text-sm font-semibold">
+        <Switch
+          checked={deliveryEnabled}
+          disabled={!editing}
+          onCheckedChange={setDeliveryEnabled}
+        />
+        {t.dashboard.deliveryEnabled}
+      </label>
+
+      {deliveryEnabled && (
+        <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-4">
+          <label className="flex items-center gap-2.5 text-sm font-semibold">
+            <Switch
+              checked={fee === 0}
               disabled={!editing}
-              value={fee}
-              onChange={(e) => setFee(Number(e.target.value) || 0)}
-              className="h-10 w-32"
+              onCheckedChange={(v) => {
+                if (v) {
+                  if (fee !== 0) lastFee.current = fee;
+                  setFee(0);
+                } else {
+                  setFee(lastFee.current);
+                }
+              }}
             />
-            <span className="text-sm text-muted-foreground">
-              {t.common.currency}
-            </span>
-          </div>
-        )}
-      </div>
+            {t.dashboard.freeDelivery}
+          </label>
+          {fee !== 0 && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="numeric"
+                dir="ltr"
+                disabled={!editing}
+                value={fee}
+                onChange={(e) => setFee(Number(e.target.value) || 0)}
+                className="h-10 w-32"
+              />
+              <span className="text-sm text-muted-foreground">
+                {t.common.currency}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </ProfileSection>
   );
 }

@@ -85,7 +85,14 @@ function applyInput(business: Restaurant, input: BusinessProfileInput): Restaura
   if (input.logo !== undefined) next.logoUrl = input.logo;
   if (input.images !== undefined) next.coverImages = input.images;
   if (input.paymentQrCode !== undefined) next.paymentQrCode = input.paymentQrCode;
-  if (input.deliveryFee !== undefined) next.deliveryFee = input.deliveryFee;
+  if (input.paymentCode !== undefined) next.paymentCode = input.paymentCode;
+  if (input.deliveryFee !== undefined) {
+    next.deliveryFee = input.deliveryFee;
+    next.deliveryFeeConfigured = true;
+  }
+  if (input.fulfillmentModes !== undefined) {
+    next.fulfillmentModes = input.fulfillmentModes;
+  }
 
   const whatsapp = input.phones?.find((phone) => phone.numberType === "whatsapp");
   const primary = input.phones?.find((phone) => phone.numberType !== "whatsapp");

@@ -118,9 +118,26 @@ export interface Business {
   /** Sham Cash transfer QR, shown to the customer at checkout. Empty/absent
    * means the business has not set one up. */
   paymentQrCode?: string;
+  /** Sham Cash transfer code, shown alongside (or instead of) the QR for a
+   * customer who'd rather paste it into the app than scan an image.
+   * Empty/absent means the business has not set one up. */
+  paymentCode?: string;
   /** flat delivery charge added to the cart total for delivery orders.
    * `0`/`null`/absent all mean delivery is free. */
   deliveryFee?: number | null;
+  /** true once the owner has explicitly saved a delivery fee at least once
+   * (even 0/free) — distinct from `deliveryFee` being `0`/absent because
+   * it was simply never touched. Delivery can't be enabled in
+   * `fulfillmentModes` until this is true. */
+  deliveryFeeConfigured?: boolean;
+  /**
+   * Which of dine-in/pickup/delivery this business offers, owner-
+   * configurable. Absent/`null` means "use the type-based default" —
+   * `getSupportedFulfillment` falls back to that for a business that has
+   * never touched this setting, so this field is safe to treat as optional
+   * everywhere it's read.
+   */
+  fulfillmentModes?: FulfillmentMode[];
   /**
    * Other physical locations of this business, for the storefront's branch
    * switcher. Only populated by the public storefront endpoints (never

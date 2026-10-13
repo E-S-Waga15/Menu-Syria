@@ -26,6 +26,7 @@ import type {
   CategoriesAnalytics,
   CurrencyCode,
   DiningTable,
+  FulfillmentMode,
   ItemStatistics,
   LiveActivityStats,
   LocalizedText,
@@ -483,8 +484,14 @@ export interface BusinessProfileInput {
   images?: string[];
   /** Sham Cash QR — a data URL, an already-uploaded image URL, or "" to clear it */
   paymentQrCode?: string;
-  /** flat delivery charge; 0 (or omitted) means free delivery */
+  /** Sham Cash transfer code — a plain string, or "" to clear it */
+  paymentCode?: string;
+  /** flat delivery charge; 0 (or omitted) means free delivery. Required
+   * (even 0) the first time delivery is turned on in `fulfillmentModes` —
+   * see update.md §2 */
   deliveryFee?: number | null;
+  /** which of dine-in/pickup/delivery this business offers; see update.md §1 */
+  fulfillmentModes?: FulfillmentMode[];
 }
 
 export async function updateBusinessProfile(
