@@ -211,7 +211,8 @@ export default async function AgentDetailsPage({
         </p>
 
         <div className="mt-8 border-t border-border/60 pt-6">
-          <h2 className="font-heading text-lg font-bold">
+          <h2 className="flex items-center gap-2 font-heading text-lg font-bold">
+            <Phone className="size-4.5 text-primary" />
             {t.agentPage.contactTitle}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">

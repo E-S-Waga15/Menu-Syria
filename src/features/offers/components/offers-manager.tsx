@@ -14,6 +14,16 @@ import {
   Trash2,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +78,7 @@ export function OffersManager() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Offer | null>(null);
+  const [deleting, setDeleting] = useState<Offer | null>(null);
 
   const offers = data ?? null;
 
@@ -119,17 +130,30 @@ export function OffersManager() {
   // each mutation's own onSuccess/onError toasts once the server actually
   // responds — toasting here unconditionally used to say "saved" a beat
   // before a real validation error could arrive
-  const save = (values: OfferValues) => {
-    mutations.save(values, editing);
-    setDialogOpen(false);
-    setEditing(null);
+  const save = async (values: OfferValues) => {
+    try {
+      await mutations.save(values, editing);
+      setDialogOpen(false);
+      setEditing(null);
+    } catch {
+      // onError already toasted — keep the dialog open to fix and retry
+    }
   };
 
   const toggleActive = (offer: Offer) => mutations.toggleActive(offer);
 
   const duplicate = (offer: Offer) => mutations.duplicate(offer);
 
-  const remove = (offer: Offer) => mutations.remove(offer);
+  const confirmRemove = async () => {
+    if (!deleting) return;
+    try {
+      await mutations.remove(deleting);
+      setDeleting(null);
+    } catch {
+      // the mutation's own onError already toasted — keep the confirm
+      // dialog open so the owner can retry
+    }
+  };
 
   const actionsFor = (offer: Offer): RowAction[] => [
     {
@@ -150,7 +174,7 @@ export function OffersManager() {
     {
       label: t.offers.deleteOffer,
       icon: Trash2,
-      onSelect: () => remove(offer),
+      onSelect: () => setDeleting(offer),
       danger: true,
     },
   ];
@@ -268,6 +292,34 @@ export function OffersManager() {
         }}
         onSave={save}
       />
+
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.offers.confirmDeleteOfferTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.offers.confirmDeleteOfferBody, {
+                name: deleting?.name.ar ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleting(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={mutations.isRemoving}
+              onClick={() => void confirmRemove()}
+            >
+              {t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

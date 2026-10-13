@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { MapPin, Phone, Star, UtensilsCrossed } from "lucide-react";
+import { Clock, MapPin, Phone, Star, UtensilsCrossed } from "lucide-react";
 
 import {
   FacebookIcon,
@@ -20,10 +20,13 @@ import type { Business, PublicBranch, Region, Review } from "@/lib/types";
 /** one card shell for every block on this page, so nothing drifts */
 function Panel({
   title,
+  icon: Icon,
   action,
   children,
 }: {
   title: string;
+  /** small mark beside the heading — purely decorative, never the only cue */
+  icon?: React.ComponentType<{ className?: string }>;
   /** sits opposite the heading rather than under the content */
   action?: React.ReactNode;
   children: React.ReactNode;
@@ -31,7 +34,10 @@ function Panel({
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-lg font-bold">{title}</h2>
+        <h2 className="flex items-center gap-2 font-heading text-lg font-bold">
+          {Icon && <Icon className="size-4.5 text-primary" />}
+          {title}
+        </h2>
         {action}
       </div>
       <div className="mt-4">{children}</div>
@@ -203,7 +209,7 @@ export function RestaurantDetailsBody({
             </Link>
           )}
 
-          <Panel title={t.restaurant.contactInfo}>
+          <Panel title={t.restaurant.contactInfo} icon={Phone}>
             <a
               href={`tel:${restaurant.phone.replace(/\s/g, "")}`}
               className="flex items-center gap-2.5 text-base font-semibold transition-colors hover:text-primary"
@@ -259,7 +265,7 @@ export function RestaurantDetailsBody({
         </div>
 
         <div className="space-y-6">
-          <Panel title={t.restaurant.location}>
+          <Panel title={t.restaurant.location} icon={MapPin}>
             <BranchLocationPanel
               mainAddress={address}
               mainLocation={location}
@@ -271,7 +277,7 @@ export function RestaurantDetailsBody({
             />
           </Panel>
 
-          <Panel title={t.restaurant.workingHours}>
+          <Panel title={t.restaurant.workingHours} icon={Clock}>
             <OpeningHours hours={restaurant.openingHours} t={t} />
           </Panel>
         </div>

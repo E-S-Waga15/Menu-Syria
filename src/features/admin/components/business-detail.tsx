@@ -16,6 +16,16 @@ import {
   Wallet,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +73,7 @@ export function AdminBusinessDetail({
   const { t, lang } = useI18n();
   const [enabled, setEnabled] = useState(business.status === "active");
   const [savingStatus, setSavingStatus] = useState(false);
+  const [confirmToggle, setConfirmToggle] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [renewing, setRenewing] = useState(false);
   const { data: plans = [] } = useQuery({
@@ -101,6 +112,7 @@ export function AdminBusinessDetail({
         result?.message ??
           (next ? t.admin.accountEnabled : t.admin.accountDisabled),
       );
+      setConfirmToggle(false);
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
@@ -295,7 +307,7 @@ export function AdminBusinessDetail({
               enabled &&
               "border-[1.5px] border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive",
             )}
-            onClick={toggleAccount}
+            onClick={() => setConfirmToggle(true)}
             disabled={savingStatus}
           >
             {savingStatus ? <Spinner size="xs" tone="current" /> : <Power className="size-4" />}
@@ -303,6 +315,39 @@ export function AdminBusinessDetail({
           </Button>
         </div>
       </section>
+
+      <AlertDialog
+        open={confirmToggle}
+        onOpenChange={(open) => !open && !savingStatus && setConfirmToggle(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(enabled ? t.admin.confirmDisable : t.admin.confirmEnable, {
+                name: business.name[lang],
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {enabled ? t.admin.confirmDisableBody : t.admin.confirmEnableBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={savingStatus}
+              onClick={() => setConfirmToggle(false)}
+            >
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={enabled ? "destructive" : "default"}
+              loading={savingStatus}
+              onClick={() => void toggleAccount()}
+            >
+              {enabled ? t.admin.disableAccount : t.admin.enableAccount}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

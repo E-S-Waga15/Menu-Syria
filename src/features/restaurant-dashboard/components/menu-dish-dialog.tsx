@@ -60,7 +60,7 @@ export function MenuDishDialog({
     currency: "SYP" | "USD";
     /** gallery, first entry first — the parent maps [0] onto imageUrl */
     images?: string[];
-  }) => void;
+  }) => Promise<void> | void;
 }) {
   const { t, lang } = useI18n();
 

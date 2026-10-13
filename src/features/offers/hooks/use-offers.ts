@@ -111,8 +111,9 @@ export function useOfferMutations(businessId: string) {
         badge: values.badge === "none" ? undefined : values.badge,
         sortOrder: editing?.sortOrder ?? currentOffers().length + 1,
       };
-      if (editing) update.mutate({ id: editing.id, input });
-      else create.mutate(input);
+      return editing
+        ? update.mutateAsync({ id: editing.id, input })
+        : create.mutateAsync(input);
     },
     toggleActive: (offer: Offer) =>
       update.mutate({ id: offer.id, input: { isActive: !offer.isActive } }),
@@ -134,7 +135,7 @@ export function useOfferMutations(businessId: string) {
         badge: offer.badge,
         sortOrder: currentOffers().length + 1,
       }),
-    remove: (offer: Offer) => remove.mutate(offer.id),
+    remove: (offer: Offer) => remove.mutateAsync(offer.id),
     /** a delete is the only destructive one, and it says so */
     isRemoving: remove.isPending,
     isPending: create.isPending || update.isPending,

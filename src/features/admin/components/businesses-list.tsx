@@ -14,6 +14,16 @@ import {
   Wallet,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -55,6 +65,8 @@ export function AdminBusinessesList({
   const [query, setQuery] = useState("");
   const [governorateId, setGovernorateId] = useState(ALL);
   const [regionId, setRegionId] = useState(ALL);
+  const [pendingToggle, setPendingToggle] = useState<Business | null>(null);
+  const [isTogglingAccount, setIsTogglingAccount] = useState(false);
 
   const base = `/${lang}/admin`;
   const adminBusinessBase = kind === "restaurant" ? "restaurants" : "stores";
@@ -102,8 +114,11 @@ export function AdminBusinessesList({
   const governorateName = (id: string) =>
     governorates.find((g) => g.id === id)?.name[lang] ?? "";
 
-  const toggleAccount = async (business: Business) => {
+  const confirmToggleAccount = async () => {
+    if (!pendingToggle) return;
+    const business = pendingToggle;
     const nextStatus = business.status === "active" ? "inactive" : "active";
+    setIsTogglingAccount(true);
     try {
       const result = await updateAdminBusinessStatus(business.id, nextStatus);
       setBusinessRows((current) =>
@@ -117,8 +132,11 @@ export function AdminBusinessesList({
             ? t.admin.accountEnabled
             : t.admin.accountDisabled),
       );
+      setPendingToggle(null);
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setIsTogglingAccount(false);
     }
   };
 
@@ -154,7 +172,7 @@ export function AdminBusinessesList({
           ? t.admin.disableAccount
           : t.admin.enableAccount,
       icon: Power,
-      onSelect: () => void toggleAccount(business),
+      onSelect: () => setPendingToggle(business),
       danger: business.status === "active",
     },
   ];
@@ -354,6 +372,43 @@ export function AdminBusinessesList({
           ))}
         </ul>
       )}
+
+      <AlertDialog
+        open={pendingToggle !== null}
+        onOpenChange={(open) => !open && setPendingToggle(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(
+                pendingToggle?.status === "active"
+                  ? t.admin.confirmDisable
+                  : t.admin.confirmEnable,
+                { name: pendingToggle?.name[lang] ?? "" },
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingToggle?.status === "active"
+                ? t.admin.confirmDisableBody
+                : t.admin.confirmEnableBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingToggle(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant={pendingToggle?.status === "active" ? "destructive" : "default"}
+              loading={isTogglingAccount}
+              onClick={() => void confirmToggleAccount()}
+            >
+              {pendingToggle?.status === "active"
+                ? t.admin.disableAccount
+                : t.admin.enableAccount}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

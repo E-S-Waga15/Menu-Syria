@@ -56,11 +56,11 @@ export function useBranchMutations(businessId: string) {
   });
 
   return {
-    save: (values: BranchWriteInput, editingId: string | null) => {
-      if (editingId) edit.mutate({ id: editingId, ...values });
-      else add.mutate(values);
-    },
-    remove: (id: string) => remove.mutate(id),
+    save: (values: BranchWriteInput, editingId: string | null) =>
+      editingId
+        ? edit.mutateAsync({ id: editingId, ...values })
+        : add.mutateAsync(values),
+    remove: (id: string) => remove.mutateAsync(id),
     isSaving: add.isPending || edit.isPending,
     isRemoving: remove.isPending,
   };

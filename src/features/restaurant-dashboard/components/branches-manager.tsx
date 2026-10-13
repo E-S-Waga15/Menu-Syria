@@ -64,7 +64,7 @@ export function BranchesManager() {
     setDialogOpen(true);
   };
 
-  const save = (values: {
+  const save = async (values: {
     name: string;
     districtId: string;
     address: string;
@@ -72,25 +72,33 @@ export function BranchesManager() {
     lat: number | null;
     lng: number | null;
   }) => {
-    mutations.save(
-      {
-        name: values.name.trim(),
-        districtId: values.districtId,
-        address: values.address.trim() || undefined,
-        phone: values.phone,
-        latitude: values.lat,
-        longitude: values.lng,
-      },
-      editing?.id ?? null,
-    );
-    setDialogOpen(false);
-    setEditing(null);
+    try {
+      await mutations.save(
+        {
+          name: values.name.trim(),
+          districtId: values.districtId,
+          address: values.address.trim() || undefined,
+          phone: values.phone,
+          latitude: values.lat,
+          longitude: values.lng,
+        },
+        editing?.id ?? null,
+      );
+      setDialogOpen(false);
+      setEditing(null);
+    } catch {
+      // onError already toasted — keep the dialog open to fix and retry
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleting) return;
-    mutations.remove(deleting.id);
-    setDeleting(null);
+    try {
+      await mutations.remove(deleting.id);
+      setDeleting(null);
+    } catch {
+      // onError already toasted — keep the confirm dialog open to retry
+    }
   };
 
   const actionsFor = (branch: Branch): RowAction[] => [

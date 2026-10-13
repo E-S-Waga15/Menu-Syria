@@ -40,10 +40,10 @@ export function MenuCategoryBar({
   onQueryChange: (value: string) => void;
   itemCountFor: (categoryId: string) => number;
   totalCount: number;
-  onAddCategory: (name: string) => void;
-  onRenameCategory: (id: string, name: string) => void;
-  onDeleteCategory: (id: string) => void;
-  onReorderCategoryCommit: (orderedIds: string[]) => void;
+  onAddCategory: (name: string) => Promise<unknown> | void;
+  onRenameCategory: (id: string, name: string) => Promise<unknown> | void;
+  onDeleteCategory: (id: string) => Promise<unknown> | void;
+  onReorderCategoryCommit: (orderedIds: string[]) => Promise<unknown> | void;
 }) {
   const { t, lang } = useI18n();
 

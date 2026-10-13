@@ -90,7 +90,7 @@ export function PendingSubscriptionsList() {
                             <Button
                                 size="sm"
                                 onClick={() => void activate(item)}
-                                disabled={savingId === item.id}
+                                loading={savingId === item.id}
                             >
                                 <HandCoins className="size-4" />{" "}
                                 {t.admin.confirmPayment}

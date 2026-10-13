@@ -145,10 +145,14 @@ export function MenuManager() {
   const toggleAvailability = (id: string, value: boolean) =>
     itemMutations.setAvailability(id, value);
 
-  const confirmRemoveItem = () => {
+  const confirmRemoveItem = async () => {
     if (!deletingItem) return;
-    itemMutations.remove(deletingItem.id);
-    setDeletingItem(null);
+    try {
+      await itemMutations.remove(deletingItem.id);
+      setDeletingItem(null);
+    } catch {
+      // mutation's onError already toasted — keep the dialog open to retry
+    }
   };
 
   const moveItemLocal = (id: string, direction: "up" | "down") => {
@@ -161,9 +165,11 @@ export function MenuManager() {
     setStagedOrderIds(next);
   };
 
-  const commitOrder = () => {
+  const commitOrder = async () => {
     if (!stagedOrderIds) return;
-    itemMutations.reorder(
+    // deliberately not caught here — the caller decides what "stay open"
+    // means for whichever dialog it closes on success
+    await itemMutations.reorder(
       stagedOrderIds.map((id, index) => ({ id, sortOrder: index + 1 })),
     );
     setStagedOrderIds(null);
@@ -194,12 +200,12 @@ export function MenuManager() {
   // The guard stays here rather than only on the server: the button is already
   // disabled in the manager, and a 409 round-trip to say the same thing would
   // be a slower way to tell the owner what they can already see.
-  const deleteCategory = (id: string) => {
+  const deleteCategory = async (id: string) => {
     if (itemCountFor(id) > 0) {
       toast.error(t.dashboard.cannotDeleteCategory);
       return;
     }
-    categoryMutations.remove(id);
+    await categoryMutations.remove(id);
     if (activeCategory === id) changeCategory(ALL_CATEGORIES);
   };
 
@@ -303,9 +309,8 @@ export function MenuManager() {
         open={optionsItem !== null}
         onOpenChange={(open) => !open && setOptionsItem(null)}
         isStore={isStore}
-        onSave={(optionGroups) => {
-          if (optionsItem) itemMutations.edit(optionsItem.id, { optionGroups });
-          setOptionsItem(null);
+        onSave={async (optionGroups) => {
+          if (optionsItem) await itemMutations.edit(optionsItem.id, { optionGroups });
         }}
       />
 
@@ -333,9 +338,18 @@ export function MenuManager() {
             <AlertDialogAction
               variant={confirmOrderAction === "discard" ? "destructive" : "default"}
               loading={confirmOrderAction === "save" && itemMutations.isPending}
-              onClick={() => {
-                if (confirmOrderAction === "save") commitOrder();
-                else setStagedOrderIds(null);
+              onClick={async () => {
+                if (confirmOrderAction === "save") {
+                  try {
+                    await commitOrder();
+                  } catch {
+                    // mutation's onError already toasted — keep the confirm
+                    // dialog and the staged order so the owner can retry
+                    return;
+                  }
+                } else {
+                  setStagedOrderIds(null);
+                }
                 setConfirmOrderAction(null);
               }}
             >
@@ -353,7 +367,7 @@ export function MenuManager() {
         editing={editing}
         categories={categories}
         isStore={isStore}
-        onSave={(dish) => {
+        onSave={async (dish) => {
           // Mapped field by field, not spread: the dialog hands back
           // `nameText`/`descText`, which do not match `name`/`description` —
           // spreading them left the real fields untouched, so renaming an item
@@ -372,14 +386,19 @@ export function MenuManager() {
           // the mutation's own onSuccess toasts once the server actually
           // agrees — toasting here unconditionally used to tell the owner
           // "done" a beat before a real validation error arrived
-          if (editing) {
-            itemMutations.edit(editing.id, payload);
-          } else {
-            itemMutations.create({
-              ...payload,
-            });
+          try {
+            if (editing) {
+              await itemMutations.edit(editing.id, payload);
+            } else {
+              await itemMutations.create({
+                ...payload,
+              });
+            }
+            setDialogOpen(false);
+          } catch {
+            // mutation's onError already toasted — keep the dialog open so
+            // the owner's edits are still there to fix and retry
           }
-          setDialogOpen(false);
         }}
       />
 

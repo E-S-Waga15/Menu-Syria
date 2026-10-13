@@ -63,6 +63,17 @@ export function PlacesManager({
   const [governorateRenameValue, setGovernorateRenameValue] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [isAddingGovernorate, setIsAddingGovernorate] = useState(false);
+  const [isSavingGovernorateRename, setIsSavingGovernorateRename] =
+    useState(false);
+  const [deletingGovernorateId, setDeletingGovernorateId] = useState<
+    string | null
+  >(null);
+  const [isAddingRegion, setIsAddingRegion] = useState(false);
+  const [isSavingRename, setIsSavingRename] = useState(false);
+  const [deletingRegionId, setDeletingRegionId] = useState<string | null>(
+    null,
+  );
 
   const selected = governorates.find((g) => g.id === selectedId);
   const regionsOf = (id: string) =>
@@ -75,7 +86,8 @@ export function PlacesManager({
 
   const addGovernorate = async () => {
     const name = newGovernorate.trim();
-    if (!name) return;
+    if (!name || isAddingGovernorate) return;
+    setIsAddingGovernorate(true);
     try {
       const governorate = await createAdminGovernorate(name);
       setGovernorates((prev) => [...prev, governorate]);
@@ -84,6 +96,8 @@ export function PlacesManager({
       toast.success(governorate.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
+    } finally {
+      setIsAddingGovernorate(false);
     }
   };
 
@@ -94,7 +108,8 @@ export function PlacesManager({
 
   const commitGovernorateRename = async () => {
     const name = governorateRenameValue.trim();
-    if (!renamingGovernorateId || !name) return;
+    if (!renamingGovernorateId || !name || isSavingGovernorateRename) return;
+    setIsSavingGovernorateRename(true);
     try {
       const updated = await updateAdminGovernorate(
         renamingGovernorateId,
@@ -109,6 +124,8 @@ export function PlacesManager({
       setRenamingGovernorateId(null);
     } catch (error) {
       showError(error);
+    } finally {
+      setIsSavingGovernorateRename(false);
     }
   };
 
@@ -119,6 +136,8 @@ export function PlacesManager({
       toast.error(t.admin.cannotDeleteGovernorate);
       return;
     }
+    if (deletingGovernorateId) return;
+    setDeletingGovernorateId(id);
     try {
       const result = await deleteAdminGovernorate(id);
       const next = governorates.filter((governorate) => governorate.id !== id);
@@ -127,12 +146,15 @@ export function PlacesManager({
       toast.success(result?.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
+    } finally {
+      setDeletingGovernorateId(null);
     }
   };
 
   const addRegion = async () => {
     const name = newRegion.trim();
-    if (!name || !selected) return;
+    if (!name || !selected || isAddingRegion) return;
+    setIsAddingRegion(true);
     try {
       const region = await createAdminRegion(selected.id, name);
       setRegions((prev) => [...prev, region]);
@@ -140,6 +162,8 @@ export function PlacesManager({
       toast.success(region.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
+    } finally {
+      setIsAddingRegion(false);
     }
   };
 
@@ -150,7 +174,8 @@ export function PlacesManager({
 
   const commitRename = async () => {
     const name = renameValue.trim();
-    if (!renamingId || !name) return;
+    if (!renamingId || !name || isSavingRename) return;
+    setIsSavingRename(true);
     try {
       const current = regions.find((region) => region.id === renamingId);
       const updated = await updateAdminRegion(renamingId, name);
@@ -169,16 +194,22 @@ export function PlacesManager({
       setRenamingId(null);
     } catch (error) {
       showError(error);
+    } finally {
+      setIsSavingRename(false);
     }
   };
 
   const deleteRegion = async (id: string) => {
+    if (deletingRegionId) return;
+    setDeletingRegionId(id);
     try {
       const result = await deleteAdminRegion(id);
       setRegions((prev) => prev.filter((region) => region.id !== id));
       toast.success(result?.message ?? t.admin.saved);
     } catch (error) {
       showError(error);
+    } finally {
+      setDeletingRegionId(null);
     }
   };
 
@@ -194,6 +225,7 @@ export function PlacesManager({
           <Input
             placeholder={t.admin.governorateName}
             className="h-10"
+            disabled={isAddingGovernorate}
             value={newGovernorate}
             onChange={(e) => setNewGovernorate(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void addGovernorate()}
@@ -201,6 +233,7 @@ export function PlacesManager({
           <Button
             className="h-10 shrink-0"
             aria-label={t.admin.addGovernorate}
+            loading={isAddingGovernorate}
             onClick={() => void addGovernorate()}
           >
             <Plus className="size-4" />
@@ -224,6 +257,7 @@ export function PlacesManager({
                   {renamingGovernorateId === gov.id ? (
                     <Input
                       autoFocus
+                      disabled={isSavingGovernorateRename}
                       value={governorateRenameValue}
                       onChange={(e) => setGovernorateRenameValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -255,6 +289,7 @@ export function PlacesManager({
                         size="icon-xs"
                         aria-label={t.common.save}
                         className="shrink-0 text-success"
+                        loading={isSavingGovernorateRename}
                         onClick={() => void commitGovernorateRename()}
                       >
                         <Check className="size-3.5" />
@@ -264,6 +299,7 @@ export function PlacesManager({
                         size="icon-xs"
                         aria-label={t.common.cancel}
                         className="shrink-0 text-muted-foreground"
+                        disabled={isSavingGovernorateRename}
                         onClick={() => setRenamingGovernorateId(null)}
                       >
                         <X className="size-3.5" />
@@ -285,6 +321,8 @@ export function PlacesManager({
                     size="icon-xs"
                     aria-label={t.common.delete}
                     className="shrink-0 text-muted-foreground hover:text-destructive"
+                    loading={deletingGovernorateId === gov.id}
+                    disabled={deletingGovernorateId !== null}
                     onClick={() => void deleteGovernorate(gov.id)}
                   >
                     <Trash2 className="size-3.5" />
@@ -318,6 +356,7 @@ export function PlacesManager({
               <Input
                 placeholder={t.admin.regionName}
                 className="h-10"
+                disabled={isAddingRegion}
                 value={newRegion}
                 onChange={(e) => setNewRegion(e.target.value)}
                 onKeyDown={(e) =>
@@ -327,6 +366,7 @@ export function PlacesManager({
               <Button
                 className="h-10 shrink-0"
                 aria-label={t.admin.addRegion}
+                loading={isAddingRegion}
                 onClick={() => void addRegion()}
               >
                 <Plus className="size-4" />
@@ -349,6 +389,7 @@ export function PlacesManager({
                       <>
                         <Input
                           autoFocus
+                          disabled={isSavingRename}
                           value={renameValue}
                           onChange={(e) => setRenameValue(e.target.value)}
                           onKeyDown={(e) => {
@@ -362,6 +403,7 @@ export function PlacesManager({
                           size="icon-xs"
                           aria-label={t.common.save}
                           className="shrink-0 text-success"
+                          loading={isSavingRename}
                           onClick={() => void commitRename()}
                         >
                           <Check className="size-3.5" />
@@ -371,6 +413,7 @@ export function PlacesManager({
                           size="icon-xs"
                           aria-label={t.common.cancel}
                           className="shrink-0 text-muted-foreground"
+                          disabled={isSavingRename}
                           onClick={() => setRenamingId(null)}
                         >
                           <X className="size-3.5" />
@@ -395,6 +438,8 @@ export function PlacesManager({
                           size="icon-xs"
                           aria-label={t.common.delete}
                           className="shrink-0 text-muted-foreground hover:text-destructive"
+                          loading={deletingRegionId === region.id}
+                          disabled={deletingRegionId !== null}
                           onClick={() => void deleteRegion(region.id)}
                         >
                           <Trash2 className="size-3.5" />

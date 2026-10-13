@@ -283,7 +283,7 @@ export function ItemOptionsModal({
   item: MenuItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (optionGroups: CatalogOptionGroup[]) => void;
+  onSave: (optionGroups: CatalogOptionGroup[]) => Promise<void> | void;
   /** the "color" preset only makes sense for a store's products */
   isStore?: boolean;
 }) {
@@ -313,9 +313,14 @@ export function ItemOptionsModal({
         ? "$"
         : "SYP";
 
-  const submit = (values: ItemOptionsValues) => {
-    onSave(toOptionGroups(values.groups));
-    onOpenChange(false);
+  const submit = async (values: ItemOptionsValues) => {
+    try {
+      await onSave(toOptionGroups(values.groups));
+      onOpenChange(false);
+    } catch {
+      // the mutation's own onError already toasted — keep the dialog open
+      // so the owner's edits are still there to retry
+    }
   };
 
   const addGroup = (preset: "size" | "color" | "custom") => {

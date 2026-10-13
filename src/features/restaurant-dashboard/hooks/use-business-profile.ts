@@ -45,7 +45,7 @@ export function useBusinessProfileMutations(businessId: string) {
   });
 
   return {
-    save: (input: BusinessProfileInput) => save.mutate(input),
+    save: (input: BusinessProfileInput) => save.mutateAsync(input),
     isPending: save.isPending,
   };
 }

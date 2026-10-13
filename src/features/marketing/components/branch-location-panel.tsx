@@ -88,9 +88,11 @@ export function BranchLocationPanel({
       )}
 
       {address && (
-        <p className="flex items-start gap-2 text-sm text-muted-foreground">
-          <MapPin className="mt-0.5 size-4 shrink-0" />
-          <span>
+        <p className="flex items-start gap-2.5 text-sm">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <MapPin className="size-3.5" />
+          </span>
+          <span className="pt-1.5 text-muted-foreground">
             {address}
             {regionName && ` · ${regionName}`}
           </span>
@@ -100,9 +102,11 @@ export function BranchLocationPanel({
       {selectedBranch && phone && (
         <a
           href={`tel:${phone.replace(/\s/g, "")}`}
-          className="flex items-center gap-2 text-sm font-semibold transition-colors hover:text-primary"
+          className="flex items-center gap-2.5 text-sm font-semibold transition-colors hover:text-primary"
         >
-          <Phone className="size-3.5" />
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Phone className="size-3.5" />
+          </span>
           <span dir="ltr">{phone}</span>
           <span className="text-xs font-normal text-muted-foreground">
             ({t.restaurant.branchPhone})
@@ -114,7 +118,7 @@ export function BranchLocationPanel({
         href={`https://maps.google.com/?q=${location.lat},${location.lng}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+        className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3.5 py-2 text-sm font-semibold text-primary transition-colors duration-200 hover:bg-primary/15"
       >
         {t.restaurant.openInMaps}
         <ExternalLink className="size-3.5" />

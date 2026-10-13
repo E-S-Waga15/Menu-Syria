@@ -50,7 +50,7 @@ export function BranchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Branch | null;
-  onSave: (values: BranchFormValues) => void;
+  onSave: (values: BranchFormValues) => Promise<void> | void;
   isSaving: boolean;
 }) {
   const { t, lang } = useI18n();

@@ -67,7 +67,7 @@ export function OfferDialog({
   /** the offer being edited, or `null` when creating a new one */
   editing: Offer | null;
   onClose: () => void;
-  onSave: (values: OfferValues) => void;
+  onSave: (values: OfferValues) => Promise<void> | void;
 }) {
   const { t, lang } = useI18n();
 

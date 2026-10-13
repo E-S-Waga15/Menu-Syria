@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Camera } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
@@ -105,6 +106,15 @@ export function RestaurantGallery({ images }: { images: string[] }) {
               there was anything to move through, and no sign at all on touch */}
           <CarouselPrevious className="start-4 size-10 border-0 bg-white/85 text-foreground backdrop-blur hover:bg-white dark:bg-black/55 dark:text-white dark:hover:bg-black/75" />
           <CarouselNext className="end-4 size-10 border-0 bg-white/85 text-foreground backdrop-blur hover:bg-white dark:bg-black/55 dark:text-white dark:hover:bg-black/75" />
+
+          {/* photo count — same corner on every slide so it never competes
+              with the identity bar that overlaps the gallery just below */}
+          <div className="absolute end-4 top-4 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
+            <Camera className="size-3.5" />
+            <span dir="ltr">
+              {slide + 1}/{images.length}
+            </span>
+          </div>
 
           {/* dashes: how many photos there are, and which one is showing */}
           <div className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5">

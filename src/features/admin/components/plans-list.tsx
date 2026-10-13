@@ -8,6 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -60,6 +70,9 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
   const { t, lang } = useI18n();
   const [rows, setRows] = useState(plans);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deleting, setDeleting] = useState<Plan | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const openNew = () => setDraft(emptyDraft);
 
@@ -93,6 +106,7 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
     };
 
     let message: string | undefined;
+    setIsSaving(true);
     try {
       if (draft.id) {
         const result = await updateAdminPlan(draft.id, {
@@ -113,6 +127,7 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
       }
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+      setIsSaving(false);
       return;
     }
 
@@ -127,21 +142,27 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
         : [...cleared, nextPlan];
     });
 
+    setIsSaving(false);
     setDraft(null);
     toast.success(message ?? t.admin.planSaved);
   };
 
-  const remove = async (plan: Plan) => {
+  const confirmRemove = async () => {
+    if (!deleting) return;
     let message: string | undefined;
+    setIsRemoving(true);
     try {
-      const result = await deleteAdminPlan(plan.id);
+      const result = await deleteAdminPlan(deleting.id);
       message = result?.message;
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+      setIsRemoving(false);
       return;
     }
-    setRows((prev) => prev.filter((p) => p.id !== plan.id));
+    setRows((prev) => prev.filter((p) => p.id !== deleting.id));
+    setIsRemoving(false);
     toast.success(message ?? t.admin.planDeleted);
+    setDeleting(null);
   };
 
   const actionsFor = (plan: Plan): RowAction[] => [
@@ -149,7 +170,7 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
     {
       label: t.admin.deleteRecord,
       icon: Trash2,
-      onSelect: () => remove(plan),
+      onSelect: () => setDeleting(plan),
       danger: true,
     },
   ];
@@ -321,13 +342,41 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
           )}
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDraft(null)}>
+            <Button variant="ghost" disabled={isSaving} onClick={() => setDraft(null)}>
               {t.common.cancel}
             </Button>
-            <Button onClick={save}>{t.admin.savePlan}</Button>
+            <Button loading={isSaving} onClick={save}>
+              {t.admin.savePlan}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.admin.deleteRecord}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.admin.confirmDeleteBody, { name: deleting?.name[lang] ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleting(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={isRemoving}
+              onClick={() => void confirmRemove()}
+            >
+              {t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

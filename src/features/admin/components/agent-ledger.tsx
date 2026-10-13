@@ -143,7 +143,7 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
             onChange={(event) => setCommissionRate(event.target.value)}
           />
         </div>
-        <Button onClick={() => void saveCommissionRate()} disabled={savingRate}>
+        <Button onClick={() => void saveCommissionRate()} loading={savingRate}>
           {t.common.save}
         </Button>
       </section>

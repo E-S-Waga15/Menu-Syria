@@ -155,17 +155,17 @@ export function useCategoryMutations(businessId: string) {
   return {
     /** places a new category after the owner's current last one */
     create: (name: string) =>
-      add.mutate({
+      add.mutateAsync({
         name,
         sortOrder: (cache.read()?.categories.length ?? 0) + 1,
       }),
-    rename: (id: string, name: string) => rename.mutate({ id, name }),
+    rename: (id: string, name: string) => rename.mutateAsync({ id, name }),
     /** Commits a full ordered list of category ids as the new 1-based order. */
     reorderAll: (orderedIds: string[]) =>
-      reorderAll.mutate(
+      reorderAll.mutateAsync(
         orderedIds.map((id, index) => ({ id, sortOrder: index + 1 })),
       ),
-    remove: (id: string) => remove.mutate(id),
+    remove: (id: string) => remove.mutateAsync(id),
     isPending: add.isPending || rename.isPending || remove.isPending,
   };
 }
@@ -291,15 +291,15 @@ export function useItemMutations(businessId: string) {
       const siblings = (cache.read()?.items ?? []).filter(
         (item) => item.categoryId === input.categoryId,
       );
-      add.mutate({ ...input, sortOrder: siblings.length + 1 });
+      return add.mutateAsync({ ...input, sortOrder: siblings.length + 1 });
     },
     edit: (id: string, fields: Partial<ItemWriteInput>) =>
-      edit.mutate({ id, ...fields }),
+      edit.mutateAsync({ id, ...fields }),
     setAvailability: (id: string, isAvailable: boolean) =>
-      edit.mutate({ id, isAvailable }),
-    remove: (id: string) => remove.mutate(id),
+      edit.mutateAsync({ id, isAvailable }),
+    remove: (id: string) => remove.mutateAsync(id),
     reorder: (order: { id: string; sortOrder: number }[]) =>
-      reorder.mutate(order),
+      reorder.mutateAsync(order),
     isPending: add.isPending || edit.isPending || remove.isPending,
     isRemoving: remove.isPending,
   };

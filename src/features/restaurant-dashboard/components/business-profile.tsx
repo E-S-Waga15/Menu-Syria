@@ -110,7 +110,7 @@ const SECONDARY_COLOR_PRESETS = [
 ];
 
 /** What a section calls to write its own fields. */
-type SaveProfile = (input: BusinessProfileInput) => void;
+type SaveProfile = (input: BusinessProfileInput) => Promise<unknown>;
 
 /**
  * Card wrapper every section shares: a title, an "Edit" trigger while at
@@ -134,7 +134,7 @@ function ProfileSection({
   icon: React.ComponentType<{ className?: string }>;
   editing: boolean;
   onEdit: () => void;
-  onSave: () => void;
+  onSave: () => Promise<void> | void;
   onCancel: () => void;
   editable?: boolean;
   children: React.ReactNode;
@@ -143,6 +143,7 @@ function ProfileSection({
   const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
     null,
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
@@ -197,9 +198,24 @@ function ProfileSection({
             </AlertDialogCancel>
             <AlertDialogAction
               variant={confirmAction === "discard" ? "destructive" : "default"}
-              onClick={() => {
-                if (confirmAction === "save") onSave();
-                else onCancel();
+              loading={confirmAction === "save" && isSaving}
+              onClick={async () => {
+                if (confirmAction === "save") {
+                  setIsSaving(true);
+                  try {
+                    await onSave();
+                  } catch {
+                    // the mutation's own onError already toasted — stay in
+                    // editing mode with the confirm dialog closed so the
+                    // owner can fix and retry from the section itself
+                    setIsSaving(false);
+                    setConfirmAction(null);
+                    return;
+                  }
+                  setIsSaving(false);
+                } else {
+                  onCancel();
+                }
                 setConfirmAction(null);
               }}
             >
@@ -218,15 +234,22 @@ function ImagePreviewDialog({
   src,
   onConfirm,
   onCancel,
+  confirming = false,
   t,
 }: {
   src: string | null;
   onConfirm: () => void;
   onCancel: () => void;
+  /** shows a spinner and blocks closing while a save this preview kicked
+   * off is still in flight */
+  confirming?: boolean;
   t: I18n["t"];
 }) {
   return (
-    <Dialog open={!!src} onOpenChange={(open) => !open && onCancel()}>
+    <Dialog
+      open={!!src}
+      onOpenChange={(open) => !open && !confirming && onCancel()}
+    >
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{t.dashboard.previewPhotoTitle}</DialogTitle>
@@ -241,11 +264,17 @@ function ImagePreviewDialog({
             type="button"
             variant="outline"
             className="flex-1"
+            disabled={confirming}
             onClick={onCancel}
           >
             {t.common.cancel}
           </Button>
-          <Button type="button" className="flex-1" onClick={onConfirm}>
+          <Button
+            type="button"
+            className="flex-1"
+            loading={confirming}
+            onClick={onConfirm}
+          >
             {t.common.confirm}
           </Button>
         </div>
@@ -350,8 +379,8 @@ function AccountInfoSection({
         };
         setEditing(true);
       }}
-      onSave={() => {
-        save({
+      onSave={async () => {
+        await save({
           name,
           description,
           // a store's "specialty" is its business type, which the platform
@@ -589,8 +618,8 @@ function SocialMediaSection({
         snapshot.current = { whatsapp, instagram, facebook };
         setEditing(true);
       }}
-      onSave={() => {
-        save({
+      onSave={async () => {
+        await save({
           // the contact section owns the primary phone, so it rides along
           phones: [
             { numberType: "mobile", number: restaurant.phone },
@@ -709,8 +738,8 @@ function GallerySection({
         snapshot.current = images;
         setEditing(true);
       }}
-      onSave={() => {
-        save({ images });
+      onSave={async () => {
+        await save({ images });
         setEditing(false);
       }}
       onCancel={() => {
@@ -821,8 +850,8 @@ function PaymentQrSection({
         snapshot.current = qrUrl;
         setEditing(true);
       }}
-      onSave={() => {
-        save({ paymentQrCode: qrUrl });
+      onSave={async () => {
+        await save({ paymentQrCode: qrUrl });
         setEditing(false);
       }}
       onCancel={() => {
@@ -919,8 +948,8 @@ function DeliveryFeeSection({
         snapshot.current = fee;
         setEditing(true);
       }}
-      onSave={() => {
-        save({ deliveryFee: fee });
+      onSave={async () => {
+        await save({ deliveryFee: fee });
         setEditing(false);
       }}
       onCancel={() => {
@@ -992,8 +1021,8 @@ function AppearanceSection({
         snapshot.current = { primary, secondary };
         setEditing(true);
       }}
-      onSave={() => {
-        save({ primaryColor: primary, secondaryColor: secondary });
+      onSave={async () => {
+        await save({ primaryColor: primary, secondaryColor: secondary });
         setEditing(false);
       }}
       onCancel={() => {
@@ -1159,6 +1188,7 @@ export function BusinessProfile() {
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isSavingLogo, setIsSavingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   if (!restaurant) return <LoadingSpinner />;
@@ -1185,12 +1215,25 @@ export function BusinessProfile() {
 
   const confirmLogo = async () => {
     if (logoFile) {
+      setIsSavingLogo(true);
+      let url: string;
       try {
-        const { url } = await uploadImage(logoFile, "businesses");
-        save({ logo: url });
+        ({ url } = await uploadImage(logoFile, "businesses"));
       } catch (error) {
+        // the upload itself has no mutation to toast for it
         toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+        setIsSavingLogo(false);
+        return;
       }
+      try {
+        await save({ logo: url });
+      } catch {
+        // the mutation's own onError already toasted — keep the preview
+        // open so the owner can retry the save
+        setIsSavingLogo(false);
+        return;
+      }
+      setIsSavingLogo(false);
     }
     setLogoPreview(null);
     setLogoFile(null);
@@ -1317,6 +1360,7 @@ export function BusinessProfile() {
         src={logoPreview}
         onConfirm={confirmLogo}
         onCancel={cancelLogo}
+        confirming={isSavingLogo}
         t={t}
       />
 

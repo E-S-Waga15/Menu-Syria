@@ -49,16 +49,20 @@ export function CategoryManager({
   labelled?: boolean;
   categories: MenuCategory[];
   itemCountFor: (categoryId: string) => number;
-  onAdd: (name: string) => void;
-  onRename: (id: string, name: string) => void;
-  onDelete: (id: string) => void;
-  onReorderCommit: (orderedIds: string[]) => void;
+  onAdd: (name: string) => Promise<unknown> | void;
+  onRename: (id: string, name: string) => Promise<unknown> | void;
+  onDelete: (id: string) => Promise<unknown> | void;
+  onReorderCommit: (orderedIds: string[]) => Promise<unknown> | void;
 }) {
   const { t, lang } = useI18n();
   const [newName, setNewName] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [stagedOrder, setStagedOrder] = useState<string[] | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
     null,
   );
@@ -83,11 +87,18 @@ export function CategoryManager({
     setStagedOrder(next);
   };
 
-  const submitAdd = () => {
+  const submitAdd = async () => {
     const name = newName.trim();
-    if (!name) return;
-    onAdd(name);
-    setNewName("");
+    if (!name || isAdding) return;
+    setIsAdding(true);
+    try {
+      await onAdd(name);
+      setNewName("");
+    } catch {
+      // onError already toasted — keep the typed name so it can be retried
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const startRename = (category: MenuCategory) => {
@@ -95,10 +106,33 @@ export function CategoryManager({
     setRenameValue(category.name[lang]);
   };
 
-  const submitRename = () => {
+  const submitRename = async () => {
     const name = renameValue.trim();
-    if (renamingId && name) onRename(renamingId, name);
-    setRenamingId(null);
+    if (!renamingId || !name || isRenaming) {
+      if (!name) setRenamingId(null);
+      return;
+    }
+    setIsRenaming(true);
+    try {
+      await onRename(renamingId, name);
+      setRenamingId(null);
+    } catch {
+      // onError already toasted — keep the field open to fix and retry
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const confirmDelete = async (id: string) => {
+    if (deletingId) return;
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } catch {
+      // onError already toasted
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -136,6 +170,7 @@ export function CategoryManager({
                 {renamingId === category.id ? (
                   <Input
                     autoFocus
+                    disabled={isRenaming}
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && submitRename()}
@@ -173,13 +208,14 @@ export function CategoryManager({
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  disabled={count > 0}
+                  disabled={count > 0 || deletingId === category.id}
+                  loading={deletingId === category.id}
                   title={
                     count > 0 ? t.dashboard.cannotDeleteCategory : undefined
                   }
                   aria-label={t.common.delete}
                   className="text-muted-foreground hover:text-destructive"
-                  onClick={() => onDelete(category.id)}
+                  onClick={() => confirmDelete(category.id)}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -224,6 +260,7 @@ export function CategoryManager({
           <Button
             type="button"
             size="icon"
+            loading={isAdding}
             aria-label={t.dashboard.addCategory}
             onClick={submitAdd}
           >
@@ -255,9 +292,19 @@ export function CategoryManager({
             </AlertDialogCancel>
             <AlertDialogAction
               variant={confirmAction === "discard" ? "destructive" : "default"}
-              onClick={() => {
+              loading={confirmAction === "save" && isSavingOrder}
+              onClick={async () => {
                 if (confirmAction === "save" && stagedOrder) {
-                  onReorderCommit(stagedOrder);
+                  setIsSavingOrder(true);
+                  try {
+                    await onReorderCommit(stagedOrder);
+                  } catch {
+                    // onError already toasted — keep the staged order and
+                    // the confirm dialog so the owner can retry
+                    setIsSavingOrder(false);
+                    return;
+                  }
+                  setIsSavingOrder(false);
                 }
                 setStagedOrder(null);
                 setConfirmAction(null);
