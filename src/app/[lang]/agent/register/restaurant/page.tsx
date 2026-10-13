@@ -25,7 +25,10 @@ export default async function AgentRegisterRestaurantPage({
       <AgentRegisterIntro kind="restaurant" />
       {/* the shared form reads ?ref= via useSearchParams, which needs a boundary */}
       <Suspense>
-        <RestaurantRegisterForm lockedReferralCode={agent.referralCode} />
+        <RestaurantRegisterForm
+          lockedReferralCode={agent.referralCode}
+          isAgentFlow
+        />
       </Suspense>
     </div>
   );

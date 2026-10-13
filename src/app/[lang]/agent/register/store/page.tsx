@@ -27,6 +27,7 @@ export default async function AgentRegisterStorePage({
       <Suspense>
         <RestaurantRegisterForm
           lockedReferralCode={agent.referralCode}
+          isAgentFlow
           copy={{
             title: t.auth.storeRegTitle,
             body: t.auth.storeRegBody,

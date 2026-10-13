@@ -1,4 +1,5 @@
 import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
+import { applyRecoveredBusinessFields } from "@/lib/business-text";
 import {
   governorates,
   menuCategories,
@@ -112,7 +113,7 @@ export async function getPublicMenu(
   if (!raw) return undefined;
   const restaurantId = raw.restaurant.id;
   return {
-    restaurant: raw.restaurant,
+    restaurant: applyRecoveredBusinessFields(raw.restaurant),
     categories: raw.categories.map((c) => normalizePublicCategory(c, restaurantId)),
     items: raw.items.map((i) => normalizePublicItem(i, restaurantId)),
     governorateName: raw.governorateName,

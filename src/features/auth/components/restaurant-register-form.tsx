@@ -127,10 +127,16 @@ export function RestaurantRegisterForm({
   /** set when an agent/agent-manager creates this account on a business's
    * behalf — the referral field locks to the agent's own code */
   lockedReferralCode,
+  /** rendered inside the agent's own dashboard (filling this out for a
+   * client) rather than the public self-registration page — on success this
+   * returns to wherever the agent came from instead of the public homepage,
+   * so submitting never reads as "logged out of the dashboard" */
+  isAgentFlow = false,
 }: {
   /** overrides for the store variant; defaults to restaurant wording */
   copy?: RegisterCopy;
   lockedReferralCode?: string;
+  isAgentFlow?: boolean;
 }) {
   const referralFromLink = useSearchParams().get("ref")?.trim() ?? "";
   // an agent page passes their code directly; a ?ref= link is the other way
@@ -285,8 +291,15 @@ export function RestaurantRegisterForm({
       toast.success(
         (result as { message?: string }).message ?? t.auth.applicationSent,
       );
-      startNavigating();
-      router.push(`/${lang}`);
+      if (isAgentFlow) {
+        // back to wherever the agent came from in their own dashboard —
+        // sending them to the public homepage instead reads as being
+        // logged out of it
+        router.back();
+      } else {
+        startNavigating();
+        router.push(`/${lang}`);
+      }
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.auth.genericError);
     }
@@ -346,6 +359,19 @@ export function RestaurantRegisterForm({
 
       <form
         onSubmit={handleSubmit(submit)}
+        // Enter in a text field implicitly submits the form natively — on
+        // the last step that reached the real submit button, which read as
+        // the request firing on its own mid-typing. Only an explicit click
+        // (or Enter while that button itself has focus) may submit now.
+        onKeyDown={(e) => {
+          if (
+            e.key === "Enter" &&
+            !(e.target instanceof HTMLButtonElement) &&
+            !(e.target instanceof HTMLTextAreaElement)
+          ) {
+            e.preventDefault();
+          }
+        }}
         noValidate
         className="mt-8 rounded-3xl border border-border/60 bg-card p-6 shadow-lifted md:p-10"
       >

@@ -1,4 +1,5 @@
 import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
+import { applyRecoveredBusinessFields } from "@/lib/business-text";
 import {
   branches,
   bestSellingItems,
@@ -132,7 +133,8 @@ function normalizeTable(raw: Raw): WithMessage<DiningTable> {
 /** The signed-in demo restaurant. */
 export async function getMyRestaurant(): Promise<Restaurant> {
   if (IS_MOCK) return mockDelay(restaurants[0]!);
-  return apiFetch("/me/restaurant");
+  const restaurant = await apiFetch<Restaurant>("/me/restaurant");
+  return applyRecoveredBusinessFields(restaurant);
 }
 
 export async function getMyMenu(): Promise<{

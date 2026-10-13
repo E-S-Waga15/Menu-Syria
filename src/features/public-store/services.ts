@@ -1,4 +1,5 @@
 import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
+import { applyRecoveredBusinessFields } from "@/lib/business-text";
 import {
   governorates,
   regions,
@@ -81,7 +82,8 @@ export async function getStoreBySlug(
   slug: string,
 ): Promise<Store | undefined> {
   if (IS_MOCK) return mockDelay(stores.find((s) => s.slug === slug), 150);
-  return apiGetOrUndefined(`/stores/${slug}`);
+  const store = await apiGetOrUndefined<Store>(`/stores/${slug}`);
+  return store && applyRecoveredBusinessFields(store);
 }
 
 export async function getPublicStoreCatalog(
@@ -120,7 +122,7 @@ export async function getPublicStoreCatalog(
   if (!raw) return undefined;
   const storeId = raw.store.id;
   return {
-    store: raw.store,
+    store: applyRecoveredBusinessFields(raw.store),
     categories: raw.categories.map((c) => normalizePublicCategory(c, storeId)),
     products: raw.products.map((p) => normalizePublicProduct(p, storeId)),
     governorateName: raw.governorateName,

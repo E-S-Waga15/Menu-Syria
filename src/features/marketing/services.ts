@@ -1,4 +1,5 @@
 import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
+import { applyRecoveredBusinessFields } from "@/lib/business-text";
 import {
   agents,
   businessSubTypes,
@@ -60,7 +61,8 @@ export async function getRestaurantBySlug(
 ): Promise<Restaurant | undefined> {
   if (IS_MOCK)
     return mockDelay(restaurants.find((r) => r.slug === slug));
-  return apiGetOrUndefined(`/restaurants/${slug}`);
+  const restaurant = await apiGetOrUndefined<Restaurant>(`/restaurants/${slug}`);
+  return restaurant && applyRecoveredBusinessFields(restaurant);
 }
 
 export async function getRegions(): Promise<Region[]> {

@@ -36,6 +36,8 @@ export interface RecoveredBusinessFields {
   description: string;
   address?: string;
   location?: { lat: number; lng: number };
+  logoUrl?: string;
+  theme?: { primaryColor: string; secondaryColor: string };
 }
 
 function field(lines: string[], label: string): string | undefined {
@@ -67,5 +69,57 @@ export function recoverBusinessFields(raw: string): RecoveredBusinessFields {
     if (Number.isFinite(lat) && Number.isFinite(lng)) location = { lat, lng };
   }
 
-  return { description: field(lines, "Description") ?? "", address, location };
+  const logoUrl = field(lines, "Logo");
+
+  const colorsRaw = field(lines, "Colors");
+  let theme: { primaryColor: string; secondaryColor: string } | undefined;
+  if (colorsRaw) {
+    const [primaryColor, secondaryColor] = colorsRaw
+      .split(",")
+      .map((s) => s.trim());
+    if (primaryColor && secondaryColor) theme = { primaryColor, secondaryColor };
+  }
+
+  return {
+    description: field(lines, "Description") ?? "",
+    address,
+    location,
+    logoUrl,
+    theme,
+  };
+}
+
+/**
+ * Applies the recovery to a fetched business, once, at the point every
+ * `/me/restaurant`, `/restaurants/:slug` and `/stores/:slug` read already
+ * passes through — so every screen that reads `business.theme`/`logoUrl`/
+ * `address`/`location` downstream (dashboard, public page, menu, cart,
+ * offers…) sees the owner's real picked values without each of them having
+ * to call `recoverBusinessFields` themselves. A business never put through
+ * the old no-fields registration form is returned unchanged — recovery only
+ * ever overrides a field the dump actually had a line for.
+ */
+export function applyRecoveredBusinessFields<
+  T extends {
+    description: { ar: string; en: string };
+    address: { ar: string; en: string };
+    location: { lat: number; lng: number };
+    logoUrl: string;
+    theme: { primaryColor: string; secondaryColor: string };
+  },
+>(business: T): T {
+  const recoveredAr = recoverBusinessFields(business.description.ar);
+  const recoveredEn = recoverBusinessFields(business.description.en);
+
+  return {
+    ...business,
+    description: { ar: recoveredAr.description, en: recoveredEn.description },
+    address: {
+      ar: recoveredAr.address || business.address.ar,
+      en: recoveredEn.address || business.address.en,
+    },
+    location: recoveredAr.location ?? business.location,
+    logoUrl: recoveredAr.logoUrl || business.logoUrl,
+    theme: recoveredAr.theme ?? business.theme,
+  };
 }
