@@ -4,9 +4,10 @@ import { isSyrianPhone } from "@/lib/validation";
 import type { ValidationMessages } from "@/lib/validation";
 
 /**
- * Checkout details — which fields are required depends on `fulfillment`:
- * dine-in only ever needs the (optional) table number, pickup needs a name
- * and a pickup-time slot, delivery needs a name, phone, and address.
+ * Checkout details — name and phone are required for every fulfillment
+ * mode; what else is required depends on `fulfillment`: dine-in's table
+ * number is optional, pickup needs a pickup-time slot, delivery needs an
+ * address too.
  */
 export const cartDetailsSchema = (v: ValidationMessages) =>
   z
@@ -20,39 +21,33 @@ export const cartDetailsSchema = (v: ValidationMessages) =>
       notes: z.string(),
     })
     .superRefine((data, ctx) => {
-      if (data.fulfillment === "pickup") {
-        if (!data.customerName.trim())
-          ctx.addIssue({
-            code: "custom",
-            path: ["customerName"],
-            message: v.required,
-          });
-        if (!data.pickupTime)
-          ctx.addIssue({
-            code: "custom",
-            path: ["pickupTime"],
-            message: v.required,
-          });
+      // name + phone are mandatory no matter how the order is fulfilled
+      if (!data.customerName.trim())
+        ctx.addIssue({
+          code: "custom",
+          path: ["customerName"],
+          message: v.required,
+        });
+      if (!isSyrianPhone(data.phone))
+        ctx.addIssue({
+          code: "custom",
+          path: ["phone"],
+          message: v.phoneInvalid,
+        });
+
+      if (data.fulfillment === "pickup" && !data.pickupTime) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["pickupTime"],
+          message: v.required,
+        });
       }
-      if (data.fulfillment === "delivery") {
-        if (!data.customerName.trim())
-          ctx.addIssue({
-            code: "custom",
-            path: ["customerName"],
-            message: v.required,
-          });
-        if (!data.address.trim())
-          ctx.addIssue({
-            code: "custom",
-            path: ["address"],
-            message: v.required,
-          });
-        if (!isSyrianPhone(data.phone))
-          ctx.addIssue({
-            code: "custom",
-            path: ["phone"],
-            message: v.phoneInvalid,
-          });
+      if (data.fulfillment === "delivery" && !data.address.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["address"],
+          message: v.required,
+        });
       }
     });
 export type CartDetailsValues = z.infer<ReturnType<typeof cartDetailsSchema>>;

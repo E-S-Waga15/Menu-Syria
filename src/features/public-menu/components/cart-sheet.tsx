@@ -4,7 +4,17 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, MapPin, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import {
+  Building2,
+  Copy,
+  Download,
+  MapPin,
+  Minus,
+  Plus,
+  ShoppingBag,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { toast } from "@/lib/toast";
@@ -53,6 +63,11 @@ import {
 import { useOrderHistoryStore } from "@/stores/order-history-store";
 import { useUiStore } from "@/stores/ui-store";
 
+/** sentinel for the branch <Select>; null (the real "main branch" state
+ * value) can't ride through Base UI's Select value prop, which wants a
+ * string */
+const MAIN_BRANCH_VALUE = "main";
+
 export function CartSheet({
   business,
   copy,
@@ -85,8 +100,14 @@ export function CartSheet({
 
   const supportedModes = getSupportedFulfillment(business);
   const branches = business.branches ?? [];
+  // null = main branch, kept as the default selection — never sent to the
+  // backend as a literal "main" value, see placeOrder's `branchId ?? undefined`
   const [branchId, setBranchId] = useState<string | null>(null);
   const selectedBranch = branches.find((b) => b.id === branchId) ?? null;
+  const branchItems: Record<string, string> = {
+    [MAIN_BRANCH_VALUE]: t.restaurant.mainBranch,
+    ...Object.fromEntries(branches.map((b) => [b.id, b.name])),
+  };
 
   // no submit handler here — the WhatsApp link is the action, so the form
   // validates live and the URL recomputes from watched values
@@ -94,7 +115,8 @@ export function CartSheet({
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    trigger,
+    formState: { errors, isValid },
   } = useForm<CartDetailsValues>({
     resolver: zodResolver(cartDetailsSchema(t.validation)),
     defaultValues: {
@@ -155,8 +177,7 @@ export function CartSheet({
         : undefined,
     customerName: customerName.trim() || undefined,
     pickupTime: fulfillmentValue === "pickup" ? pickupTime : undefined,
-    phone:
-      fulfillmentValue === "delivery" ? phone.trim() || undefined : undefined,
+    phone: phone.trim() || undefined,
     address:
       fulfillmentValue === "delivery" ? address.trim() || undefined : undefined,
     notes: notes.trim() || undefined,
@@ -405,40 +426,30 @@ export function CartSheet({
 
             {branches.length > 0 && (
               <div className="space-y-1.5">
-                <Label>{t.restaurant.orderFromBranch}</Label>
-                <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                  <button
-                    type="button"
-                    onClick={() => setBranchId(null)}
-                    aria-pressed={branchId === null}
-                    className={cn(
-                      "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
-                      branchId === null
-                        ? "bg-[var(--menu-primary)] text-white"
-                        : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
-                    )}
-                  >
-                    <Building2 className="size-3.5" />
-                    {t.restaurant.mainBranch}
-                  </button>
-                  {branches.map((branch) => (
-                    <button
-                      key={branch.id}
-                      type="button"
-                      onClick={() => setBranchId(branch.id)}
-                      aria-pressed={branchId === branch.id}
-                      className={cn(
-                        "flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
-                        branchId === branch.id
-                          ? "bg-[var(--menu-primary)] text-white"
-                          : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
-                      )}
-                    >
-                      <MapPin className="size-3.5" />
-                      {branch.name}
-                    </button>
-                  ))}
-                </div>
+                <Label htmlFor="cart-branch">{t.restaurant.orderFromBranch}</Label>
+                <Select
+                  value={branchId ?? MAIN_BRANCH_VALUE}
+                  onValueChange={(v) =>
+                    setBranchId(v === MAIN_BRANCH_VALUE ? null : v)
+                  }
+                  items={branchItems}
+                >
+                  <SelectTrigger id="cart-branch" className="h-10 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={MAIN_BRANCH_VALUE}>
+                      <Building2 className="size-3.5" />
+                      {t.restaurant.mainBranch}
+                    </SelectItem>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        <MapPin className="size-3.5" />
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
@@ -489,6 +500,30 @@ export function CartSheet({
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* name + phone are required for every fulfillment mode */}
+              <div className="space-y-1.5">
+                <Label htmlFor="cart-name">{copy.customerName}</Label>
+                <Input
+                  id="cart-name"
+                  aria-invalid={!!errors.customerName}
+                  className="h-10"
+                  {...register("customerName")}
+                />
+                <FieldError message={errors.customerName?.message} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cart-phone">{copy.phoneLabel}</Label>
+                <Input
+                  id="cart-phone"
+                  type="tel"
+                  dir="ltr"
+                  aria-invalid={!!errors.phone}
+                  className="h-10"
+                  {...register("phone")}
+                />
+                <FieldError message={errors.phone?.message} />
+              </div>
+
               {fulfillmentValue === "dineIn" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="cart-table">
@@ -507,24 +542,6 @@ export function CartSheet({
                   <FieldError message={errors.tableNumber?.message} />
                 </div>
               )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="cart-name">
-                  {copy.customerName}{" "}
-                  {fulfillmentValue === "dineIn" && (
-                    <span className="font-normal text-muted-foreground">
-                      ({t.common.optional})
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  id="cart-name"
-                  aria-invalid={!!errors.customerName}
-                  className="h-10"
-                  {...register("customerName")}
-                />
-                <FieldError message={errors.customerName?.message} />
-              </div>
 
               {fulfillmentValue === "pickup" && (
                 <div className="space-y-1.5">
@@ -561,31 +578,17 @@ export function CartSheet({
               )}
 
               {fulfillmentValue === "delivery" && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="cart-phone">{copy.phoneLabel}</Label>
-                    <Input
-                      id="cart-phone"
-                      type="tel"
-                      dir="ltr"
-                      aria-invalid={!!errors.phone}
-                      className="h-10"
-                      {...register("phone")}
-                    />
-                    <FieldError message={errors.phone?.message} />
-                  </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="cart-address">{copy.addressLabel}</Label>
-                    <Textarea
-                      id="cart-address"
-                      rows={2}
-                      placeholder={copy.addressPlaceholder}
-                      aria-invalid={!!errors.address}
-                      {...register("address")}
-                    />
-                    <FieldError message={errors.address?.message} />
-                  </div>
-                </>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="cart-address">{copy.addressLabel}</Label>
+                  <Textarea
+                    id="cart-address"
+                    rows={2}
+                    placeholder={copy.addressPlaceholder}
+                    aria-invalid={!!errors.address}
+                    {...register("address")}
+                  />
+                  <FieldError message={errors.address?.message} />
+                </div>
               )}
             </div>
 
@@ -613,6 +616,18 @@ export function CartSheet({
                   </div>
                 </>
               )}
+              {/* delivery selected and free — say so explicitly rather than
+                  leaving the customer to guess why no fee line appeared */}
+              {fulfillmentValue === "delivery" && deliveryFee === 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {copy.cartDeliveryFee}
+                  </span>
+                  <span className="font-semibold text-success">
+                    {copy.cartFreeDelivery}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-muted-foreground">
                   {copy.cartTotal}
@@ -623,23 +638,67 @@ export function CartSheet({
               </div>
             </div>
 
-            {business.paymentQrCode && (
-              <div className="flex items-center gap-4 rounded-2xl border border-border/70 bg-surface-container-low p-4">
-                <div className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-white p-1.5">
-                  <Image
-                    src={business.paymentQrCode}
-                    alt=""
-                    fill
-                    sizes="80px"
-                    unoptimized={business.paymentQrCode.startsWith("data:")}
-                    className="object-contain"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold">{copy.payViaShamCash}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {copy.shamCashHint}
-                  </p>
+            {(business.paymentQrCode || business.paymentCode) && (
+              <div className="rounded-2xl border border-border/70 bg-surface-container-low p-4">
+                <p className="text-sm font-bold">{copy.payViaShamCash}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {copy.shamCashHint}
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-start gap-4">
+                  {business.paymentQrCode && (
+                    <div className="flex shrink-0 flex-col items-center gap-2">
+                      <div className="relative size-24 overflow-hidden rounded-xl border border-border/60 bg-white p-1.5">
+                        <Image
+                          src={business.paymentQrCode}
+                          alt=""
+                          fill
+                          sizes="96px"
+                          unoptimized={business.paymentQrCode.startsWith("data:")}
+                          className="object-contain"
+                        />
+                      </div>
+                      <a
+                        href={business.paymentQrCode}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <Download className="size-3.5" />
+                        {copy.downloadQr}
+                      </a>
+                    </div>
+                  )}
+
+                  {business.paymentCode && (
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full bg-surface-container px-2.5 py-1 text-xs font-bold text-muted-foreground">
+                          {copy.paymentCodeBadge}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={t.common.copy}
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(business.paymentCode ?? "")
+                              .then(() => toast.success(copy.paymentCodeCopied))
+                              .catch(() => toast.error(t.restaurant.shareFailed));
+                          }}
+                          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                        >
+                          <Copy className="size-3.5" />
+                        </button>
+                      </div>
+                      <div
+                        dir="ltr"
+                        className="rounded-xl bg-surface-container px-3.5 py-2.5 text-center font-mono text-sm break-all"
+                      >
+                        {business.paymentCode}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -660,7 +719,10 @@ export function CartSheet({
                       // the Sheet portals outside the element declaring
                       // --menu-primary, so the brand colour is set directly
                       style={{ backgroundColor: business.theme.primaryColor }}
-                      className="flex w-full transform-gpu items-center justify-center gap-2.5 rounded-2xl py-4 text-base font-bold text-white transition-[scale] duration-200 ease-smooth hover:scale-[1.01] active:scale-[0.99]"
+                      className={cn(
+                        "flex w-full transform-gpu items-center justify-center gap-2.5 rounded-2xl py-4 text-base font-bold text-white transition-[scale,opacity] duration-200 ease-smooth hover:scale-[1.01] active:scale-[0.99]",
+                        !isValid && "opacity-60",
+                      )}
                     >
                       <ShoppingBag className="size-5" />
                       {copy.orderViaPlatform}
@@ -672,8 +734,18 @@ export function CartSheet({
                       href={whatsappUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={handleSend}
-                      className="flex w-full transform-gpu items-center justify-center gap-2.5 rounded-2xl bg-[#25D366] py-4 text-base font-bold text-white transition-[scale] duration-200 ease-smooth hover:scale-[1.01] active:scale-[0.99]"
+                      onClick={(e) => {
+                        if (!isValid) {
+                          e.preventDefault();
+                          void trigger();
+                          return;
+                        }
+                        handleSend();
+                      }}
+                      className={cn(
+                        "flex w-full transform-gpu items-center justify-center gap-2.5 rounded-2xl bg-[#25D366] py-4 text-base font-bold text-white transition-[scale,opacity] duration-200 ease-smooth hover:scale-[1.01] active:scale-[0.99]",
+                        !isValid && "opacity-60",
+                      )}
                     >
                       <WhatsAppIcon className="size-5" />
                       {copy.orderViaWhatsapp}
