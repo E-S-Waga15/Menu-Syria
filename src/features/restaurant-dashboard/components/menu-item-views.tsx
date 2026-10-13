@@ -81,19 +81,12 @@ function ItemEntryBody(props: MenuItemViewProps) {
     queryKeys.statistics.item(item.id),
   );
 
+  // Stats/options/edit move out to their own tappable icons in the footer
+  // row (one tap, not two) — the kebab only keeps preview and delete, the
+  // two actions that are either low-frequency or destructive enough to
+  // deserve the extra step.
   const actions: RowAction[] = [
     { label: t.dashboard.viewProduct, icon: Eye, onSelect: props.onPreview },
-    {
-      label: t.dashboard.productStats,
-      icon: BarChart3,
-      onSelect: props.onShowStats,
-    },
-    { label: t.common.edit, icon: Pencil, onSelect: props.onEdit },
-    {
-      label: t.dashboard.itemOptionsAction,
-      icon: SlidersHorizontal,
-      onSelect: props.onEditOptions,
-    },
     {
       label: t.common.delete,
       icon: Trash2,
@@ -139,21 +132,50 @@ function ItemEntryBody(props: MenuItemViewProps) {
       </div>
 
       <div
-        className="mt-3 flex items-center justify-between gap-2 border-t border-border/60 pt-2.5"
+        className="mt-3 flex flex-wrap items-center justify-between gap-y-2 border-t border-border/60 pt-2.5"
         onMouseDown={(e) => e.stopPropagation()}
         onDragStart={(e) => e.preventDefault()}
       >
-        <span
-          className="flex items-center gap-1 text-xs font-semibold text-muted-foreground"
-          title={t.dashboard.viewCount}
-        >
-          <Eye className="size-3.5" />
-          {cachedStats
-            ? cachedStats.viewCount.toLocaleString(
-                lang === "ar" ? "ar-SY" : "en-US",
-              )
-            : "—"}
-        </span>
+        <div className="flex items-center gap-0.5">
+          <span
+            className="flex items-center gap-1 px-1.5 text-xs font-semibold text-muted-foreground"
+            title={t.dashboard.viewCount}
+          >
+            <Eye className="size-3.5" />
+            {cachedStats
+              ? cachedStats.viewCount.toLocaleString(
+                  lang === "ar" ? "ar-SY" : "en-US",
+                )
+              : "—"}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t.dashboard.productStats}
+            title={t.dashboard.productStats}
+            onClick={props.onShowStats}
+          >
+            <BarChart3 className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t.dashboard.itemOptionsAction}
+            title={t.dashboard.itemOptionsAction}
+            onClick={props.onEditOptions}
+          >
+            <SlidersHorizontal className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t.common.edit}
+            title={t.common.edit}
+            onClick={props.onEdit}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        </div>
         <div className="flex items-center gap-1">
           {props.draggable && (
             <>
