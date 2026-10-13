@@ -104,7 +104,9 @@ export default async function BusinessDetailsPage({
         ])}
       />
       <BackToMenuBar menuHref={`/${lang}/${slug}/menu`} />
-      <RestaurantGallery images={business.coverImages} />
+      <div className="container-page pt-4">
+        <RestaurantGallery images={business.coverImages} />
+      </div>
       <RestaurantDetailsBody
         restaurant={business}
         reviews={reviews}

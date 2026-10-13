@@ -192,37 +192,56 @@ export function BusinessDetailsGrid({
       <div className="space-y-6">
         {/* logo rides up over the gallery's bottom edge on its own; the name
             stays in normal flow with a small mt-2.5 gap below the gallery —
-            the same gap the sidebar's map panel starts with */}
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="-mt-8">
-            <Image
-              src={restaurant.logoUrl}
-              alt=""
-              width={96}
-              height={96}
-              className="size-20 shrink-0 rounded-2xl border-4 border-background object-cover md:size-24"
-            />
-          </div>
-          <div className="mt-2.5 min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-              <h1 className="text-display text-xl md:text-3xl">
-                {restaurant.name[lang]}
-              </h1>
-              <Badge
-                className={
-                  restaurant.isOpen
-                    ? "shrink-0 bg-success/10 px-2 py-0.5 text-[11px] text-success md:px-2.5 md:text-xs"
-                    : "shrink-0 bg-muted px-2 py-0.5 text-[11px] text-muted-foreground md:px-2.5 md:text-xs"
-                }
-              >
-                <span
-                  className={`me-1 size-1.5 rounded-full ${restaurant.isOpen ? "bg-success" : "bg-muted-foreground"}`}
-                />
-                {restaurant.isOpen
-                  ? t.restaurant.openNow
-                  : t.restaurant.closedNow}
-              </Badge>
+            the same gap the sidebar's map panel starts with, so both
+            columns begin at the same visual height. The actions sit at the
+            row's far end, same level as the name, right next to where the
+            map column starts beside it — not stacked above the map. */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="relative z-10 -mt-8">
+              <Image
+                src={restaurant.logoUrl}
+                alt=""
+                width={96}
+                height={96}
+                className="size-20 shrink-0 rounded-2xl border-4 border-background object-cover md:size-24"
+              />
             </div>
+            <div className="mt-2.5 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                <h1 className="text-display text-xl md:text-3xl">
+                  {restaurant.name[lang]}
+                </h1>
+                <Badge
+                  className={
+                    restaurant.isOpen
+                      ? "shrink-0 bg-success/10 px-2 py-0.5 text-[11px] text-success md:px-2.5 md:text-xs"
+                      : "shrink-0 bg-muted px-2 py-0.5 text-[11px] text-muted-foreground md:px-2.5 md:text-xs"
+                  }
+                >
+                  <span
+                    className={`me-1 size-1.5 rounded-full ${restaurant.isOpen ? "bg-success" : "bg-muted-foreground"}`}
+                  />
+                  {restaurant.isOpen
+                    ? t.restaurant.openNow
+                    : t.restaurant.closedNow}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2.5 flex shrink-0 items-center gap-2">
+            <FavoriteButton
+              itemId={restaurant.id}
+              itemName={restaurant.name[lang]}
+              size="sm"
+            />
+            <BusinessShareActions
+              businessName={restaurant.name[lang]}
+              businessLocation={areaLabel ?? undefined}
+              businessPhotoUrl={restaurant.logoUrl}
+              size="sm"
+            />
           </div>
         </div>
 
@@ -382,22 +401,6 @@ export function BusinessDetailsGrid({
           of the page. mt-2.5 offsets the content column's -mt-8 identity
           overlap so both columns start at the same visual height. */}
       <div className="mt-2.5 space-y-6">
-        {/* favorite + share/QR — smaller here, opposite the name rather
-            than stacked under it, right before the map panel */}
-        <div className="flex items-center gap-2">
-          <FavoriteButton
-            itemId={restaurant.id}
-            itemName={restaurant.name[lang]}
-            size="sm"
-          />
-          <BusinessShareActions
-            businessName={restaurant.name[lang]}
-            businessLocation={areaLabel ?? undefined}
-            businessPhotoUrl={restaurant.logoUrl}
-            size="sm"
-          />
-        </div>
-
         <Panel
           title={t.restaurant.location}
           icon={MapPin}

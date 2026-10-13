@@ -52,7 +52,7 @@ export function RestaurantGallery({ images }: { images: string[] }) {
   // no photos uploaded yet — a flat hero reads better than an empty slider
   if (images.length === 0) {
     return (
-      <div className="relative flex h-[42vh] w-full items-center justify-center bg-berry-soft text-berry-soft-foreground md:h-[56vh]">
+      <div className="relative flex h-[42vh] w-full items-center justify-center overflow-hidden rounded-2xl bg-berry-soft text-berry-soft-foreground md:h-[56vh]">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -74,7 +74,7 @@ export function RestaurantGallery({ images }: { images: string[] }) {
       opts={{ loop: true, direction: dir }}
       setApi={setApi}
       dir="ltr"
-      className="group relative"
+      className="group relative overflow-hidden rounded-2xl"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
