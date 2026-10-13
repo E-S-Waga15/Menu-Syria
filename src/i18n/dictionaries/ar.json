@@ -316,6 +316,8 @@
     "workingHours": "ساعات العمل",
     "contact": "تواصل",
     "call": "اتصال",
+    "chat": "دردشة",
+    "phoneCopied": "تم نسخ رقم هاتف {name}",
     "whatsapp": "واتساب",
     "instagram": "إنستغرام",
     "facebook": "فيسبوك",

@@ -22,7 +22,6 @@ import {
   Trash2,
   Truck,
   User,
-  X,
 } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
@@ -251,6 +250,7 @@ function AlwaysEditableSection({
   onDiscard,
   children,
   t,
+  headerAction,
 }: {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -259,6 +259,10 @@ function AlwaysEditableSection({
   onDiscard: () => void;
   children: React.ReactNode;
   t: I18n["t"];
+  /** sits opposite the title, in the spot a `ProfileSection`'s pencil
+   * trigger would occupy — for a section whose own controls (e.g. a
+   * three-dot menu) replace that gate instead of an edit toggle */
+  headerAction?: React.ReactNode;
 }) {
   const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
     null,
@@ -267,10 +271,13 @@ function AlwaysEditableSection({
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
-      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
-        <Icon className="size-5 text-primary" />
-        {title}
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+          <Icon className="size-5 text-primary" />
+          {title}
+        </h2>
+        {headerAction}
+      </div>
       <div className="mt-5">{children}</div>
 
       {dirty && (
@@ -859,9 +866,9 @@ function GallerySection({
               type="button"
               aria-label={t.dashboard.removePhoto}
               onClick={() => setDeleteIndex(i)}
-              className="absolute top-2 end-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80"
+              className="absolute top-2 end-2 flex size-7 items-center justify-center rounded-full bg-destructive text-white transition-colors hover:bg-destructive/85"
             >
-              <X className="size-4" />
+              <Trash2 className="size-3.5" />
             </button>
           </div>
         ))}
@@ -978,6 +985,25 @@ function PaymentQrSection({
         setSaved(qrUrl);
       }}
       onDiscard={() => setQrUrl(saved)}
+      headerAction={
+        qrUrl ? (
+          <RowActions
+            actions={[
+              {
+                label: t.dashboard.replaceQrCode,
+                icon: Pencil,
+                onSelect: () => inputRef.current?.click(),
+              },
+              {
+                label: t.dashboard.removeQrCode,
+                icon: Trash2,
+                danger: true,
+                onSelect: () => setConfirmingRemove(true),
+              },
+            ]}
+          />
+        ) : undefined
+      }
     >
       <p className="text-sm text-muted-foreground">{t.dashboard.paymentQrHint}</p>
       <div className="mt-4">
@@ -991,24 +1017,6 @@ function PaymentQrSection({
               unoptimized={qrUrl.startsWith("data:")}
               className="object-contain"
             />
-            <div className="absolute top-1 end-1">
-              <RowActions
-                triggerClassName="size-7 bg-black/60 text-white hover:bg-black/75"
-                actions={[
-                  {
-                    label: t.dashboard.replaceQrCode,
-                    icon: Pencil,
-                    onSelect: () => inputRef.current?.click(),
-                  },
-                  {
-                    label: t.dashboard.removeQrCode,
-                    icon: Trash2,
-                    danger: true,
-                    onSelect: () => setConfirmingRemove(true),
-                  },
-                ]}
-              />
-            </div>
           </div>
         ) : (
           <button
@@ -1178,7 +1186,12 @@ function AppearanceSection({
         setEditing(false);
       }}
     >
-      <div className="grid gap-6 md:grid-cols-[1fr_1fr_auto] md:items-start">
+      {/* the preview always sits below the color fields, never beside them
+          — a fixed-width third column only fit this section back when it
+          had the whole tab to itself; now it shares a half-width column
+          with the social media card and a side-by-side row no longer has
+          the room */}
+      <div className="grid gap-6 sm:grid-cols-2">
         <ColorField
           id="p-primary"
           label={t.auth.primaryColorLabel}
@@ -1195,38 +1208,38 @@ function AppearanceSection({
           disabled={!editing}
           presets={SECONDARY_COLOR_PRESETS}
         />
+      </div>
 
-        <div className="md:row-span-2 md:w-56">
-          <p className="text-xs font-semibold text-muted-foreground">
-            {t.auth.previewDishName}
-          </p>
-          <div className="mt-2 overflow-hidden rounded-xl border border-border/60">
-            <div
-              className="flex items-center justify-between px-4 py-3.5 text-white"
-              style={{ backgroundColor: primary }}
+      <div className="mt-6 sm:w-56">
+        <p className="text-xs font-semibold text-muted-foreground">
+          {t.auth.previewDishName}
+        </p>
+        <div className="mt-2 overflow-hidden rounded-xl border border-border/60">
+          <div
+            className="flex items-center justify-between px-4 py-3.5 text-white"
+            style={{ backgroundColor: primary }}
+          >
+            <span className="truncate font-heading text-sm font-bold">
+              {restaurant.name.ar}
+            </span>
+            <span
+              className="shrink-0 rounded-full px-2.5 py-1 text-[0.65rem] font-bold"
+              style={{ backgroundColor: secondary, color: "#2c1600" }}
             >
-              <span className="truncate font-heading text-sm font-bold">
-                {restaurant.name.ar}
-              </span>
-              <span
-                className="shrink-0 rounded-full px-2.5 py-1 text-[0.65rem] font-bold"
-                style={{ backgroundColor: secondary, color: "#2c1600" }}
-              >
-                {t.menu.popular}
-              </span>
-            </div>
-            <div className="flex items-center justify-between bg-background px-4 py-3">
-              <span className="text-xs font-semibold">
-                {t.auth.previewDishName}
-              </span>
-              <span
-                className="text-xs font-bold"
-                style={{ color: primary }}
-                dir="ltr"
-              >
-                45,000 {t.common.currency}
-              </span>
-            </div>
+              {t.menu.popular}
+            </span>
+          </div>
+          <div className="flex items-center justify-between bg-background px-4 py-3">
+            <span className="text-xs font-semibold">
+              {t.auth.previewDishName}
+            </span>
+            <span
+              className="text-xs font-bold"
+              style={{ color: primary }}
+              dir="ltr"
+            >
+              45,000 {t.common.currency}
+            </span>
           </div>
         </div>
       </div>

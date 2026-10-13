@@ -316,6 +316,8 @@
     "workingHours": "Working hours",
     "contact": "Contact",
     "call": "Call",
+    "chat": "Chat",
+    "phoneCopied": "Copied {name}'s phone number",
     "whatsapp": "WhatsApp",
     "instagram": "Instagram",
     "facebook": "Facebook",

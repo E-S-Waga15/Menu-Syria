@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
   Building2,
   Clock,
+  Copy,
   ExternalLink,
   MapPin,
   Phone,
@@ -29,8 +30,10 @@ import { OpeningHours } from "@/features/marketing/components/opening-hours";
 import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import type { Locale } from "@/i18n/config";
+import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/get-dictionary";
 import type { Business, Governorate, PublicBranch, Region } from "@/lib/types";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const MAIN = "main";
@@ -492,27 +495,54 @@ export function BusinessDetailsGrid({
         </Panel>
 
         <Panel title={contactInfoTitle} icon={Phone}>
-          <a
-            href={`tel:${branchPhone.replace(/\s/g, "")}`}
-            className="flex items-center gap-2.5 text-base font-semibold transition-colors hover:text-primary"
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ffd9de] text-[#90003b]">
-              <Phone className="size-4" />
+          <div className="flex items-center gap-3 rounded-xl bg-muted/40 px-4 py-3">
+            <Phone className="size-4 shrink-0 text-[#90003b] dark:text-[#ff8aa6]" />
+            <span dir="ltr" className="flex-1 truncate text-sm font-semibold">
+              {branchPhone}
             </span>
-            <span dir="ltr">{branchPhone}</span>
-          </a>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                aria-label={t.common.copy}
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(branchPhone)
+                    .then(() =>
+                      toast.success(
+                        fmt(t.restaurant.phoneCopied, {
+                          name: restaurant.name[lang],
+                        }),
+                      ),
+                    )
+                    .catch(() => toast.error(t.restaurant.shareFailed));
+                }}
+                className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+              >
+                <Copy className="size-3.5" />
+              </button>
+              <a
+                href={`tel:${branchPhone.replace(/\s/g, "")}`}
+                className="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {t.restaurant.call}
+              </a>
+            </div>
+          </div>
 
-          <a
-            href={`https://wa.me/${branchWhatsapp.replace(/[+\s]/g, "")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 flex items-center gap-2.5 text-base font-semibold transition-colors hover:text-[#128C4A]"
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#25D366]/12 text-[#128C4A] dark:text-[#4cd97f]">
-              <WhatsAppIcon className="size-4" />
+          <div className="mt-3 flex items-center gap-3 rounded-xl bg-muted/40 px-4 py-3">
+            <WhatsAppIcon className="size-4 shrink-0 text-[#128C4A] dark:text-[#4cd97f]" />
+            <span dir="ltr" className="flex-1 truncate text-sm font-semibold">
+              {branchWhatsapp}
             </span>
-            <span dir="ltr">{branchWhatsapp}</span>
-          </a>
+            <a
+              href={`https://wa.me/${branchWhatsapp.replace(/[+\s]/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-full bg-[#25D366] px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#1fb855]"
+            >
+              {t.restaurant.chat}
+            </a>
+          </div>
 
           {socialPages.length > 0 && (
             <div className="mt-6 border-t border-border/60 pt-5">
