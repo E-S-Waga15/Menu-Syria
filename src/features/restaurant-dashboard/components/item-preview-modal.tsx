@@ -106,7 +106,7 @@ export function ItemPreviewModal({
                     className="rounded-full border border-border px-3 py-1 text-xs font-semibold"
                   >
                     {option.id}
-                    {group.priceMode === "absolute"
+                    {group.selectionType === "single"
                       ? ` · ${formatPrice(item.price + option.priceDelta, item.currency ?? "SYP", lang)}`
                       : option.priceDelta > 0
                         ? ` · +${formatPrice(option.priceDelta, item.currency ?? "SYP", lang)}`

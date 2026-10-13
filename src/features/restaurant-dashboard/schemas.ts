@@ -33,6 +33,11 @@ export type BranchFormValues = z.infer<ReturnType<typeof branchFormSchema>>;
  * one is not a validation error here: `toOptionGroups` silently drops any
  * group or option the owner left empty, exactly as it did before this was
  * split out of the dish dialog.
+ *
+ * Price entry always follows `selectionType`, not a separate owner-facing
+ * toggle: a single-choice group (size) is priced as each option's own final
+ * price, a multiple-choice group (add-ons) is priced as what each option
+ * adds. See `toOptionGroups` in `item-options-modal.tsx` for the conversion.
  */
 export const itemOptionsSchema = () =>
   z.object({
@@ -41,7 +46,6 @@ export const itemOptionsSchema = () =>
         id: z.string(),
         selectionType: z.enum(["single", "multiple"]),
         required: z.boolean(),
-        priceMode: z.enum(["delta", "absolute"]),
         options: z.array(
           z.object({
             id: z.string(),

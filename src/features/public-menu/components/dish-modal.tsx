@@ -305,7 +305,7 @@ export function DishModal({
                             ))}
                         </span>
                         <span className="flex-1 text-start">{option.id}</span>
-                        {group.priceMode === "absolute" ? (
+                        {isSingle ? (
                           <span className="shrink-0 text-xs font-bold text-[var(--menu-primary)]">
                             {formatPrice(
                               item.price + option.priceDelta,

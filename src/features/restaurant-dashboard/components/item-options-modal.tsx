@@ -49,16 +49,14 @@ function toFormGroups(groups: CatalogOptionGroup[] | undefined): ItemOptionsValu
     id: g.id,
     selectionType: g.selectionType,
     required: g.required,
-    priceMode: g.priceMode ?? "delta",
     options: g.options.map((o) => ({ id: o.id, priceDelta: o.priceDelta })),
   }));
 }
 
 /**
- * One group's row: name, single/multiple toggle, required checkbox, the
- * delta/absolute price-mode toggle, and its own options. Pulled out so it can
- * own its own nested `useFieldArray` for `options` — hooks can't be called
- * inside the parent's `.map`.
+ * One group's row: name, single/multiple toggle, required checkbox, and its
+ * own options. Pulled out so it can own its own nested `useFieldArray` for
+ * `options` — hooks can't be called inside the parent's `.map`.
  */
 function GroupEditor({
   control,
@@ -82,10 +80,10 @@ function GroupEditor({
     control,
     name: `groups.${groupIndex}.selectionType`,
   });
-  const priceMode = useWatch({
-    control,
-    name: `groups.${groupIndex}.priceMode`,
-  });
+  // single-choice (size) is always priced as each option's own final price;
+  // multiple-choice (add-ons) is always priced as what it adds — never a
+  // per-group toggle, so a customer never sees the two logics mixed
+  const isAbsolute = selectionType === "single";
 
   return (
     <div className="space-y-3 rounded-xl border border-border/60 p-3">
@@ -155,38 +153,9 @@ function GroupEditor({
         />
       </div>
 
-      {selectionType === "single" && (
-        <Controller
-          control={control}
-          name={`groups.${groupIndex}.priceMode`}
-          render={({ field }) => (
-            <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
-              {(["delta", "absolute"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => field.onChange(mode)}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
-                    field.value === mode
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent",
-                  )}
-                >
-                  {mode === "delta"
-                    ? t.dashboard.priceModeDelta
-                    : t.dashboard.priceModeAbsolute}
-                </button>
-              ))}
-            </div>
-          )}
-        />
-      )}
-      {selectionType === "single" && priceMode === "absolute" && (
-        <p className="text-xs text-muted-foreground">
-          {t.dashboard.priceModeHint}
-        </p>
-      )}
+      <p className="text-xs text-muted-foreground">
+        {isAbsolute ? t.dashboard.priceModeHint : t.dashboard.priceModeAddHint}
+      </p>
 
       <div className="space-y-2">
         {options.fields.map((field, optionIndex) => (
@@ -195,14 +164,13 @@ function GroupEditor({
             control={control}
             name={`groups.${groupIndex}.options.${optionIndex}`}
             render={({ field: optionField }) => {
-              // "absolute" mode shows/edits the option's own final price;
-              // what's stored (`priceDelta`) stays the difference from the
-              // base price either way, since that's the only shape the
-              // order's price math reads
-              const displayValue =
-                priceMode === "absolute"
-                  ? basePrice + optionField.value.priceDelta
-                  : optionField.value.priceDelta;
+              // a single-choice group shows/edits the option's own final
+              // price; what's stored (`priceDelta`) stays the difference
+              // from the base price either way, since that's the only shape
+              // the order's price math reads
+              const displayValue = isAbsolute
+                ? basePrice + optionField.value.priceDelta
+                : optionField.value.priceDelta;
               return (
                 <div className="flex items-center gap-2">
                   <Input
@@ -227,8 +195,7 @@ function GroupEditor({
                         e.target.value === "" ? 0 : Number(e.target.value);
                       optionField.onChange({
                         ...optionField.value,
-                        priceDelta:
-                          priceMode === "absolute" ? entered - basePrice : entered,
+                        priceDelta: isAbsolute ? entered - basePrice : entered,
                       });
                     }}
                     placeholder="0"
@@ -334,9 +301,6 @@ export function ItemOptionsModal({
       id: presetId,
       selectionType: preset === "custom" ? "multiple" : "single",
       required: preset !== "custom",
-      // "size" is the classic final-price-per-option case ("Large" = 350);
-      // color/custom groups default to the familiar additive delta
-      priceMode: preset === "size" ? "absolute" : "delta",
       options: [],
     });
   };

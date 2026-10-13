@@ -179,6 +179,15 @@ export type OptionSelectionType = "single" | "multiple";
  * display name. `id` is free text the owner types when creating the group
  * (e.g. "صغير", "large"), and doubles as the label shown to a customer;
  * it only has to be unique within its own group.
+ *
+ * `priceDelta` is always what the order's price math (backend and
+ * `dish-modal.tsx` alike) adds to the item's base price unconditionally —
+ * that part never changes. What it *means* to the owner depends on the
+ * parent group's `selectionType`: in a "single" group (e.g. size) the
+ * dashboard editor shows/accepts each option's own final price and
+ * silently converts it to/from this delta, since only one such option can
+ * ever be picked; in a "multiple" group (add-ons) it's edited as the plain
+ * additive amount, because several can stack.
  */
 export interface CatalogOption {
   id: string;
@@ -197,19 +206,6 @@ export interface CatalogOptionGroup {
   selectionType: OptionSelectionType;
   required: boolean;
   options: CatalogOption[];
-  /**
-   * Purely a dashboard-editing convenience — the order/price math (backend
-   * and `dish-modal.tsx` alike) only ever reads `priceDelta`, unconditionally
-   * added to the item's base price; this field never reaches that math.
-   * "delta" (default, and what every option predating this field means):
-   * the owner types the difference from the base price directly.
-   * "absolute": the owner types the option's own final price (e.g. a
-   * "Large" that should cost 350 when the base is 250) and the editor
-   * converts it to/from `priceDelta` on save/load — only sensible for a
-   * `selectionType: "single"` group, since several "absolute" picks can't
-   * combine into one final price the way add-ons do.
-   */
-  priceMode?: "delta" | "absolute";
 }
 
 /**
