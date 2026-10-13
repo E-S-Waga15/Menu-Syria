@@ -2,6 +2,26 @@ import { z } from "zod";
 
 import { syrianPhone, type ValidationMessages } from "@/lib/validation";
 
+/**
+ * One option group's shape, shared by the dedicated options editor and the
+ * add-item dialog's own embedded copy (see `optionGroupSchema` usage below).
+ * `id` doubles as the free-text label on both a group and an option (the
+ * backend has no separate name field), so a blank one is not a validation
+ * error here: `toOptionGroups` silently drops any group or option the owner
+ * left empty.
+ */
+const optionGroupSchema = z.object({
+  id: z.string(),
+  selectionType: z.enum(["single", "multiple"]),
+  required: z.boolean(),
+  options: z.array(
+    z.object({
+      id: z.string(),
+      priceDelta: z.number(),
+    }),
+  ),
+});
+
 export const dishFormSchema = (v: ValidationMessages) =>
   z.object({
     name: z.string().trim().min(1, v.required),
@@ -11,6 +31,10 @@ export const dishFormSchema = (v: ValidationMessages) =>
       .min(1, v.priceRequired)
       .regex(/^\d+$/, v.numbersOnly),
     currency: z.enum(["SYP", "USD"]),
+    // only shown/submitted when adding a brand-new item — editing an
+    // existing one manages its options separately, from the item card's
+    // own kebab menu (see MenuDishDialog)
+    groups: z.array(optionGroupSchema),
   });
 export type DishFormValues = z.infer<ReturnType<typeof dishFormSchema>>;
 
@@ -27,12 +51,8 @@ export const branchFormSchema = (v: ValidationMessages) =>
 export type BranchFormValues = z.infer<ReturnType<typeof branchFormSchema>>;
 
 /**
- * One item's option groups (size/color/custom add-ons), edited on their own —
- * see `item-options-modal.tsx`. `id` doubles as the free-text label on both
- * a group and an option (the backend has no separate name field), so a blank
- * one is not a validation error here: `toOptionGroups` silently drops any
- * group or option the owner left empty, exactly as it did before this was
- * split out of the dish dialog.
+ * One item's option groups (size/color/custom add-ons), edited on their own
+ * for an existing item — see `item-options-modal.tsx`.
  *
  * Price entry always follows `selectionType`, not a separate owner-facing
  * toggle: a single-choice group (size) is priced as each option's own final
@@ -41,18 +61,6 @@ export type BranchFormValues = z.infer<ReturnType<typeof branchFormSchema>>;
  */
 export const itemOptionsSchema = () =>
   z.object({
-    groups: z.array(
-      z.object({
-        id: z.string(),
-        selectionType: z.enum(["single", "multiple"]),
-        required: z.boolean(),
-        options: z.array(
-          z.object({
-            id: z.string(),
-            priceDelta: z.number(),
-          }),
-        ),
-      }),
-    ),
+    groups: z.array(optionGroupSchema),
   });
 export type ItemOptionsValues = z.infer<ReturnType<typeof itemOptionsSchema>>;

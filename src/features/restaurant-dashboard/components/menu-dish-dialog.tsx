@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch, type Control } from "react-hook-form";
 
 import { FieldError } from "@/components/shared/field-error";
 import { FileDropzone } from "@/components/shared/file-dropzone";
@@ -27,12 +27,21 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  findOptionPriceBelowBase,
+  toOptionGroups,
+} from "@/features/restaurant-dashboard/components/item-options-modal";
+import {
+  OptionGroupsFields,
+  type OptionGroupsFormValues,
+} from "@/features/restaurant-dashboard/components/option-groups-fields";
+import {
   dishFormSchema,
   type DishFormValues,
 } from "@/features/restaurant-dashboard/schemas";
-import { useI18n } from "@/i18n/client";
+import { fmt, useI18n } from "@/i18n/client";
 import { uploadImage } from "@/lib/api/upload";
-import type { MenuCategory, MenuItem } from "@/lib/types";
+import { toast } from "@/lib/toast";
+import type { CatalogOptionGroup, MenuCategory, MenuItem } from "@/lib/types";
 
 /**
  * Create/edit panel for a single menu item, lifted out of MenuManager so the
@@ -60,6 +69,9 @@ export function MenuDishDialog({
     currency: "SYP" | "USD";
     /** gallery, first entry first — the parent maps [0] onto imageUrl */
     images?: string[];
+    /** only ever sent when creating — an existing item's options are edited
+     * on their own, from the item card's kebab menu */
+    optionGroups?: CatalogOptionGroup[];
   }) => Promise<void> | void;
 }) {
   const { t, lang } = useI18n();
@@ -72,9 +84,23 @@ export function MenuDishDialog({
     formState: { errors, isSubmitting },
   } = useForm<DishFormValues>({
     resolver: zodResolver(dishFormSchema(t.validation)),
-    defaultValues: { name: "", desc: "", price: "", currency: "SYP" },
+    defaultValues: { name: "", desc: "", price: "", currency: "SYP", groups: [] },
     mode: "onTouched",
   });
+
+  const [watchedPrice, currencyValue] = useWatch({
+    control,
+    name: ["price", "currency"],
+  });
+  const basePrice = Number(watchedPrice) || 0;
+  const currencySuffix =
+    lang === "ar"
+      ? currencyValue === "USD"
+        ? "دولار"
+        : "ل.س"
+      : currencyValue === "USD"
+        ? "$"
+        : "SYP";
 
   const [images, setImages] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState("");
@@ -91,6 +117,9 @@ export function MenuDishDialog({
       desc: editing?.description[lang] ?? "",
       price: editing ? String(editing.price) : "",
       currency: editing?.currency ?? "SYP",
+      // only ever edited here when adding — editing an existing item never
+      // shows this section, so there is nothing of its own to seed
+      groups: [],
     });
     setCategoryId(editing?.categoryId ?? categories[0]?.id ?? "");
     // an older item may only have the single imageUrl; treat it as a gallery
@@ -100,15 +129,34 @@ export function MenuDishDialog({
     );
   }
 
-  const submit = (values: DishFormValues) =>
-    onSave({
+  const submit = (values: DishFormValues) => {
+    // only built/sent when creating — see the `optionGroups` prop note above
+    let optionGroups: CatalogOptionGroup[] | undefined;
+    if (!editing) {
+      const groups = toOptionGroups(values.groups);
+      const cheaperOption = findOptionPriceBelowBase(groups);
+      if (cheaperOption) {
+        toast.error(
+          fmt(t.dashboard.optionPriceBelowBase, {
+            option: cheaperOption,
+            base: basePrice,
+          }),
+        );
+        return;
+      }
+      optionGroups = groups;
+    }
+
+    return onSave({
       nameText: values.name,
       descText: values.desc,
       price: Number(values.price) || 0,
       currency: values.currency,
       categoryId,
       images,
+      optionGroups,
     });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -271,6 +319,23 @@ export function MenuDishDialog({
                 }}
               />
             </div>
+
+            {/* only when adding — an existing item's options are edited on
+                their own, from the item card's kebab menu */}
+            {!editing && (
+              <div className="space-y-1.5">
+                <Label>{t.dashboard.itemOptions}</Label>
+                <OptionGroupsFields
+                  // the form carries name/desc/price/currency alongside
+                  // `groups` — RHF's Control type only cares about the
+                  // fields this shared editor actually reads/writes
+                  control={control as unknown as Control<OptionGroupsFormValues>}
+                  basePrice={basePrice}
+                  currencySuffix={currencySuffix}
+                  isStore={isStore}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter className="px-4 pb-4">
             <Button

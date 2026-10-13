@@ -378,9 +378,6 @@ export function MenuManager() {
             description: dish.descText ?? "",
             price: dish.price ?? 0,
             currency: dish.currency,
-            // option groups are edited on their own now, from the item
-            // card's kebab menu (ItemOptionsModal) — this dialog no longer
-            // touches them, so they aren't in its payload
             images: dish.images ?? [],
           };
           // the mutation's own onSuccess toasts once the server actually
@@ -388,10 +385,14 @@ export function MenuManager() {
           // "done" a beat before a real validation error arrived
           try {
             if (editing) {
+              // editing an existing item never touches optionGroups here —
+              // those are edited on their own, from the item card's kebab
+              // menu (ItemOptionsModal)
               await itemMutations.edit(editing.id, payload);
             } else {
               await itemMutations.create({
                 ...payload,
+                optionGroups: dish.optionGroups,
               });
             }
             setDialogOpen(false);
