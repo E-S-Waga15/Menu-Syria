@@ -104,30 +104,28 @@ export function QrPanel() {
           </div>
 
           <div className="w-full">
-            <p className="mb-2 text-sm font-semibold text-muted-foreground">
-              {t.dashboard.qrLinkLabel}
-            </p>
-            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-surface-container-low px-3 py-2.5">
-              <Button
+            <div className="flex items-center justify-between gap-2">
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
                 aria-label={t.common.copy}
                 onClick={() => void copyLink()}
+                className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-surface-container hover:text-foreground"
               >
                 {copied ? (
-                  <Check className="size-4.5 text-success" />
+                  <Check className="size-4 text-success" />
                 ) : (
-                  <Copy className="size-4.5" />
+                  <Copy className="size-4" />
                 )}
-              </Button>
-              <p
-                className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground/80"
-                dir="ltr"
-              >
-                {menuUrl}
+              </button>
+              <p className="text-sm font-semibold text-muted-foreground">
+                {t.dashboard.qrLinkLabel}
               </p>
+            </div>
+            <div
+              dir="ltr"
+              className="mt-2 rounded-xl bg-surface-container-low px-3.5 py-2.5 text-center font-mono text-sm break-all text-foreground/80"
+            >
+              {menuUrl}
             </div>
           </div>
 

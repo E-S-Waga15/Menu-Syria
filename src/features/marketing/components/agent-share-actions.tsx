@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { Download, QrCode, Share2 } from "lucide-react";
+import { Check, Copy, Download, QrCode, Share2 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 
 import logoMark from "@/assets/logo.png";
@@ -21,8 +21,6 @@ import { toast } from "@/lib/toast";
  * merely displayed smaller, so the PNG stays crisp when printed.
  */
 const QR_PX = 440;
-/** on-screen size; QRCodeCanvas renders at QR_PX and is scaled down by CSS */
-const QR_DISPLAY = 176;
 const PAD = 48;
 const CAPTION_H = 56;
 const URL_H = 40;
@@ -59,11 +57,23 @@ export function AgentShareActions({
   const { t, lang } = useI18n();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
+  const [copied, setCopied] = useState(false);
   const qrWrapRef = useRef<HTMLDivElement>(null);
 
   const openQr = () => {
     setUrl(window.location.href);
     setOpen(true);
+  };
+
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success(t.agentPage.linkCopied);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error(t.agentPage.shareFailed);
+    }
   };
 
   /** platform first, then the person — one line under the code */
@@ -260,17 +270,37 @@ export function AgentShareActions({
             </div>
 
             <p className="mt-4 text-center text-sm font-bold">{caption}</p>
-            {/* break-all over truncate: a wa.me/agents link is one unbroken
-                token with nowhere to wrap, so it either breaks mid-word or
-                it overflows — wrapping onto a second line beats both an
-                ellipsis that hides the link and a line that spills outside
-                the card */}
-            <p
-              className="mt-2 w-full max-w-full rounded-xl bg-surface-container px-3.5 py-2 text-center text-xs break-all text-muted-foreground"
-              dir="ltr"
-            >
-              {url}
-            </p>
+
+            <div className="mt-4 w-full">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  aria-label={t.common.copy}
+                  onClick={() => void copyUrl()}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-surface-container hover:text-foreground"
+                >
+                  {copied ? (
+                    <Check className="size-3.5 text-success" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                </button>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  {t.agentPage.qrLinkLabel}
+                </p>
+              </div>
+              {/* break-all over truncate: a wa.me/agents link is one unbroken
+                  token with nowhere to wrap, so it either breaks mid-word or
+                  it overflows — wrapping onto a second line beats both an
+                  ellipsis that hides the link and a line that spills outside
+                  the card */}
+              <p
+                className="mt-2 w-full max-w-full rounded-xl bg-surface-container px-3.5 py-2 text-center text-xs break-all text-muted-foreground"
+                dir="ltr"
+              >
+                {url}
+              </p>
+            </div>
           </div>
 
           <div className="mt-5 flex gap-2">
