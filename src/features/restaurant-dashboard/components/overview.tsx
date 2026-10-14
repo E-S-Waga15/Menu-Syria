@@ -177,7 +177,8 @@ export function DashboardOverview() {
           label={t.dashboard.todayOrders}
           value={String(analytics.todayOrders)}
           icon={Receipt}
-          hint="+12%"
+          accent="berry"
+          badges={[{ icon: TrendingUp, text: "+12%", tone: "success" }]}
           highlight
         />
         <StatCard
@@ -185,19 +186,20 @@ export function DashboardOverview() {
           value={formatPrice(analytics.todayRevenue, t.common.currency)}
           icon={Banknote}
           accent="zest"
-          hint="+8%"
+          badges={[{ icon: TrendingUp, text: "+8%", tone: "success" }]}
           highlight
         />
         <StatCard
           label={t.dashboard.menuViews}
           value={analytics.menuViews.toLocaleString("en-US")}
           icon={Eye}
-          accent="neutral"
+          accent="info"
         />
         <StatCard
           label={t.dashboard.avgOrder}
           value={formatPrice(analytics.avgOrderValue, t.common.currency)}
           icon={TrendingUp}
+          accent="success"
         />
       </div>
 

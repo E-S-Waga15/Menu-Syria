@@ -12,6 +12,7 @@ import {
   PackagePlus,
   ShoppingBag,
   Store,
+  TrendingUp,
   UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -100,25 +101,27 @@ export function AgentEarningsView() {
           label={t.agent.totalEarnings}
           value={formatPrice(4850000, t.common.currency)}
           icon={Banknote}
-          hint="+15%"
+          accent="berry"
+          badges={[{ icon: TrendingUp, text: "+15%", tone: "success" }]}
           highlight
         />
         <StatCard
           label={t.agent.collectedCommissions}
           value={formatPrice(3600000, t.common.currency)}
           icon={HandCoins}
-          accent="zest"
+          accent="success"
         />
         <StatCard
           label={t.agent.pendingCommissions}
           value={formatPrice(1250000, t.common.currency)}
           icon={Hourglass}
-          accent="neutral"
+          accent="zest"
         />
         <StatCard
           label={t.agent.thisMonth}
           value={formatPrice(750000, t.common.currency)}
           icon={CalendarDays}
+          accent="info"
         />
       </div>
 

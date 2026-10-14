@@ -171,18 +171,19 @@ export function AnalyticsView() {
             label={t.dashboard.visitCount}
             value={business.visitCount.toLocaleString("en-US")}
             icon={Eye}
-            accent="neutral"
+            accent="info"
           />
           <StatCard
             label={t.dashboard.orderCount}
             value={business.orderCount.toLocaleString("en-US")}
             icon={Receipt}
+            accent="success"
           />
           <StatCard
             label={t.dashboard.totalRevenue}
             value={formatPrice(business.revenue, t.common.currency)}
             icon={Wallet}
-            accent="zest"
+            accent="berry"
             highlight
           />
         </div>

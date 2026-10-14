@@ -108,25 +108,27 @@ export function AdminControlCenter({
           label={t.admin.totalRestaurants}
           value={stats.totalRestaurants.toLocaleString("en-US")}
           icon={Store}
+          accent="success"
         />
         <StatCard
           label={t.admin.totalAgents}
           value={stats.totalAgents.toLocaleString("en-US")}
           icon={Handshake}
-          accent="neutral"
+          accent="info"
         />
         <StatCard
           label={t.admin.monthlyRevenue}
           value={formatPrice(stats.monthlyRevenue, t.common.currency)}
           icon={TrendingUp}
-          accent="zest"
-          hint="+21%"
+          accent="berry"
+          badges={[{ icon: TrendingUp, text: "+21%", tone: "success" }]}
           highlight
         />
         <StatCard
           label={t.admin.activeSubscriptions}
           value={stats.activeSubscriptions.toLocaleString("en-US")}
           icon={CreditCard}
+          accent="zest"
         />
       </div>
 
