@@ -407,7 +407,7 @@ export function BusinessDetailsGrid({
 
         {showMenuCta && (
           <Link
-            href={menuHref ?? `/${lang}/${restaurant.slug}/menu`}
+            href={menuHref ?? `/${restaurant.slug}/menu`}
             className="group relative flex w-full transform-gpu items-center justify-center gap-3 overflow-hidden rounded-2xl px-8 py-5 text-lg font-bold text-white transition-[scale] duration-300 ease-smooth hover:scale-[1.01]"
             style={{
               background: `linear-gradient(135deg, ${restaurant.theme.primaryColor}, color-mix(in oklch, ${restaurant.theme.primaryColor}, ${restaurant.theme.secondaryColor} 35%))`,

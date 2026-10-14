@@ -74,7 +74,7 @@ export function SubscriptionDetail({
           className: "bg-success/10 text-success",
         };
 
-  const storefront = `/${lang}/${business.slug}/menu`;
+  const storefront = `/${business.slug}/menu`;
 
   // Plans drive the request: the agent picks the target plan, then the
   // request tells the admin to collect the cash and activate/renew it.

@@ -26,6 +26,36 @@ function legacyStorefrontTarget(localelessPath: string): string | null {
   return null;
 }
 
+/**
+ * Every other top-level route is a known static page under `[lang]`; a
+ * segment that isn't one of these is a business's `/:slug` storefront
+ * (details, `/:slug/menu`, `/:slug/offers`). Storefronts print their bare
+ * slug on physical QR codes, so they never carry a visible `/ar` or `/en`
+ * prefix — keep this list in sync with the top-level folders under
+ * `src/app/[lang]/`.
+ */
+const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
+  "dashboard",
+  "admin",
+  "agent",
+  "login",
+  "register",
+  "restaurants",
+  "favorites",
+  "about",
+  "agents",
+  "notifications",
+  "privacy",
+  "terms",
+  "profile",
+  "stores",
+]);
+
+function isStorefrontPath(localelessPath: string): boolean {
+  const firstSegment = localelessPath.split("/")[1];
+  return !!firstSegment && !RESERVED_TOP_LEVEL_SEGMENTS.has(firstSegment);
+}
+
 function getLocale(request: NextRequest): string {
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   if (cookieLocale && isLocale(cookieLocale)) return cookieLocale;
@@ -45,16 +75,40 @@ export function proxy(request: NextRequest) {
     (locale) =>
       pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
   );
+  const localelessPath = pathnameLocale
+    ? pathname.slice(`/${pathnameLocale}`.length) || "/"
+    : pathname;
 
-  if (pathnameLocale) {
-    const localelessPath = pathname.slice(`/${pathnameLocale}`.length) || "/";
-    const legacyTarget = legacyStorefrontTarget(localelessPath);
-    if (legacyTarget) {
+  // Legacy storefront paths collapse onto the locale-less canonical slug
+  // path whether or not they arrived with a locale prefix
+  const legacyTarget = legacyStorefrontTarget(localelessPath);
+  if (legacyTarget) {
+    const url = request.nextUrl.clone();
+    url.pathname = legacyTarget;
+    return NextResponse.redirect(url, 308);
+  }
+
+  if (isStorefrontPath(localelessPath)) {
+    // a stray `/ar/slug` or `/en/slug` hit collapses onto the bare slug
+    if (pathnameLocale) {
       const url = request.nextUrl.clone();
-      url.pathname = `/${pathnameLocale}${legacyTarget}`;
+      url.pathname = localelessPath;
       return NextResponse.redirect(url, 308);
     }
 
+    // rewrite internally to `/{locale}/...` without changing the visible
+    // URL, so the storefront still resolves to the right [lang] route
+    const locale = getLocale(request);
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}${pathname}`;
+    const response = NextResponse.rewrite(url);
+    response.cookies.set(LOCALE_COOKIE, locale, {
+      maxAge: 60 * 60 * 24 * 365,
+    });
+    return response;
+  }
+
+  if (pathnameLocale) {
     // Remember the visitor's explicit choice for future visits
     const response = NextResponse.next();
     response.cookies.set(LOCALE_COOKIE, pathnameLocale, {

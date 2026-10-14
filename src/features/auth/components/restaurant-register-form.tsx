@@ -153,6 +153,8 @@ export function RestaurantRegisterForm({
   const [mapOpen, setMapOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
 
+  const [slugError, setSlugError] = useState<string | undefined>(undefined);
+
   const {
     register,
     handleSubmit,
@@ -171,6 +173,7 @@ export function RestaurantRegisterForm({
       password: "",
       confirmPassword: "",
       referral: referralLocked,
+      slug: "",
       logoUrl: "",
       description: "",
       primaryColor: "#850036",
@@ -195,6 +198,7 @@ export function RestaurantRegisterForm({
     lng,
     governorateId,
     regionId,
+    slug,
   ] = useWatch({
     control,
     name: [
@@ -205,8 +209,20 @@ export function RestaurantRegisterForm({
       "lng",
       "governorateId",
       "regionId",
+      "slug",
     ],
   });
+
+  /** mirrors the backend's own rules, same as the dashboard's own slug
+   * editor: spaces become "_" as you type, dots are blocked outright */
+  const handleSlugChange = (value: string) => {
+    if (value.includes(".")) {
+      setSlugError(t.auth.slugInvalidDot);
+      return;
+    }
+    setSlugError(undefined);
+    setValue("slug", value.replace(/\s+/g, "_"));
+  };
 
   const { data: subTypes } = useQuery({
     queryKey: queryKeys.businessSubTypes(businessType),
@@ -281,6 +297,7 @@ export function RestaurantRegisterForm({
         password: values.password,
         confirmPassword: values.confirmPassword,
         subTypeId: values.subTypeId,
+        slug: values.slug.trim() || undefined,
         email: values.email.trim() || undefined,
         type: businessType,
         referralCode: values.referral.trim() || undefined,
@@ -424,6 +441,33 @@ export function RestaurantRegisterForm({
                 </Select>
                 <FieldError message={errors.subTypeId?.message} />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="r-slug">
+                {t.auth.slugLabel}{" "}
+                <span className="font-normal text-muted-foreground">
+                  ({t.common.optional})
+                </span>
+              </Label>
+              <Input
+                id="r-slug"
+                dir="ltr"
+                className="h-11"
+                placeholder="my_restaurant"
+                value={slug}
+                aria-invalid={!!slugError}
+                onChange={(e) => handleSlugChange(e.target.value)}
+              />
+              <FieldError message={slugError} />
+              {!slugError && (
+                <p className="text-xs text-muted-foreground">{t.auth.slugHint}</p>
+              )}
+              {slug && (
+                <p className="truncate text-xs font-semibold text-primary" dir="ltr">
+                  /{slug}
+                </p>
+              )}
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">

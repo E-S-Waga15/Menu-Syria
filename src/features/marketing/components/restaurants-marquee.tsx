@@ -22,7 +22,7 @@ function MarqueeRow({
       {restaurants.map((restaurant) => (
         <Link
           key={restaurant.id}
-          href={`/${lang}/${restaurant.slug}`}
+          href={`/${restaurant.slug}`}
           tabIndex={ariaHidden ? -1 : undefined}
           className="flex items-center gap-3 opacity-50 grayscale transition-[opacity,filter] duration-300 hover:opacity-100 hover:grayscale-0"
         >

@@ -35,9 +35,8 @@ export function CustomerOrdersCard({ customerId }: { customerId: string }) {
     clearCart();
     for (const line of order.lines)
       addItem(order.businessId, line.item, line.options, line.quantity);
-    router.push(
-      `/${lang}/${order.businessType === "restaurant" ? "menu" : "store"}/${order.businessSlug}`,
-    );
+    // storefront slugs are locale-less on purpose — see proxy.ts
+    router.push(`/${order.businessSlug}`);
   };
 
   return (
@@ -60,7 +59,7 @@ export function CustomerOrdersCard({ customerId }: { customerId: string }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <Link
-                    href={`/${lang}/${order.businessType === "restaurant" ? "menu" : "store"}/${order.businessSlug}`}
+                    href={`/${order.businessSlug}`}
                     className="truncate font-semibold hover:underline"
                   >
                     {order.businessName[lang]}

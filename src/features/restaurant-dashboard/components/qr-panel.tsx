@@ -28,7 +28,7 @@ export function QrPanel() {
 
   if (!restaurant) return <LoadingSpinner />;
 
-  const menuUrl = `${window.location.origin}/${lang}/${restaurant.slug}/menu`;
+  const menuUrl = `${window.location.origin}/${restaurant.slug}/menu`;
   const kindWord = isStore ? t.common.storeWord : t.common.restaurantWord;
 
   const copyLink = async () => {

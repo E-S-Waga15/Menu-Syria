@@ -689,7 +689,10 @@ export function CartSheet({
                       <button
                         type="button"
                         onClick={() => void downloadPaymentQr()}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                        // the Sheet portals outside the element declaring
+                        // --menu-primary, so the brand colour is set directly
+                        style={{ backgroundColor: business.theme.primaryColor }}
+                        className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white transition-[scale] duration-200 ease-smooth hover:scale-[1.03]"
                       >
                         <Download className="size-3.5" />
                         {copy.downloadQr}

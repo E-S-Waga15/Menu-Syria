@@ -49,7 +49,7 @@ export default async function PublicOffersPage({
   return (
     <StorefrontOffersScreen
       business={business}
-      menuHref={`/${lang}/${slug}/menu`}
+      menuHref={`/${slug}/menu`}
       isStore={kind === "store"}
       initialOffers={offers}
     />

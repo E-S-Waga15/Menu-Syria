@@ -1,5 +1,16 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🆕 New ask: accept an optional `slug` on `POST /registration-requests/public`
+
+**Why:** the restaurant/store registration form now lets the applicant pick their own menu link (e.g. `abod_restaurant`) up front, instead of only being able to set it after approval from the dashboard. It's sent as an optional `slug` field alongside the existing body — same validation rules as the dashboard's own slug editor (English only, no dots, unique across businesses).
+
+**What we need confirmed:**
+- `POST /registration-requests/public` should accept `slug` in the body and carry it through to the business record created when the request is approved.
+- If `slug` is omitted (applicant left it blank), keep the current behavior — the backend assigns one.
+- If the requested `slug` is already taken by another business, the approval step should fail the same way `PATCH /businesses/:id` already does today (409), so an admin reviewing the request sees it instead of two businesses silently getting the same link.
+
+If this isn't supported yet, the frontend still sends the field — it's just dropped until the backend reads it, so nothing breaks either way.
+
 ## 🆕 New ask: confirm `planName` (and `planStartedAt`) are actually present on `GET /me/agent/restaurants` / `GET /me/agent/stores`
 
 **Why:** the agent overview's new "latest subscriptions" card reads `planName` off each referred business to badge what plan they're on, and `planStartedAt` to sort/date the list — both fields are already documented and confirmed working on the **owner's own** `GET /me/restaurant`/`GET /me/store` read, but every business coming back from the agent's two referral-list endpoints shows the generic fallback label instead of a real plan name, and several have no `planStartedAt` at all.

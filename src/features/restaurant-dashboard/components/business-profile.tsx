@@ -356,7 +356,7 @@ function AccountInfoSection({
             className="truncate text-xs font-semibold text-primary"
             dir="ltr"
           >
-            /{lang}/{slug}
+            /{slug}
           </p>
         )}
       </div>
@@ -1871,7 +1871,7 @@ export function BusinessProfile() {
 
   const publicUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/${lang}/${restaurant.slug}/menu`
+      ? `${window.location.origin}/${restaurant.slug}/menu`
       : "";
 
   const locationLabel = [

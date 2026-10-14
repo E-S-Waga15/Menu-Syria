@@ -58,6 +58,10 @@ export async function submitRegistrationRequest(input: {
   subTypeId: string;
   email?: string;
   notes?: string;
+  /** the owner's requested menu link (e.g. "abod_restaurant") — left blank,
+   * the backend assigns one on approval. See update.md: not yet confirmed
+   * accepted on this endpoint. */
+  slug?: string;
   description?: string;
   logoUrl?: string;
   primaryColor?: string;

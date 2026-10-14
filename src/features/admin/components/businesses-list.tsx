@@ -151,7 +151,7 @@ export function AdminBusinessesList({
       icon: ExternalLink,
       render: (
         <Link
-          href={`/${lang}/${business.slug}/menu`}
+          href={`/${business.slug}/menu`}
           target="_blank"
         />
       ),

@@ -75,7 +75,8 @@ export default async function PublicCatalogPage({
   const [catalog, t] = await Promise.all([getCatalog(slug), getDictionary(lang)]);
   if (!catalog) notFound();
 
-  const pageUrl = `${SITE_URL}/${lang}/${slug}/menu`;
+  // storefront slugs are locale-less on purpose — see proxy.ts
+  const pageUrl = `${SITE_URL}/${slug}/menu`;
   const business = catalog.kind === "restaurant" ? catalog.restaurant : catalog.business;
 
   return (
@@ -98,8 +99,8 @@ export default async function PublicCatalogPage({
         items={catalog.items}
         governorateName={catalog.governorateName}
         regionName={catalog.regionName}
-        aboutHref={`/${lang}/${slug}`}
-        offersHref={`/${lang}/${slug}/offers`}
+        aboutHref={`/${slug}`}
+        offersHref={`/${slug}/offers`}
         copy={catalog.kind === "restaurant" ? t.menu : t.storeFront}
         tableParam={
           catalog.kind === "restaurant" && typeof tableParam === "string"

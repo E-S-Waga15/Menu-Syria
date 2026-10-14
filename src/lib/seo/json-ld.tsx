@@ -87,7 +87,8 @@ export function restaurantJsonLd(
     "@id": url,
     url,
     servesCuisine: restaurant.cuisine[lang],
-    hasMenu: `${SITE_URL}/${lang}/${restaurant.slug}/menu`,
+    // storefront slugs are locale-less on purpose — see proxy.ts
+    hasMenu: `${SITE_URL}/${restaurant.slug}/menu`,
     ...businessBaseJsonLd(restaurant, lang),
   };
 }

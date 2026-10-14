@@ -83,7 +83,9 @@ export default async function BusinessDetailsPage({
   const regionName =
     regions.find((r) => r.id === business.regionId)?.name[lang] ?? "";
 
-  const pageUrl = `${SITE_URL}/${lang}/${slug}`;
+  // storefront slugs are locale-less on purpose — the URL prints on a
+  // physical QR code, so it never carries an `/ar` or `/en` prefix
+  const pageUrl = `${SITE_URL}/${slug}`;
   const directoryLabel = kind === "restaurant" ? t.nav.restaurants : t.nav.stores;
   const directoryPath = kind === "restaurant" ? "restaurants" : "stores";
 
@@ -103,7 +105,7 @@ export default async function BusinessDetailsPage({
           { name: business.name[lang], url: pageUrl },
         ])}
       />
-      <BackToMenuBar menuHref={`/${lang}/${slug}/menu`} />
+      <BackToMenuBar menuHref={`/${slug}/menu`} />
       <div className="container-page pt-4">
         <RestaurantGallery images={business.coverImages} />
       </div>
@@ -117,7 +119,7 @@ export default async function BusinessDetailsPage({
         governorates={governorates}
         lang={lang}
         t={t}
-        menuHref={`/${lang}/${slug}/menu`}
+        menuHref={`/${slug}/menu`}
       />
     </main>
   );

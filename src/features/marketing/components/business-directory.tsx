@@ -137,7 +137,7 @@ export function BusinessDirectory<
               <RestaurantCard
                 key={item.id}
                 restaurant={item}
-                href={`/${lang}/${item.slug}`}
+                href={`/${item.slug}`}
                 locationLabel={locationLabel(item)}
               />
             ))}

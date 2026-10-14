@@ -52,9 +52,7 @@ export function RestaurantDashboardShell({
     queryFn: getMyRestaurant,
     enabled: hydrated && !!session,
   });
-  const previewHref = restaurant
-    ? `/${lang}/${restaurant.slug}/menu`
-    : undefined;
+  const previewHref = restaurant ? `/${restaurant.slug}/menu` : undefined;
 
   const navItems: DashboardNavItem[] = [
     {

@@ -78,6 +78,10 @@ export const registerWizardSchema = (v: ValidationMessages) =>
       // locked & auto-filled when an agent (or a link carrying ?ref=) brings
       // the owner here; free text otherwise
       referral: z.string(),
+      // optional — left blank, the backend assigns one; dots are blocked
+      // and spaces turned into "_" as the owner types, same rule as the
+      // dashboard's own slug editor
+      slug: z.string(),
 
       // step 2 — visual identity & colors
       logoUrl: z.string(),
