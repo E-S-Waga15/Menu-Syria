@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { FetchError } from "@/components/shared/fetch-error";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { getAgentPlans } from "@/features/agent-dashboard/services";
 import { formatPrice } from "@/features/public-menu/lib/format";
@@ -22,11 +23,12 @@ export function AgentPlansView() {
   const { t, lang } = useI18n();
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
 
-  const { data: plans } = useQuery({
+  const { data: plans, isError, refetch } = useQuery({
     queryKey: queryKeys.agents.plans,
     queryFn: () => getAgentPlans(),
   });
 
+  if (isError) return <FetchError onRetry={() => void refetch()} />;
   if (!plans) return <LoadingSpinner />;
 
   const discountPercent = plans[0]?.agentDiscountPercent ?? 30;
