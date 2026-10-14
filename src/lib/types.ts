@@ -292,6 +292,11 @@ export interface CatalogItem {
   isAvailable: boolean;
   badge?: DishBadge;
   sortOrder: number;
+  /** times this item's detail view was opened by a customer — shown
+   * directly on the dashboard menu list, not only inside the per-item
+   * stats modal. Optional until the backend adds it to `GET /me/menu`
+   * (and the store equivalent); see update.md. */
+  viewCount?: number;
 }
 
 export interface MenuItem extends CatalogItem {

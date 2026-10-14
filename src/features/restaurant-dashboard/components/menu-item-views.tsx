@@ -153,11 +153,11 @@ function ItemEntryBody(props: MenuItemViewProps) {
             title={t.dashboard.viewCount}
           >
             <Eye className="size-3.5" />
-            {cachedStats
-              ? cachedStats.viewCount.toLocaleString(
-                  lang === "ar" ? "ar-SY" : "en-US",
-                )
-              : "—"}
+            {item.viewCount != null
+              ? item.viewCount.toLocaleString("en-US")
+              : cachedStats
+                ? cachedStats.viewCount.toLocaleString("en-US")
+                : "—"}
           </span>
           <Button
             variant="ghost"

@@ -5,56 +5,31 @@ import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
-import {
   CalendarDays,
-  Crown,
   Eye,
   Flame,
   Radio,
-  Receipt,
   ShoppingCart,
-  Wallet,
+  TrendingUp,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { CategoriesBreakdownCard } from "@/features/restaurant-dashboard/components/categories-breakdown-card";
 import { StatCard } from "@/features/restaurant-dashboard/components/stat-card";
 import {
   getBestSelling,
   getBusinessStatistics,
   getCategoriesAnalytics,
   getLiveActivity,
+  getOverviewStats,
   getPeakTimes,
 } from "@/features/restaurant-dashboard/services";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/fmt";
-import { ApiError } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { cn } from "@/lib/utils";
-
-const CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
-
-const tooltipStyle = {
-  borderRadius: 12,
-  border: "1px solid var(--border)",
-  background: "var(--popover)",
-  color: "var(--popover-foreground)",
-  fontSize: 12,
-  fontWeight: 600,
-};
 
 function Card({
   title,
@@ -85,66 +60,44 @@ const DAY_WINDOWS = [7, 30, 90] as const;
  * each endpoint below actually provides.
  */
 export function AnalyticsView() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [days, setDays] = useState<(typeof DAY_WINDOWS)[number]>(7);
-
-  const lockedRetry = (count: number, error: unknown) =>
-    !(error instanceof ApiError && error.status === 403) && count < 2;
 
   const businessQuery = useQuery({
     queryKey: queryKeys.statistics.business,
     queryFn: () => getBusinessStatistics(),
-    retry: lockedRetry,
   });
   const bestSellingQuery = useQuery({
     queryKey: queryKeys.statistics.bestSelling(days),
     queryFn: () => getBestSelling(days),
-    retry: lockedRetry,
   });
   const categoriesQuery = useQuery({
     queryKey: queryKeys.statistics.categories,
     queryFn: getCategoriesAnalytics,
-    retry: lockedRetry,
   });
   const peakTimesQuery = useQuery({
     queryKey: queryKeys.statistics.peakTimes,
     queryFn: getPeakTimes,
-    retry: lockedRetry,
   });
   const liveQuery = useQuery({
     queryKey: queryKeys.statistics.liveActivity,
     queryFn: getLiveActivity,
-    retry: lockedRetry,
     // a live count worth the name has to keep refetching on its own
     refetchInterval: 60_000,
   });
-
-  const locked =
-    businessQuery.error instanceof ApiError && businessQuery.error.status === 403;
+  const overviewStatsQuery = useQuery({
+    queryKey: queryKeys.statistics.overview,
+    queryFn: getOverviewStats,
+  });
 
   if (businessQuery.isPending) return <LoadingSpinner />;
-
-  if (locked) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-primary/30 bg-berry-soft/20 p-12 text-center">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Crown className="size-6" />
-        </span>
-        <p className="font-heading text-lg font-bold">
-          {t.dashboard.statisticsLocked}
-        </p>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          {t.dashboard.upgradeForStatistics}
-        </p>
-      </div>
-    );
-  }
 
   const business = businessQuery.data;
   const bestSelling = bestSellingQuery.data ?? [];
   const categories = categoriesQuery.data;
   const peakTimes = peakTimesQuery.data;
   const live = liveQuery.data;
+  const stats = overviewStatsQuery.data;
 
   const dayWindowLabel: Record<(typeof DAY_WINDOWS)[number], string> = {
     7: t.dashboard.last7Days,
@@ -172,19 +125,19 @@ export function AnalyticsView() {
             value={business.visitCount.toLocaleString("en-US")}
             icon={Eye}
             accent="info"
-          />
-          <StatCard
-            label={t.dashboard.orderCount}
-            value={business.orderCount.toLocaleString("en-US")}
-            icon={Receipt}
-            accent="success"
-          />
-          <StatCard
-            label={t.dashboard.totalRevenue}
-            value={formatPrice(business.revenue, t.common.currency)}
-            icon={Wallet}
-            accent="berry"
             highlight
+          />
+          <StatCard
+            label={t.dashboard.mostAddedToCart}
+            value={stats?.mostAddedToCart?.name ?? t.dashboard.noDataYet}
+            icon={ShoppingCart}
+            accent="berry"
+          />
+          <StatCard
+            label={t.dashboard.mostViewedNoPurchase}
+            value={stats?.mostViewedWithoutPurchase?.name ?? t.dashboard.noDataYet}
+            icon={TrendingUp}
+            accent="success"
           />
         </div>
       )}
@@ -273,77 +226,10 @@ export function AnalyticsView() {
       </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card title={t.dashboard.categoriesTab}>
-          {!categories || categories.breakdown.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t.dashboard.noCategoriesDataYet}
-            </p>
-          ) : (
-            <>
-              <div className="h-56" dir="ltr">
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Pie
-                      data={categories.breakdown}
-                      dataKey="percentage"
-                      nameKey="name"
-                      innerRadius="55%"
-                      outerRadius="85%"
-                      paddingAngle={3}
-                      strokeWidth={0}
-                    >
-                      {categories.breakdown.map((entry, index) => (
-                        <Cell
-                          key={entry.categoryId}
-                          fill={CHART_COLORS[index % CHART_COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <ul className="mt-2 space-y-2.5">
-                {categories.breakdown.map((entry, index) => (
-                  <li key={entry.categoryId} className="flex items-center gap-3">
-                    <span
-                      className="size-3 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
-                      }}
-                    />
-                    <span className="flex-1 truncate text-sm font-semibold">
-                      {entry.name}
-                    </span>
-                    <span className="text-sm font-bold" dir="ltr">
-                      {entry.percentage}%
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {(categories.mostVisited || categories.leastActive) && (
-                <div className="mt-4 grid gap-2.5 border-t border-border/60 pt-4 sm:grid-cols-2">
-                  {categories.mostVisited && (
-                    <p className="text-xs text-muted-foreground">
-                      {t.dashboard.mostVisitedCategory}:{" "}
-                      <span className="font-semibold text-foreground">
-                        {categories.mostVisited.name}
-                      </span>
-                    </p>
-                  )}
-                  {categories.leastActive && (
-                    <p className="text-xs text-muted-foreground">
-                      {t.dashboard.leastActiveCategory}:{" "}
-                      <span className="font-semibold text-foreground">
-                        {categories.leastActive.name}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </Card>
+        <CategoriesBreakdownCard
+          categories={categories}
+          title={t.dashboard.categoriesTab}
+        />
 
         <Card title={t.dashboard.peakTimesTab}>
           {!peakTimes ||

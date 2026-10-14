@@ -78,19 +78,19 @@ export function ItemStatsModal({
             <div className="mt-3 grid grid-cols-2 gap-3">
               <StatCard
                 label={t.dashboard.viewCount}
-                value={stats.viewCount.toLocaleString(lang === "ar" ? "ar-SY" : "en-US")}
+                value={stats.viewCount.toLocaleString("en-US")}
                 icon={Eye}
                 accent="neutral"
               />
               <StatCard
                 label={t.dashboard.cartAddCount}
-                value={stats.cartAddCount.toLocaleString(lang === "ar" ? "ar-SY" : "en-US")}
+                value={stats.cartAddCount.toLocaleString("en-US")}
                 icon={ShoppingCart}
                 accent="berry"
               />
               <StatCard
                 label={t.dashboard.quantitySold}
-                value={stats.quantitySold.toLocaleString(lang === "ar" ? "ar-SY" : "en-US")}
+                value={stats.quantitySold.toLocaleString("en-US")}
                 icon={BarChart3}
                 accent="zest"
               />
@@ -108,7 +108,7 @@ export function ItemStatsModal({
               />
               <StatCard
                 label={t.dashboard.favoriteCount}
-                value={stats.favoriteCount.toLocaleString(lang === "ar" ? "ar-SY" : "en-US")}
+                value={stats.favoriteCount.toLocaleString("en-US")}
                 icon={Heart}
                 accent="zest"
               />

@@ -12,11 +12,9 @@ import {
   LayoutDashboard,
   LifeBuoy,
   QrCode,
-  Receipt,
   Tag,
   Settings,
   ShoppingBag,
-  Table2,
   UtensilsCrossed,
 } from "lucide-react";
 
@@ -71,11 +69,8 @@ export function RestaurantDashboardShell({
       icon: isStore ? ShoppingBag : UtensilsCrossed,
     },
     { href: `${base}/offers`, label: t.offers.title, icon: Tag },
-    { href: `${base}/orders`, label: t.dashboard.orders, icon: Receipt },
-    // dining-table management is restaurant-only
-    ...(isStore
-      ? []
-      : [{ href: `${base}/tables`, label: t.dashboard.tables, icon: Table2 }]),
+    // Orders and dining-table management are hidden for now — not part of
+    // this release's plan yet, kept in the codebase to turn back on later
     { href: `${base}/branches`, label: t.dashboard.branches, icon: Building2 },
     {
       href: `${base}/analytics`,

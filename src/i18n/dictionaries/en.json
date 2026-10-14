@@ -689,6 +689,8 @@
     "mostAddedToCart": "Most added to cart this month",
     "mostViewedNoPurchase": "Most viewed without a purchase",
     "subscriptionDaysLeft": "Days left on your subscription",
+    "topSellingTitle": "Best sellers",
+    "topSellingEmpty": "Not enough sales data yet",
     "statisticsTab": "Overview",
     "bestSellingTab": "Best selling",
     "categoriesTab": "Categories",

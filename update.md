@@ -1,5 +1,24 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🆕 New ask: per-item `viewCount` on `GET /me/menu` (and the store products equivalent)
+
+**Why:** the dashboard's menu list shows a small eye-icon view count on every product card, but today that number only appears once the owner has opened that specific item's stats modal at least once in the session (it reads from whatever `GET /statistics/items/:id` happened to leave in the client cache) — every card shows "—" on a fresh page load otherwise. We want the real count showing immediately, for every item, without a modal click first.
+
+Rather than add a new bulk endpoint, the simplest fix is a new field directly on the items `GET /me/menu` (and the store equivalent, if products are served separately) already returns:
+
+```jsonc
+// GET /me/menu — each item gains one field, everything else unchanged
+{
+  "id": "i1",
+  "name": "...",
+  // ...existing fields...
+  "viewCount": 128
+}
+```
+
+- Same meaning as `ItemStatistics.viewCount` from `GET /statistics/items/:id` (§4 below) — times the item's detail view was opened by a customer.
+- The frontend already reads `item.viewCount` if present (falls back to the old per-item-stats-modal cache, then to "—"), so this is safe to ship whenever convenient — no frontend deploy needed once it's there.
+
 ## ✅ §1-§6 below: confirmed shipped and verified (both locally and on production)
 
 Agent linkage, plan name/start date, approval-time duration picker, the new per-item statistics endpoint, and the full server-computed plan pricing model are all live. Thank you — frontend is already reading these fields as specced, no changes needed on either side for §1-§6. Kept below as a reference of what the contract is.
