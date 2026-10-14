@@ -34,16 +34,39 @@ export async function generateMetadata({
 }: PageProps<"/[lang]/[slug]">): Promise<Metadata> {
   const { lang, slug } = await params;
   if (!isLocale(lang)) return {};
-  const resolved = await resolveBusiness(slug);
+  const [resolved, governorates, regions] = await Promise.all([
+    resolveBusiness(slug),
+    getGovernorates(),
+    getRegions(),
+  ]);
   if (!resolved) return {};
   const { business } = resolved;
+  const typeLabel =
+    business.subType?.name ??
+    ("cuisine" in business
+      ? (business as { cuisine: typeof business.name }).cuisine[lang]
+      : "category" in business
+        ? (business as { category: typeof business.name }).category[lang]
+        : null);
+  const areaLabel = [
+    governorates.find((g) => g.id === business.governorateId)?.name[lang],
+    regions.find((r) => r.id === business.regionId)?.name[lang],
+  ]
+    .filter(Boolean)
+    .join(lang === "ar" ? "، " : ", ");
+  const title = business.name[lang];
+  // type, then location, then the business's own description — a crawler
+  // (and a share link's unfurled preview card) reads what/where before why
+  const description = [typeLabel, areaLabel, business.description[lang]]
+    .filter(Boolean)
+    .join("\n");
   return {
-    title: business.name[lang],
-    description: business.description[lang],
+    title,
+    description,
     alternates: alternatesFor(lang, `/${slug}`),
     openGraph: {
-      title: business.name[lang],
-      description: business.description[lang],
+      title,
+      description,
       images: business.coverImages[0] ? [business.coverImages[0]] : undefined,
     },
   };

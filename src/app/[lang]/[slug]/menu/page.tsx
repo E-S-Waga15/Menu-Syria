@@ -44,20 +44,28 @@ export async function generateMetadata({
   params,
 }: PageProps<"/[lang]/[slug]/menu">): Promise<Metadata> {
   const { lang, slug } = await params;
-  const catalog = await getCatalog(slug);
+  if (!isLocale(lang)) return {};
+  const [catalog, t] = await Promise.all([getCatalog(slug), getDictionary(lang)]);
   const business = catalog?.kind === "restaurant" ? catalog.restaurant : catalog?.business;
-  if (!business || !isLocale(lang)) return {};
-  // the business's type, then its own description — what a share link's
-  // auto-unfurled preview card (WhatsApp and the like) shows under the name
-  const description = business.subType?.name
-    ? `${business.subType.name}\n${business.description[lang]}`
-    : business.description[lang];
+  if (!business || !catalog) return {};
+  const kindWord =
+    catalog.kind === "restaurant" ? t.common.restaurantWord : t.common.storeWord;
+  const title = `${t.common.menuWord} ${kindWord} ${business.name[lang]}`;
+  // type, then location, then the business's own description — what a
+  // share link's auto-unfurled preview card (WhatsApp and the like) shows
+  // under the title, same order as the details page's content
+  const areaLabel = [catalog.governorateName, catalog.regionName]
+    .filter(Boolean)
+    .join(lang === "ar" ? "، " : ", ");
+  const description = [business.subType?.name, areaLabel, business.description[lang]]
+    .filter(Boolean)
+    .join("\n");
   return {
-    title: business.name[lang],
+    title,
     description,
     alternates: alternatesFor(lang, `/${slug}/menu`),
     openGraph: {
-      title: business.name[lang],
+      title,
       description,
       images: business.coverImages[0] ? [business.coverImages[0]] : undefined,
     },

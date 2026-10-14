@@ -297,18 +297,10 @@ export function BusinessDetailsGrid({
           </div>
         </div>
 
-        <Panel title={aboutTitle}>
-          {description ? (
-            <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-              {description}
-            </p>
-          ) : (
-            <p className="text-muted-foreground italic">
-              {t.restaurant.noDescription}
-            </p>
-          )}
-        </Panel>
-
+        {/* SEO/readability order: name, then type and location (the quick-
+            fact tiles), then the about text — a crawler (and a human
+            skimming) reads what this place is and where before reading
+            about it */}
         {quickFactTiles.length > 0 && (
           <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3">
             {quickFactTiles.map((tile, index) => (
@@ -334,6 +326,18 @@ export function BusinessDetailsGrid({
             ))}
           </div>
         )}
+
+        <Panel title={aboutTitle}>
+          {description ? (
+            <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
+              {description}
+            </p>
+          ) : (
+            <p className="text-muted-foreground italic">
+              {t.restaurant.noDescription}
+            </p>
+          )}
+        </Panel>
 
         {branches.length > 0 && (
           <Panel title={t.restaurant.branches} icon={Building2}>
