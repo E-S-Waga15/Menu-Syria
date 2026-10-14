@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Check, User } from "lucide-react";
+import { Camera, User } from "lucide-react";
 
 import {
   AlertDialog,
@@ -19,6 +19,7 @@ import { FacebookIcon, InstagramIcon } from "@/components/shared/brand-icons";
 import { ImagePreviewDialog } from "@/components/shared/image-preview-dialog";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { ProfilePhotoViewer } from "@/components/shared/profile-photo-viewer";
+import { MultiRegionPicker } from "@/components/shared/multi-region-picker";
 import { ProfileSection } from "@/components/shared/profile-section";
 import { SafeImage } from "@/components/shared/safe-image";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,6 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { uploadImage } from "@/lib/api/upload";
 import { qrFileName } from "@/lib/qr-filename";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import type { Agent } from "@/lib/types";
 
 /**
@@ -97,15 +97,6 @@ function AgentAccountInfoSection({
   const regionChoices = (regions ?? []).filter(
     (r) => r.governorateId === governorateId,
   );
-
-  const toggleRegion = (id: string) => {
-    if (!regionIds.includes(id) && regionIds.length >= 2) return;
-    setRegionIds((current) =>
-      current.includes(id)
-        ? current.filter((r) => r !== id)
-        : [...current, id],
-    );
-  };
 
   return (
     <ProfileSection
@@ -255,32 +246,17 @@ function AgentAccountInfoSection({
         </Select>
 
         {governorateId && regionChoices.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {regionChoices.map((region) => {
-              const selected = regionIds.includes(region.id);
-              const disabled =
-                !editing || (!selected && regionIds.length >= 2);
-              return (
-                <button
-                  key={region.id}
-                  type="button"
-                  onClick={() => toggleRegion(region.id)}
-                  aria-pressed={selected}
-                  disabled={disabled}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition-[background-color,border-color,translate] duration-200 ease-smooth",
-                    selected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : disabled
-                        ? "cursor-not-allowed border-border/50 text-muted-foreground/60"
-                        : "border-border hover:border-primary/50 hover:bg-surface-container-low",
-                  )}
-                >
-                  {selected && <Check className="size-3.5" />}
-                  {region.name[lang]}
-                </button>
-              );
-            })}
+          <div className="pt-1">
+            <MultiRegionPicker
+              regionChoices={regionChoices.map((r) => ({
+                id: r.id,
+                name: r.name[lang],
+              }))}
+              selectedIds={regionIds}
+              onChange={(ids) => setRegionIds(ids)}
+              placeholder={t.restaurantsPage.regionLabel}
+              disabled={!editing}
+            />
           </div>
         )}
       </div>

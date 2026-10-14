@@ -15,6 +15,7 @@ import {
   TikTokIcon,
 } from "@/components/shared/brand-icons";
 import { FieldError } from "@/components/shared/field-error";
+import { MultiRegionPicker } from "@/components/shared/multi-region-picker";
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { PasswordInput } from "@/components/shared/password-input";
 import { Button } from "@/components/ui/button";
@@ -115,14 +116,6 @@ export function AgentRegisterForm() {
     } finally {
       setAdvancing(false);
     }
-  };
-
-  const toggleRegion = (id: string) => {
-    if (!regionIds.includes(id) && regionIds.length >= 2) return;
-    const next = regionIds.includes(id)
-      ? regionIds.filter((r) => r !== id)
-      : [...regionIds, id];
-    setValue("regionIds", next, { shouldValidate: true });
   };
 
   const handlePhotoFile = async (file: File | null) => {
@@ -365,32 +358,18 @@ export function AgentRegisterForm() {
               <p className="text-xs text-muted-foreground">{t.auth.regionsHint}</p>
               {governorateId ? (
                 regionChoices.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {regionChoices.map((region) => {
-                      const selected = regionIds.includes(region.id);
-                      const disabled = !selected && regionIds.length >= 2;
-                      return (
-                        <button
-                          key={region.id}
-                          type="button"
-                          onClick={() => toggleRegion(region.id)}
-                          aria-pressed={selected}
-                          disabled={disabled}
-                          className={cn(
-                            "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition-[background-color,border-color,translate] duration-200 ease-smooth",
-                            selected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : disabled
-                                ? "cursor-not-allowed border-border/50 text-muted-foreground/60"
-                                : "border-border hover:border-primary/50 hover:bg-surface-container-low",
-                          )}
-                        >
-                          {selected && <Check className="size-3.5" />}
-                          {region.name[lang]}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <MultiRegionPicker
+                    regionChoices={regionChoices.map((r) => ({
+                      id: r.id,
+                      name: r.name[lang],
+                    }))}
+                    selectedIds={regionIds}
+                    onChange={(ids) =>
+                      setValue("regionIds", ids, { shouldValidate: true })
+                    }
+                    placeholder={t.auth.regionsLabel}
+                    triggerClassName={SELECT_FIELD}
+                  />
                 ) : (
                   <p className="text-sm text-muted-foreground">{t.agentsPage.noResults}</p>
                 )
