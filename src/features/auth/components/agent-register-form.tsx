@@ -49,6 +49,7 @@ export function AgentRegisterForm() {
   const router = useRouter();
   const { start: startNavigating } = useNavigationLoading();
   const [step, setStep] = useState(0);
+  const [advancing, setAdvancing] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   const { data: governorates } = useQuery({
@@ -101,9 +102,19 @@ export function AgentRegisterForm() {
 
   const steps = [t.auth.agentStep1, t.auth.agentStep2, t.auth.agentStep3];
 
+  // `trigger()` is async, so without this guard a fast double-click fired
+  // it twice before the first resolved — both calls could come back valid
+  // and advance the step twice, landing on the submit button a click
+  // early and sending the request before the last step was ever shown.
   const nextStep = async () => {
-    const valid = await trigger(agentStepFields[step]);
-    if (valid) setStep((s) => s + 1);
+    if (advancing) return;
+    setAdvancing(true);
+    try {
+      const valid = await trigger(agentStepFields[step]);
+      if (valid) setStep((s) => s + 1);
+    } finally {
+      setAdvancing(false);
+    }
   };
 
   const toggleRegion = (id: string) => {
@@ -441,7 +452,12 @@ export function AgentRegisterForm() {
             {t.common.back}
           </Button>
           {step < steps.length - 1 ? (
-            <Button type="button" className="h-12 min-w-32 shadow-glow" onClick={nextStep}>
+            <Button
+              type="button"
+              loading={advancing}
+              className="h-12 min-w-32 shadow-glow"
+              onClick={nextStep}
+            >
               {t.common.next}
             </Button>
           ) : (

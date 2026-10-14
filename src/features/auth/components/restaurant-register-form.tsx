@@ -149,6 +149,7 @@ export function RestaurantRegisterForm({
   const { start: startNavigating } = useNavigationLoading();
   const businessType = copy ? "STORE" : "RESTAURANT";
   const [step, setStep] = useState(0);
+  const [advancing, setAdvancing] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
 
@@ -235,9 +236,19 @@ export function RestaurantRegisterForm({
   const Icon = copy ? ShoppingBag : UtensilsCrossed;
   const steps = [copy?.step1 ?? t.auth.step1, t.auth.step2, t.auth.step3, t.auth.step4];
 
+  // `trigger()` is async, so without this guard a fast double-click fired
+  // it twice before the first resolved — both calls could come back valid
+  // and advance the step twice, landing on the submit button a click
+  // early and sending the request before the last step was ever shown.
   const nextStep = async () => {
-    const valid = await trigger(registerStepFields[step]);
-    if (valid) setStep((s) => s + 1);
+    if (advancing) return;
+    setAdvancing(true);
+    try {
+      const valid = await trigger(registerStepFields[step]);
+      if (valid) setStep((s) => s + 1);
+    } finally {
+      setAdvancing(false);
+    }
   };
 
   const handleLogoFile = async (file: File | null) => {
@@ -771,7 +782,12 @@ export function RestaurantRegisterForm({
             {t.common.back}
           </Button>
           {step < steps.length - 1 ? (
-            <Button type="button" className="h-11 min-w-32 shadow-glow" onClick={nextStep}>
+            <Button
+              type="button"
+              loading={advancing}
+              className="h-11 min-w-32 shadow-glow"
+              onClick={nextStep}
+            >
               {t.common.next}
             </Button>
           ) : (
