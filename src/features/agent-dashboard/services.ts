@@ -44,6 +44,26 @@ export async function getMyAgentProfile(
   return apiFetch("/me/agent", { headers: authHeaders(auth) });
 }
 
+export interface AgentProfileInput {
+  /** an uploaded image URL, or "" to clear it back to the generic placeholder */
+  photoUrl?: string;
+}
+
+/** The agent's own photo — the only thing their own dashboard can edit
+ * about their profile right now (name/bio/commission stay admin-managed).
+ * Not yet confirmed against a real backend route — see update.md. */
+export async function updateMyAgentProfile(
+  input: AgentProfileInput,
+  auth: AgentAuth = {},
+): Promise<Agent> {
+  if (IS_MOCK) return mockDelay({ ...agents[0]!, ...input });
+  return apiFetch("/me/agent", {
+    method: "PATCH",
+    headers: authHeaders(auth),
+    body: input,
+  });
+}
+
 export async function getMyTransactions(
   auth: AgentAuth = {},
 ): Promise<Transaction[]> {

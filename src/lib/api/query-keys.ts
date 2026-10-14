@@ -22,6 +22,8 @@ export const queryKeys = {
     account: ["me", "account"] as const,
     /** the signed-in user's own business profile */
     business: ["me", "business"] as const,
+    /** the signed-in agent's own profile (photo, referral code, etc.) */
+    agentProfile: ["me", "agent-profile"] as const,
     menu: ["me", "menu"] as const,
     orders: ["me", "orders"] as const,
     tables: ["me", "tables"] as const,

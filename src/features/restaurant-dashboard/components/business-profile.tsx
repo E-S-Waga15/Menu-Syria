@@ -46,6 +46,7 @@ import {
 import { ColorField } from "@/components/shared/color-field";
 import { GoogleLocationPicker } from "@/components/shared/google-location-picker";
 import { GovernorateRegionSelect } from "@/components/shared/governorate-region-select";
+import { ImagePreviewDialog } from "@/components/shared/image-preview-dialog";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PendingChangesBar } from "@/components/shared/pending-changes-bar";
 import { ProfilePhotoViewer } from "@/components/shared/profile-photo-viewer";
@@ -276,67 +277,6 @@ function ProfileSection({
         </AlertDialogContent>
       </AlertDialog>
     </section>
-  );
-}
-
-/** Confirms an image before it's actually applied: pick a file → preview it
- * here → "تأكيد" commits, "إلغاء" discards and re-opens nothing. */
-export function ImagePreviewDialog({
-  src,
-  onConfirm,
-  onCancel,
-  confirming = false,
-  t,
-}: {
-  src: string | null;
-  onConfirm: () => void;
-  onCancel: () => void;
-  /** shows a spinner and blocks closing while a save this preview kicked
-   * off is still in flight */
-  confirming?: boolean;
-  t: I18n["t"];
-}) {
-  return (
-    <Dialog
-      open={!!src}
-      onOpenChange={(open) => !open && !confirming && onCancel()}
-    >
-      <DialogContent showCloseButton={false}>
-        <DialogHeader>
-          <DialogTitle>{t.dashboard.previewPhotoTitle}</DialogTitle>
-        </DialogHeader>
-        {src && (
-          <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-border/60">
-            <SafeImage
-              src={src}
-              alt=""
-              fill
-              unoptimized
-              className="object-cover"
-            />
-          </div>
-        )}
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            disabled={confirming}
-            onClick={onCancel}
-          >
-            {t.common.cancel}
-          </Button>
-          <Button
-            type="button"
-            className="flex-1"
-            loading={confirming}
-            onClick={onConfirm}
-          >
-            {t.common.confirm}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 

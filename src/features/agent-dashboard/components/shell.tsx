@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Bell, LayoutDashboard, ShoppingBag, Sparkles, Store } from "lucide-react";
+import {
+  Bell,
+  LayoutDashboard,
+  ShoppingBag,
+  Sparkles,
+  Store,
+  UserRound,
+} from "lucide-react";
 
 import { AccountMenu } from "@/components/shared/account-menu";
 import {
@@ -41,6 +48,7 @@ export function AgentDashboardShell({
       label: t.notifications.title,
       icon: Bell,
     },
+    { href: `${base}/profile`, label: t.agent.profileTab, icon: UserRound },
   ];
 
   return (

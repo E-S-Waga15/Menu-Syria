@@ -890,7 +890,10 @@
     "quickAccess": "Quick access",
     "myRestaurantsHint": "Restaurants subscribed through you",
     "myStoresHint": "Stores subscribed through you",
-    "notificationsHint": "Subscriptions coming up for renewal"
+    "notificationsHint": "Subscriptions coming up for renewal",
+    "profileTab": "Profile",
+    "profileTitle": "Your profile photo",
+    "profileHint": "This photo is shown to the restaurants and stores that contact you. Your name and other contact details are managed by the admin."
   },
   "admin": {
     "dashboard": "Central dashboard",

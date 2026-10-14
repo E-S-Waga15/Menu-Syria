@@ -8,6 +8,22 @@ Agent linkage, plan name/start date, approval-time duration picker, the new per-
 
 The per-item statistics endpoint currently returns 403 when "the business's plan doesn't include statistics." Please remove that check for now — **every feature should be available to every plan while the product is still being built**; which features belong to which plan hasn't been decided yet, and will be a deliberate, separate pass once the platform is feature-complete. If any other endpoint already has a similar plan-based 403 gate, please lift it the same way until we explicitly ask to reintroduce it. The frontend's own "your plan doesn't support this" messaging for item statistics has already been removed to match.
 
+## 🆕 New ask: agent's own profile photo — `PATCH /me/agent`, plus confirming the "clear photo" convention
+
+**Why:** Settings now has a fullscreen photo viewer (tap the avatar → view/change/save/delete) for the restaurant/store logo, and the same UX now also applies to the agent's own profile photo in their dashboard (`/agent/profile`). The agent side needs its own small write endpoint for this.
+
+### `PATCH /me/agent`
+
+```jsonc
+// body
+{ "photoUrl": "https://.../agents/abc.png" }   // or "" to clear back to the generic placeholder
+// response: the full updated Agent
+```
+
+- Only `photoUrl` is written from this screen — name/bio/commission/referral code stay admin-managed, this endpoint should ignore (or reject) any other field for now.
+- The frontend already has `POST /uploads?folder=agents` uploading the file first and sending back its URL, then calls this endpoint with that URL — if `agents` isn't already a valid `folder` value on the uploads endpoint, please confirm it is (it's listed as one of the accepted folders on our side).
+- **Please confirm the empty-string-clears-the-photo convention** — the frontend sends `{ "photoUrl": "" }` to clear the agent's photo, and separately sends `{ "logo": "" }` to `PATCH /me/restaurant` / `PATCH /me/store` to clear the business logo, both on the assumption that an empty string is treated as "remove it" rather than being rejected as an invalid URL. If either side needs an explicit `DELETE` endpoint or a `null` value instead, let us know and we'll switch both calls to match.
+
 ---
 
 Everything below is additive to existing resources — no existing field is renamed or removed. The earlier fulfillment-modes/delivery-fee/payment-code work (an even older version of this document) is already shipped and confirmed working; §1-4 below are the batch after that; §6 is plan pricing.
