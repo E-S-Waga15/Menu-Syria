@@ -172,19 +172,14 @@ export function OfferModal({
 
         <div className="space-y-5 p-5" dir={dir}>
           <div>
-            {/* the two prices, together — the saving is the argument */}
+            {/* no `dir` override — see offer-card.tsx's own note: forcing
+                ltr here is what put the currency in front of the number */}
             <p className="flex items-baseline gap-2.5">
-              <span
-                dir="ltr"
-                className="font-heading text-2xl font-bold text-[var(--menu-primary)]"
-              >
+              <span className="font-heading text-2xl font-bold text-[var(--menu-primary)]">
                 {formatPrice(offer.price, t.common.currency)}
               </span>
               {offer.originalPrice > offer.price && (
-                <span
-                  dir="ltr"
-                  className="text-sm font-semibold text-muted-foreground line-through"
-                >
+                <span className="text-sm font-semibold text-muted-foreground line-through">
                   {formatPrice(offer.originalPrice, t.common.currency)}
                 </span>
               )}
@@ -233,7 +228,7 @@ export function OfferModal({
             className="h-12 w-full bg-[var(--menu-primary)] text-base font-bold text-white hover:opacity-90"
           >
             {t.offers.orderOffer}
-            <span dir="ltr" className="ms-auto">
+            <span className="ms-auto">
               {formatPrice(offer.price, t.common.currency)}
             </span>
           </Button>

@@ -127,15 +127,15 @@ export function AgentOverviewView() {
     (business) => `${base}/subscriptions/${business.id}`,
   ).slice(0, 3);
 
-  // most recently joined first — the business's own real planStartedAt,
-  // never a guess
+  // most recently joined first when the business has a real planStartedAt
+  // (still missing on some existing records) — one without it still shows,
+  // just sorts after every dated one instead of being hidden outright
   const latestSubscriptions = [...restaurants, ...stores]
-    .filter((b) => b.planStartedAt)
-    .sort(
-      (a, b) =>
-        new Date(b.planStartedAt!).getTime() -
-        new Date(a.planStartedAt!).getTime(),
-    )
+    .sort((a, b) => {
+      const at = a.planStartedAt ? new Date(a.planStartedAt).getTime() : 0;
+      const bt = b.planStartedAt ? new Date(b.planStartedAt).getTime() : 0;
+      return bt - at;
+    })
     .slice(0, 5);
 
   const formatJoinDate = (iso: string) =>
@@ -335,7 +335,9 @@ export function AgentOverviewView() {
                       {business.name[lang]}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">
-                      {formatJoinDate(business.planStartedAt!)}
+                      {business.planStartedAt
+                        ? formatJoinDate(business.planStartedAt)
+                        : "—"}
                     </p>
                   </div>
                   <Badge className="shrink-0 bg-success/10 text-success">

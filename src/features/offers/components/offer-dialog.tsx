@@ -285,7 +285,7 @@ export function OfferDialog({
           {saving > 0 && (
             <p className="flex items-center justify-between rounded-xl border border-success/30 bg-success/10 px-4 py-2.5 text-sm font-bold text-success">
               <span>{fmt(t.offers.discount, { percent: saving })}</span>
-              <span dir="ltr">
+              <span>
                 {formatPrice(
                   Number(originalPrice) - Number(price),
                   t.common.currency,
