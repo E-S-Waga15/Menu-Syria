@@ -133,7 +133,10 @@ export const agentRegisterSchema = (v: ValidationMessages) =>
       confirmPassword: z.string().min(1, v.required),
       photoUrl: z.string(),
       governorateId: z.string().min(1, v.governorateRequired),
-      regionIds: z.array(z.string()).min(1, v.regionsRequired),
+      regionIds: z
+        .array(z.string())
+        .min(1, v.regionsRequired)
+        .max(2, v.regionsMax),
       bio: z.string(),
       instagram: z.string(),
       facebook: z.string(),

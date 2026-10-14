@@ -48,7 +48,10 @@ export async function generateMetadata({
 
   const governorate =
     governorates.find((g) => g.id === agent.governorateId)?.name[lang] ?? "";
-  const region = regions.find((r) => r.id === agent.regionId)?.name[lang] ?? "";
+  const region = agent.regionIds
+    .map((id) => regions.find((r) => r.id === id)?.name[lang])
+    .filter(Boolean)
+    .join(lang === "ar" ? " و" : " & ");
 
   const name = agent.name[lang];
   const description = agent.bio[lang];
@@ -101,8 +104,10 @@ export default async function AgentDetailsPage({
 
   const governorateName =
     governorates.find((g) => g.id === agent.governorateId)?.name[lang] ?? "";
-  const regionName =
-    regions.find((r) => r.id === agent.regionId)?.name[lang] ?? "";
+  const regionName = agent.regionIds
+    .map((id) => regions.find((r) => r.id === id)?.name[lang])
+    .filter(Boolean)
+    .join(lang === "ar" ? " و" : " & ");
 
   const socials = [
     {

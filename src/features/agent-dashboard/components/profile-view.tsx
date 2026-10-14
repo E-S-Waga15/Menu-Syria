@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera } from "lucide-react";
+import { Camera, Check, User } from "lucide-react";
 
 import {
   AlertDialog,
@@ -15,27 +15,283 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FacebookIcon, InstagramIcon } from "@/components/shared/brand-icons";
 import { ImagePreviewDialog } from "@/components/shared/image-preview-dialog";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { ProfilePhotoViewer } from "@/components/shared/profile-photo-viewer";
+import { ProfileSection } from "@/components/shared/profile-section";
 import { SafeImage } from "@/components/shared/safe-image";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   getMyAgentProfile,
   updateMyAgentProfile,
   type AgentProfileInput,
 } from "@/features/agent-dashboard/services";
+import { getGovernorates, getRegions } from "@/features/marketing/services";
 import { useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { uploadImage } from "@/lib/api/upload";
 import { qrFileName } from "@/lib/qr-filename";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import type { Agent } from "@/lib/types";
 
 /**
- * The agent's own profile photo — the only thing their dashboard can edit
- * about their profile right now (name/bio/commission stay admin-managed).
- * Mirrors the business logo's view/change/save/delete flow in
- * `business-profile.tsx` so both sides of the platform behave the same way.
+ * Name, bio, contact info and coverage area, editable the same way the
+ * business settings page edits its own account info: one card, an edit
+ * toggle, a floating save/discard bar. Referral code and commission rate
+ * stay admin-managed — not shown here as editable.
+ */
+function AgentAccountInfoSection({
+  agent,
+  t,
+  lang,
+  mutation,
+}: {
+  agent: Agent;
+  t: ReturnType<typeof useI18n>["t"];
+  lang: ReturnType<typeof useI18n>["lang"];
+  mutation: ReturnType<
+    typeof useMutation<Agent, Error, AgentProfileInput>
+  >;
+}) {
+  const { data: governorates } = useQuery({
+    queryKey: queryKeys.governorates,
+    queryFn: getGovernorates,
+  });
+  const { data: regions } = useQuery({
+    queryKey: queryKeys.regions,
+    queryFn: getRegions,
+  });
+
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(agent.name[lang]);
+  const [bio, setBio] = useState(agent.bio[lang]);
+  const [phone, setPhone] = useState(agent.phone);
+  const [whatsapp, setWhatsapp] = useState(agent.whatsapp);
+  const [instagram, setInstagram] = useState(agent.instagram ?? "");
+  const [facebook, setFacebook] = useState(agent.facebook ?? "");
+  const [governorateId, setGovernorateId] = useState(agent.governorateId);
+  const [regionIds, setRegionIds] = useState(agent.regionIds);
+  const snapshot = useRef({
+    name,
+    bio,
+    phone,
+    whatsapp,
+    instagram,
+    facebook,
+    governorateId,
+    regionIds,
+  });
+
+  const regionChoices = (regions ?? []).filter(
+    (r) => r.governorateId === governorateId,
+  );
+
+  const toggleRegion = (id: string) => {
+    if (!regionIds.includes(id) && regionIds.length >= 2) return;
+    setRegionIds((current) =>
+      current.includes(id)
+        ? current.filter((r) => r !== id)
+        : [...current, id],
+    );
+  };
+
+  return (
+    <ProfileSection
+      title={t.agent.accountInfoTitle}
+      icon={User}
+      editing={editing}
+      t={t}
+      onEdit={() => {
+        snapshot.current = {
+          name,
+          bio,
+          phone,
+          whatsapp,
+          instagram,
+          facebook,
+          governorateId,
+          regionIds,
+        };
+        setEditing(true);
+      }}
+      onSave={async () => {
+        await mutation.mutateAsync({
+          name,
+          bio,
+          phone,
+          whatsapp,
+          instagram,
+          facebook,
+          governorateId,
+          regionIds,
+        });
+        setEditing(false);
+      }}
+      onCancel={() => {
+        setName(snapshot.current.name);
+        setBio(snapshot.current.bio);
+        setPhone(snapshot.current.phone);
+        setWhatsapp(snapshot.current.whatsapp);
+        setInstagram(snapshot.current.instagram);
+        setFacebook(snapshot.current.facebook);
+        setGovernorateId(snapshot.current.governorateId);
+        setRegionIds(snapshot.current.regionIds);
+        setEditing(false);
+      }}
+    >
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="ap-name">{t.auth.fullNameLabel}</Label>
+          <Input
+            id="ap-name"
+            className="h-11"
+            disabled={!editing}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ap-phone">{t.auth.phoneLabel}</Label>
+          <Input
+            id="ap-phone"
+            dir="ltr"
+            className="h-11"
+            disabled={!editing}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <Label htmlFor="ap-bio">{t.auth.bioLabel}</Label>
+        <Textarea
+          id="ap-bio"
+          rows={3}
+          disabled={!editing}
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+        />
+      </div>
+
+      <div className="mt-5 grid gap-5 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="ap-whatsapp">{t.agent.whatsappLabel}</Label>
+          <Input
+            id="ap-whatsapp"
+            dir="ltr"
+            className="h-11"
+            disabled={!editing}
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ap-ig" className="gap-1.5">
+            <InstagramIcon className="size-4" /> {t.auth.instagramLabel}
+          </Label>
+          <Input
+            id="ap-ig"
+            dir="ltr"
+            className="h-11"
+            disabled={!editing}
+            value={instagram}
+            onChange={(e) => setInstagram(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <Label htmlFor="ap-fb" className="gap-1.5">
+          <FacebookIcon className="size-4" /> {t.auth.facebookLabel}
+        </Label>
+        <Input
+          id="ap-fb"
+          dir="ltr"
+          className="h-11"
+          disabled={!editing}
+          value={facebook}
+          onChange={(e) => setFacebook(e.target.value)}
+        />
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <Label>{t.agent.coverageLabel}</Label>
+        <p className="text-xs text-muted-foreground">{t.agent.coverageHint}</p>
+        <Select
+          value={governorateId || null}
+          onValueChange={(v) => {
+            if (!v) return;
+            setGovernorateId(v);
+            setRegionIds([]);
+          }}
+          items={Object.fromEntries(
+            (governorates ?? []).map((g) => [g.id, g.name[lang]]),
+          )}
+          disabled={!editing}
+        >
+          <SelectTrigger id="ap-governorate" className="h-11! w-full">
+            <SelectValue placeholder={t.auth.governorateLabel} />
+          </SelectTrigger>
+          <SelectContent>
+            {(governorates ?? []).map((g) => (
+              <SelectItem key={g.id} value={g.id}>
+                {g.name[lang]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {governorateId && regionChoices.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {regionChoices.map((region) => {
+              const selected = regionIds.includes(region.id);
+              const disabled =
+                !editing || (!selected && regionIds.length >= 2);
+              return (
+                <button
+                  key={region.id}
+                  type="button"
+                  onClick={() => toggleRegion(region.id)}
+                  aria-pressed={selected}
+                  disabled={disabled}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition-[background-color,border-color,translate] duration-200 ease-smooth",
+                    selected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : disabled
+                        ? "cursor-not-allowed border-border/50 text-muted-foreground/60"
+                        : "border-border hover:border-primary/50 hover:bg-surface-container-low",
+                  )}
+                >
+                  {selected && <Check className="size-3.5" />}
+                  {region.name[lang]}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </ProfileSection>
+  );
+}
+
+/**
+ * The agent's own profile: photo (view/change/save/delete, same fullscreen
+ * flow as the business logo) plus account info (name, bio, contact,
+ * coverage area). Referral code and commission rate stay admin-managed.
  */
 export function AgentProfileView() {
   const { t, lang } = useI18n();
@@ -173,6 +429,13 @@ export function AgentProfileView() {
           <p className="text-sm text-muted-foreground">{agent.referralCode}</p>
         </div>
       </div>
+
+      <AgentAccountInfoSection
+        agent={agent}
+        t={t}
+        lang={lang}
+        mutation={mutation}
+      />
 
       <ImagePreviewDialog
         src={photoPreview}

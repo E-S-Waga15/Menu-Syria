@@ -72,7 +72,8 @@ export function AgentPlansView() {
       <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {plans.map((plan) => {
           const price =
-            cycle === "monthly" ? plan.agentPriceMonthly : plan.agentPriceYearly;
+            (cycle === "monthly" ? plan.agentPriceMonthly : plan.agentPriceYearly) ??
+            0;
           return (
             <li
               key={plan.id}
@@ -82,7 +83,9 @@ export function AgentPlansView() {
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <h2 className="font-heading text-lg font-bold">{plan.name[lang]}</h2>
+                <h2 className="font-heading text-lg font-bold">
+                  {plan.name?.[lang] ?? ""}
+                </h2>
                 {plan.isPopular && (
                   <Badge className="bg-berry-soft text-berry-soft-foreground">
                     <Sparkles className="me-1 size-3" />
@@ -100,7 +103,7 @@ export function AgentPlansView() {
                     {cycle === "monthly" ? t.admin.pricePerMonth : t.admin.pricePerYear}
                   </span>
                 </p>
-                {cycle === "yearly" && (
+                {cycle === "yearly" && plan.yearlySavingsMonths != null && (
                   <Badge className="mt-1.5 bg-success/10 text-success">
                     {fmt(t.admin.yearlySavingsBadge, {
                       months: plan.yearlySavingsMonths,
@@ -113,7 +116,7 @@ export function AgentPlansView() {
                 {t.admin.planFeatures}
               </h3>
               <ul className="mt-2.5 flex-1 space-y-2">
-                {plan.features.map((feature) => (
+                {(plan.features ?? []).map((feature) => (
                   <li
                     key={feature.en}
                     className="flex items-start gap-2 text-sm text-muted-foreground"

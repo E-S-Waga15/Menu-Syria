@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   LayoutDashboard,
@@ -19,9 +20,11 @@ import {
 } from "@/components/shared/dashboard-shell";
 import { useAuthStore } from "@/features/auth/store";
 import { useHydratedSession } from "@/features/auth/use-hydrated-session";
+import { getMyAgentProfile } from "@/features/agent-dashboard/services";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { buildSubscriptionNotifications } from "@/features/notifications/services";
 import { useI18n } from "@/i18n/client";
+import { queryKeys } from "@/lib/api/query-keys";
 import type { Business } from "@/lib/types";
 
 export function AgentDashboardShell({
@@ -37,6 +40,12 @@ export function AgentDashboardShell({
   const { session, hydrated } = useHydratedSession();
   const logout = useAuthStore((s) => s.logout);
   const base = `/${lang}/agent`;
+
+  const { data: agentProfile } = useQuery({
+    queryKey: queryKeys.me.agentProfile,
+    queryFn: () => getMyAgentProfile(),
+    enabled: hydrated && !!session,
+  });
 
   const navItems: DashboardNavItem[] = [
     { href: base, label: t.agent.earnings, icon: LayoutDashboard, exact: true },
@@ -66,7 +75,10 @@ export function AgentDashboardShell({
               ).map((n) => n.id)}
             />
             <AccountMenu
-              session={session}
+              session={{
+                ...session,
+                avatarUrl: agentProfile?.photoUrl || session.avatarUrl,
+              }}
               navItems={[]}
               onLogout={() => {
                 logout();

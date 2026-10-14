@@ -353,7 +353,9 @@ export interface Agent {
   photoUrl: string;
   bio: LocalizedText;
   governorateId: string;
-  regionId: string;
+  /** the regions this agent covers within `governorateId` — one or two,
+   * never from a different governorate */
+  regionIds: string[];
   phone: string;
   whatsapp: string;
   instagram?: string;

@@ -64,7 +64,7 @@ export function AgentsDirectory({
     return agents.filter((agent) => {
       if (governorateId !== ALL && agent.governorateId !== governorateId)
         return false;
-      if (regionId !== ALL && agent.regionId !== regionId) return false;
+      if (regionId !== ALL && !agent.regionIds.includes(regionId)) return false;
       if (
         q &&
         !agent.name.ar.toLowerCase().includes(q) &&
@@ -79,6 +79,11 @@ export function AgentsDirectory({
     governorates.find((g) => g.id === id)?.name[lang] ?? "";
   const regionName = (id: string) =>
     regions.find((r) => r.id === id)?.name[lang] ?? "";
+  const regionNames = (ids: string[]) =>
+    ids
+      .map(regionName)
+      .filter(Boolean)
+      .join(lang === "ar" ? " و" : " & ");
 
   const governorateItems = {
     [ALL]: t.agentsPage.allGovernorates,
@@ -189,7 +194,7 @@ export function AgentsDirectory({
                   <span className="truncate">
                     {governorateName(agent.governorateId)}
                     {lang === "ar" ? "، " : ", "}
-                    {regionName(agent.regionId)}
+                    {regionNames(agent.regionIds)}
                   </span>
                 </p>
                 <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">

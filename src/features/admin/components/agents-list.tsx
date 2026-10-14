@@ -66,7 +66,7 @@ export function AdminAgentsList({
     return agentRows.filter((agent) => {
       if (governorateId !== ALL && agent.governorateId !== governorateId)
         return false;
-      if (regionId !== ALL && agent.regionId !== regionId) return false;
+      if (regionId !== ALL && !agent.regionIds.includes(regionId)) return false;
       if (
         q &&
         !agent.name.ar.toLowerCase().includes(q) &&
@@ -80,7 +80,10 @@ export function AdminAgentsList({
   const placeOf = (agent: Agent) =>
     [
       governorates.find((g) => g.id === agent.governorateId)?.name[lang],
-      regions.find((r) => r.id === agent.regionId)?.name[lang],
+      agent.regionIds
+        .map((id) => regions.find((r) => r.id === id)?.name[lang])
+        .filter(Boolean)
+        .join(lang === "ar" ? " و" : " & "),
     ]
       .filter(Boolean)
       .join(lang === "ar" ? "، " : ", ");

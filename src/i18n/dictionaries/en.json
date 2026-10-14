@@ -74,6 +74,7 @@
     "governorateRequired": "Choose a governorate",
     "regionRequired": "Choose a region",
     "regionsRequired": "Choose at least one region",
+    "regionsMax": "You can choose at most 2 regions",
     "businessTypeRequired": "Choose a business type",
     "numbersOnly": "Numbers only",
     "priceRequired": "Enter a valid price",
@@ -573,7 +574,7 @@
     "bioLabel": "About you",
     "bioPlaceholder": "Your experience and what makes you a great agent in your area…",
     "regionsLabel": "Regions",
-    "regionsHint": "You can select more than one region within the governorate",
+    "regionsHint": "Choose one region, or two at most, within the same governorate",
     "submitApplication": "Submit application",
     "applicationSent": "Application received! We'll reach out within 48 hours.",
     "planLabel": "Subscription plan",
@@ -893,7 +894,11 @@
     "notificationsHint": "Subscriptions coming up for renewal",
     "profileTab": "Profile",
     "profileTitle": "Your profile photo",
-    "profileHint": "This photo is shown to the restaurants and stores that contact you. Your name and other contact details are managed by the admin."
+    "profileHint": "This photo is shown to the restaurants and stores that contact you.",
+    "accountInfoTitle": "Account info",
+    "whatsappLabel": "WhatsApp number",
+    "coverageLabel": "Coverage area",
+    "coverageHint": "One governorate, and one or two regions within it — this is where you'll be shown to businesses signing up."
   },
   "admin": {
     "dashboard": "Central dashboard",

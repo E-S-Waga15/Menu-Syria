@@ -8,21 +8,39 @@ Agent linkage, plan name/start date, approval-time duration picker, the new per-
 
 The per-item statistics endpoint currently returns 403 when "the business's plan doesn't include statistics." Please remove that check for now — **every feature should be available to every plan while the product is still being built**; which features belong to which plan hasn't been decided yet, and will be a deliberate, separate pass once the platform is feature-complete. If any other endpoint already has a similar plan-based 403 gate, please lift it the same way until we explicitly ask to reintroduce it. The frontend's own "your plan doesn't support this" messaging for item statistics has already been removed to match.
 
-## 🆕 New ask: agent's own profile photo — `PATCH /me/agent`, plus confirming the "clear photo" convention
+## 🆕 New ask: agent's own editable profile — `PATCH /me/agent`, plus a `regionIds` fix on the read shape
 
-**Why:** Settings now has a fullscreen photo viewer (tap the avatar → view/change/save/delete) for the restaurant/store logo, and the same UX now also applies to the agent's own profile photo in their dashboard (`/agent/profile`). The agent side needs its own small write endpoint for this.
+**Why:** The agent dashboard now has its own `/agent/profile` page: a fullscreen photo viewer (tap the avatar → view/change/save/delete, same UX as the restaurant/store logo) plus an "account info" card (name, bio, phone, WhatsApp, Instagram, Facebook, and coverage area) editable the same way the business settings page edits its own info — an edit toggle, inline fields, a save/discard bar.
 
 ### `PATCH /me/agent`
 
 ```jsonc
-// body
-{ "photoUrl": "https://.../agents/abc.png" }   // or "" to clear back to the generic placeholder
+// body — every field optional, only what the agent actually changed is sent
+{
+  "photoUrl": "https://.../agents/abc.png",  // or "" to clear back to the generic placeholder
+  "name": "أحمد الحموي",                      // plain string in the signed-in locale, not a {ar,en} pair
+  "bio": "خبرة ثماني سنوات في قطاع الضيافة...",
+  "phone": "+963944100200",
+  "whatsapp": "+963944100200",
+  "instagram": "ahmad.menusyria",
+  "facebook": "AhmadMenuSyria",
+  "governorateId": "damascus",
+  "regionIds": ["bab-touma", "mazzeh"]        // see the regionIds note below — 1 or 2 ids, both within governorateId
+}
 // response: the full updated Agent
 ```
 
-- Only `photoUrl` is written from this screen — name/bio/commission/referral code stay admin-managed, this endpoint should ignore (or reject) any other field for now.
-- The frontend already has `POST /uploads?folder=agents` uploading the file first and sending back its URL, then calls this endpoint with that URL — if `agents` isn't already a valid `folder` value on the uploads endpoint, please confirm it is (it's listed as one of the accepted folders on our side).
+- Referral code and commission rate are **not** writable here — admin-managed only, this endpoint should ignore (or reject) those two fields if sent.
+- The frontend already has `POST /uploads?folder=agents` uploading the photo first and sending back its URL, then calls this endpoint with that URL — if `agents` isn't already a valid `folder` value on the uploads endpoint, please confirm it is (it's listed as one of the accepted folders on our side).
 - **Please confirm the empty-string-clears-the-photo convention** — the frontend sends `{ "photoUrl": "" }` to clear the agent's photo, and separately sends `{ "logo": "" }` to `PATCH /me/restaurant` / `PATCH /me/store` to clear the business logo, both on the assumption that an empty string is treated as "remove it" rather than being rejected as an invalid URL. If either side needs an explicit `DELETE` endpoint or a `null` value instead, let us know and we'll switch both calls to match.
+
+### `regionIds` — the agent model's coverage area is one governorate + up to two regions, not one region
+
+**Why:** an agent's coverage area was modeled as a single `regionId`, but agent self-registration (`POST /agents/register` or wherever that lands — the form already sends `districtIds` as an array) always meant "one or more regions within one governorate." We're now capping that at **exactly one governorate, and one or two regions within it** — enough to realistically cover ground without an agent claiming an entire province. Please:
+
+- Rename/replace `regionId` with `regionIds: string[]` (1-2 items) on `GET /me/agent`, on any public agent read (`GET /agents/:id` or similar, used by the public agent directory page), and anywhere else `Agent.regionId` is currently returned.
+- Validate server-side, both at registration and on this new `PATCH /me/agent`: `regionIds` has 1-2 entries, and every id in it belongs to `governorateId`. The frontend already enforces this client-side (disables picking a 3rd region, caps the zod schema at `.max(2)`), but it should be enforced server-side too since this endpoint is reachable directly.
+- The already-shipped `BusinessAgent` shape on `GET /me/restaurant`/`GET /me/store` (§1 below) is unaffected — that read-only contact card can keep sending a single `regionId` for display; this ask is only about the `Agent` entity itself (the agent's own profile, and the public agent directory/profile page).
 
 ---
 

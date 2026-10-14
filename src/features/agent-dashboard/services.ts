@@ -47,16 +47,30 @@ export async function getMyAgentProfile(
 export interface AgentProfileInput {
   /** an uploaded image URL, or "" to clear it back to the generic placeholder */
   photoUrl?: string;
+  /** plain string in the signed-in locale, like the business profile's own
+   * `name`/`description` fields — not the full `LocalizedText` pair */
+  name?: string;
+  bio?: string;
+  phone?: string;
+  whatsapp?: string;
+  instagram?: string;
+  facebook?: string;
+  governorateId?: string;
+  /** one or two region ids, always within `governorateId` */
+  regionIds?: string[];
 }
 
-/** The agent's own photo — the only thing their own dashboard can edit
- * about their profile right now (name/bio/commission stay admin-managed).
- * Not yet confirmed against a real backend route — see update.md. */
+/** The agent's own editable profile — photo, account info, contact info,
+ * and coverage area (one governorate + up to two regions within it).
+ * Commission rate and referral code stay admin-managed. Not yet confirmed
+ * against a real backend route — see update.md. */
 export async function updateMyAgentProfile(
   input: AgentProfileInput,
   auth: AgentAuth = {},
 ): Promise<Agent> {
-  if (IS_MOCK) return mockDelay({ ...agents[0]!, ...input });
+  if (IS_MOCK) {
+    return mockDelay({ ...agents[0]!, ...input } as unknown as Agent);
+  }
   return apiFetch("/me/agent", {
     method: "PATCH",
     headers: authHeaders(auth),

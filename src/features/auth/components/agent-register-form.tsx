@@ -107,6 +107,7 @@ export function AgentRegisterForm() {
   };
 
   const toggleRegion = (id: string) => {
+    if (!regionIds.includes(id) && regionIds.length >= 2) return;
     const next = regionIds.includes(id)
       ? regionIds.filter((r) => r !== id)
       : [...regionIds, id];
@@ -356,17 +357,21 @@ export function AgentRegisterForm() {
                   <div className="flex flex-wrap gap-2">
                     {regionChoices.map((region) => {
                       const selected = regionIds.includes(region.id);
+                      const disabled = !selected && regionIds.length >= 2;
                       return (
                         <button
                           key={region.id}
                           type="button"
                           onClick={() => toggleRegion(region.id)}
                           aria-pressed={selected}
+                          disabled={disabled}
                           className={cn(
                             "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition-[background-color,border-color,translate] duration-200 ease-smooth",
                             selected
                               ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border hover:border-primary/50 hover:bg-surface-container-low",
+                              : disabled
+                                ? "cursor-not-allowed border-border/50 text-muted-foreground/60"
+                                : "border-border hover:border-primary/50 hover:bg-surface-container-low",
                           )}
                         >
                           {selected && <Check className="size-3.5" />}

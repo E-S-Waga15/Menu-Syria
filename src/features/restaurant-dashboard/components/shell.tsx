@@ -98,7 +98,10 @@ export function RestaurantDashboardShell({
           <div className="flex items-center gap-1">
             <NotificationBell href={`${base}/notifications`} ids={[]} />
             <AccountMenu
-              session={session}
+              session={{
+                ...session,
+                avatarUrl: restaurant?.logoUrl || session.avatarUrl,
+              }}
               navItems={[
                 {
                   icon: Bell,
