@@ -101,6 +101,7 @@ export function AgentEarningsView() {
           value={formatPrice(4850000, t.common.currency)}
           icon={Banknote}
           hint="+15%"
+          highlight
         />
         <StatCard
           label={t.agent.collectedCommissions}

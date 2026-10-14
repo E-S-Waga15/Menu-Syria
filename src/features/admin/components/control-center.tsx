@@ -121,6 +121,7 @@ export function AdminControlCenter({
           icon={TrendingUp}
           accent="zest"
           hint="+21%"
+          highlight
         />
         <StatCard
           label={t.admin.activeSubscriptions}

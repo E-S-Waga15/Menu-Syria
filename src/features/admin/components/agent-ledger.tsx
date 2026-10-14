@@ -120,6 +120,7 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
           label={t.admin.balance}
           value={formatPrice(balance, t.common.currency)}
           icon={Wallet}
+          highlight
         />
         <StatCard
           label={t.admin.commissionRate}

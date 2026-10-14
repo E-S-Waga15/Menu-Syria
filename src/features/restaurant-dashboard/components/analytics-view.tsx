@@ -183,6 +183,7 @@ export function AnalyticsView() {
             value={formatPrice(business.revenue, t.common.currency)}
             icon={Wallet}
             accent="zest"
+            highlight
           />
         </div>
       )}

@@ -178,6 +178,7 @@ export function DashboardOverview() {
           value={String(analytics.todayOrders)}
           icon={Receipt}
           hint="+12%"
+          highlight
         />
         <StatCard
           label={t.dashboard.todayRevenue}
@@ -185,6 +186,7 @@ export function DashboardOverview() {
           icon={Banknote}
           accent="zest"
           hint="+8%"
+          highlight
         />
         <StatCard
           label={t.dashboard.menuViews}
