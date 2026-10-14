@@ -4,9 +4,9 @@
 
 Said as done on the backend side. Frontend reads `item.viewCount` straight off the menu list now (previously only read from whatever `GET /statistics/items/:id` happened to leave in the client cache, so every card showed "—" until that item's own stats modal had been opened once in the session). Please double check live that the field is actually present on a few real items — the frontend falls back to the old cache-based behavior, then to "—", so a still-missing field would silently look like "nothing happened" rather than an obvious error.
 
-## 🆕 New ask: same `agent.regionIds` fix on `BusinessAgent` (`GET /me/restaurant` / `GET /me/store`)
+## 🆕 New ask: `agent.regionIds` + `agent.photoUrl` on `BusinessAgent` (`GET /me/restaurant` / `GET /me/store`)
 
-**Why:** the owner's dashboard now shows "activated by {agent}, in {region}" and lists **both** regions when the agent covers two — but `BusinessAgent.regionId` (the read-only agent-contact snapshot on a business's own read, §1 below) is still a single id. Please mirror the same change already requested for `Agent.regionIds` onto this shape too:
+**Why:** the owner's dashboard now shows "activated by {agent}, in {region}" (listing **both** regions when the agent covers two) and shows the agent's own photo on the contact card — but `BusinessAgent` (the read-only agent-contact snapshot on a business's own read, §1 below) still only has `regionId: string` and no photo field at all. Please extend it:
 
 ```jsonc
 // GET /me/restaurant / GET /me/store — business.agent
@@ -14,15 +14,16 @@ Said as done on the backend side. Frontend reads `item.viewCount` straight off t
   "agent": {
     "id": "a1",
     "name": "أحمد الحموي",
+    "photoUrl": "https://.../agents/abc.png",  // new, optional
     "governorateId": "damascus",
-    "regionIds": ["bab-touma", "mazzeh"],   // was regionId: string
+    "regionIds": ["bab-touma", "mazzeh"],      // was regionId: string
     "phone": "...",
     "whatsapp": "..."
   }
 }
 ```
 
-Until this ships, the frontend falls back to the business's own governorate name in that message, which is correct but less specific than it should be.
+**Note on priority:** this one already caused a real outage on our side — the frontend trusted `regionIds` would always be an array (matching the contract) and called `.map()` on it directly; since the backend is still sending the old shape, that crashed the entire settings page (not just the subscription tab) for any business with an agent attached. We've since made the frontend defensive against this specific gap, but please treat the mismatch itself as the thing to fix, not just something to work around on our end — the next field that assumes the documented contract and isn't defensive will break the same way. Until `regionIds` ships, the frontend falls back to the legacy `regionId` if present, then to the business's own governorate name. Until `photoUrl` ships, the contact card shows a generic icon instead of a photo — safe, no crash risk there.
 
 ## ✅ §1-§6 below: confirmed shipped and verified (both locally and on production)
 
