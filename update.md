@@ -4,35 +4,21 @@
 
 Agent linkage, plan name/start date, approval-time duration picker, the new per-item statistics endpoint, and the full server-computed plan pricing model are all live. Thank you — frontend is already reading these fields as specced, no changes needed on either side for §1-§6. Kept below as a reference of what the contract is.
 
-## 🐛 Bug: `PATCH /subscription-plans/:id` rejects the `features` field — but §6's own write shape documents it as accepted
+## ✅ Fixed: `PATCH /subscription-plans/:id` rejecting `features` — root cause was broader than suspected
 
-**Reproduced live on production just now:** editing an existing plan (admin console → الخطط والباقات → edit "Basic", change nothing but re-save) returns a 400 with the message `الحقل "features" غير مسموح به في هذا الطلب` ("the field 'features' is not allowed in this request"). The exact request body sent, matching §6's own documented write shape below, is:
+Neither `CreateSubscriptionPlanDto` nor `UpdateSubscriptionPlanDto` declared `features`/`isPopular` at all — this wasn't a PATCH-only regression; `POST` never genuinely accepted these fields either (whatever worked during create likely just didn't include them in the tested payload). Added both as real, writable `SubscriptionPlan` columns: `features` (free-text array, admin-authored — no longer auto-derived from `hasCart`/`hasStatistics`), localized to `{ar, en}` on read the same way every other plain-string input in this API works; `isPopular` (boolean). Backfilled the 3 existing plans so their cards don't go blank. Verified live: the exact repro payload now returns 200.
 
-```jsonc
-// PATCH /subscription-plans/p3
-{
-  "name": "Basic",
-  "priceMonthly": 250,
-  "features": ["قائمة طعام إلكترونية مع رمز QR"],
-  "isPopular": false
-}
-```
+## ✅ Added: `yearlyPricePerMonth` / `agentYearlyPricePerMonth`
 
-This makes editing a plan's features completely broken right now — not an edge case, every save of an existing plan hits this. Please check whether `PATCH /subscription-plans/:id`'s validation schema dropped (or never had) `features` while `POST /subscription-plans` (create) still accepts it, since that would explain create working while every edit 400s. The frontend hasn't changed anything about this request since §6 was confirmed shipped — this looks like a validation-schema regression or gap specific to the update path.
+Both now on every `Plan` response from `GET /subscription-plans` and `GET /admin/plans`: `yearlyPricePerMonth = round(priceYearly / 12)`, `agentYearlyPricePerMonth = round(agentPriceYearly / 12)`. Live now — the frontend's per-month line under the yearly price renders immediately, no frontend deploy needed.
 
-## 🆕 New ask: a "per month, billed annually" field on `Plan` — `yearlyPricePerMonth` / `agentYearlyPricePerMonth`
+## ✅ `GET /admin/plans` and `GET /subscription-plans` are now the same code path
 
-**Why:** the pricing cards (admin console and the agent's own plans page) want to show, under the yearly price, the standard SaaS-style breakdown — e.g. "233,333 ل.س شهرياً عند الدفع سنوياً" — the same pattern as `priceYearly / 12`. Per the standing rule for this whole document, the frontend will not compute that division itself; it's waiting on these two fields to render that line (it already renders nothing there until the field exists, so this is safe to ship whenever convenient):
+Eliminated the duplicate formatter entirely — `/admin/plans` delegates to the same service as `/subscription-plans`, so they can't drift apart again. Also found and fixed a real data-exposure bug introduced while unifying them: the first draft loaded the full `Subscription` relation just to count subscribers, which would have leaked `businessId`/`amountPaid`/payment-status onto this public endpoint. Replaced with a count-only query — confirmed live that neither endpoint's response contains a `subscriptions` key.
 
-```jsonc
-{
-  // existing fields unchanged
-  "yearlyPricePerMonth": 233333,       // round(priceYearly / 12)
-  "agentYearlyPricePerMonth": 163333   // round(agentPriceYearly / 12)
-}
-```
+## ✅ Local image storage migrated to Cloudinary — no backend contract change
 
-Both are optional on the response as far as the frontend is concerned, but once either is present the corresponding page starts showing the per-month line immediately — no frontend deploy needed on our side once these ship.
+All previously locally-stored images (business logos/photos, item photos, user avatars, offer images — 19 references) have been migrated to Cloudinary and the local source files removed from the server. This is backend-internal infrastructure; every URL field's shape and meaning is unchanged, no frontend action needed.
 
 ## 🆕 New ask: remove the plan-gate (403) on item statistics — and more broadly, nothing should be plan-restricted yet
 
