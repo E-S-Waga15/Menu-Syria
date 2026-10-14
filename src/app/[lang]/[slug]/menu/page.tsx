@@ -8,6 +8,15 @@ import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { JsonLd, restaurantJsonLd, storeJsonLd } from "@/lib/seo/json-ld";
 import { alternatesFor, SITE_URL } from "@/lib/seo/site";
+import type { Business, LocalizedText } from "@/lib/types";
+
+/** The business's real structured type (e.g. "مطعم إيطالي") when the owner
+ * picked one, in place of the legacy free-text cuisine/category fallback —
+ * see the doc comment on `Business.subType`. */
+function subtitleFor(business: Business, fallback: LocalizedText): LocalizedText {
+  if (!business.subType) return fallback;
+  return { ar: business.subType.name, en: business.subType.name };
+}
 
 /**
  * One catalog loader for a slug that could be either kind of business — tried
@@ -38,13 +47,18 @@ export async function generateMetadata({
   const catalog = await getCatalog(slug);
   const business = catalog?.kind === "restaurant" ? catalog.restaurant : catalog?.business;
   if (!business || !isLocale(lang)) return {};
+  // the business's type, then its own description — what a share link's
+  // auto-unfurled preview card (WhatsApp and the like) shows under the name
+  const description = business.subType?.name
+    ? `${business.subType.name}\n${business.description[lang]}`
+    : business.description[lang];
   return {
     title: business.name[lang],
-    description: business.description[lang],
+    description,
     alternates: alternatesFor(lang, `/${slug}/menu`),
     openGraph: {
       title: business.name[lang],
-      description: business.description[lang],
+      description,
       images: business.coverImages[0] ? [business.coverImages[0]] : undefined,
     },
   };
@@ -75,7 +89,11 @@ export default async function PublicCatalogPage({
       />
       <MenuScreen
         business={business}
-        subtitle={catalog.kind === "restaurant" ? catalog.restaurant.cuisine : catalog.business.category}
+        subtitle={
+          catalog.kind === "restaurant"
+            ? subtitleFor(catalog.restaurant, catalog.restaurant.cuisine)
+            : subtitleFor(catalog.business, catalog.business.category)
+        }
         categories={catalog.categories}
         items={catalog.items}
         governorateName={catalog.governorateName}

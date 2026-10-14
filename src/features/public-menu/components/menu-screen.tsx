@@ -7,9 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { Armchair, Info, MapPin, Phone, Search, Star } from "lucide-react";
+import { Armchair, Info, MapPin, Phone, Search, Share2, Star } from "lucide-react";
 
-import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { FloatingCartBar } from "@/features/public-menu/components/cart";
 import { StorefrontOffers } from "@/features/offers/components/storefront-offers";
 import { getLiveOffers } from "@/features/offers/services";
@@ -20,6 +19,7 @@ import { trackItemCartAdd } from "@/features/public-menu/services";
 import type { StorefrontCopy } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { toast } from "@/lib/toast";
 import type {
   Business,
   CatalogItem,
@@ -227,6 +227,28 @@ export function MenuScreen({
     addItem(business.id, item);
   };
 
+  // plain text is just the name and this (menu) page's own link — the
+  // richer preview (type, description) comes from this page's own OG
+  // meta tags, which WhatsApp/etc. unfurl from the link automatically
+  const shareMenu = async () => {
+    const pageUrl = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: business.name[lang], url: pageUrl });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError")
+          return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${business.name[lang]}\n${pageUrl}`);
+      toast.success(t.restaurant.linkCopied);
+    } catch {
+      toast.error(t.restaurant.shareFailed);
+    }
+  };
+
   return (
     <div
       className="min-h-dvh bg-background"
@@ -305,7 +327,6 @@ export function MenuScreen({
                     : t.restaurant.closedNow}
                 </span>
               )}
-              <LanguageSwitcher />
             </div>
 
             {/* location + call — only relevant once the customer isn't already at a table */}
@@ -324,6 +345,15 @@ export function MenuScreen({
                   <Phone className="size-3 sm:size-3.5" />
                   {t.restaurant.call}
                 </a>
+                <button
+                  type="button"
+                  onClick={() => void shareMenu()}
+                  aria-label={t.restaurant.shareLabel}
+                  title={t.restaurant.shareLabel}
+                  className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                >
+                  <Share2 className="size-3 sm:size-3.5" />
+                </button>
               </div>
             )}
           </div>
