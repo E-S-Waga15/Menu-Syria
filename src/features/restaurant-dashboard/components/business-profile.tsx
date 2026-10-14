@@ -37,6 +37,7 @@ import {
   WhatsAppIcon,
 } from "@/components/shared/brand-icons";
 import { ColorField } from "@/components/shared/color-field";
+import { FieldError } from "@/components/shared/field-error";
 import { GoogleLocationPicker } from "@/components/shared/google-location-picker";
 import { GovernorateRegionSelect } from "@/components/shared/governorate-region-select";
 import { ImagePreviewDialog } from "@/components/shared/image-preview-dialog";
@@ -175,6 +176,8 @@ function AccountInfoSection({
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(restaurant.name[lang]);
+  const [slug, setSlug] = useState(restaurant.slug);
+  const [slugError, setSlugError] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState(recovered.description);
   const [subTypeId, setSubTypeId] = useState(restaurant.subTypeId ?? "");
   const [phone, setPhone] = useState(restaurant.phone);
@@ -192,6 +195,7 @@ function AccountInfoSection({
   const [mapOpen, setMapOpen] = useState(false);
   const snapshot = useRef({
     name,
+    slug,
     description,
     subTypeId,
     phone,
@@ -201,6 +205,18 @@ function AccountInfoSection({
     lat,
     lng,
   });
+
+  /** mirrors the backend's own rules so the field never even submits an
+   * obviously-rejected value: spaces become "_" as you type, dots are
+   * blocked outright (not silently stripped, so the rule stays visible) */
+  const handleSlugChange = (value: string) => {
+    if (value.includes(".")) {
+      setSlugError(t.auth.slugInvalidDot);
+      return;
+    }
+    setSlugError(undefined);
+    setSlug(value.replace(/\s+/g, "_"));
+  };
 
   const regionChoices = (regions ?? []).filter(
     (r) => r.governorateId === governorateId,
@@ -215,6 +231,7 @@ function AccountInfoSection({
       onEdit={() => {
         snapshot.current = {
           name,
+          slug,
           description,
           subTypeId,
           phone,
@@ -227,30 +244,47 @@ function AccountInfoSection({
         setEditing(true);
       }}
       onSave={async () => {
-        await save({
-          name,
-          description,
-          ...(subTypeId ? { subTypeId } : {}),
-          address,
-          districtId: regionId || undefined,
-          phones: [
-            { numberType: "mobile", number: phone },
-            ...(restaurant.whatsapp
-              ? [
-                  {
-                    numberType: "whatsapp" as const,
-                    number: restaurant.whatsapp,
-                  },
-                ]
-              : []),
-          ],
-          latitude: lat,
-          longitude: lng,
-        });
+        try {
+          await save({
+            name,
+            slug,
+            description,
+            ...(subTypeId ? { subTypeId } : {}),
+            address,
+            districtId: regionId || undefined,
+            phones: [
+              { numberType: "mobile", number: phone },
+              ...(restaurant.whatsapp
+                ? [
+                    {
+                      numberType: "whatsapp" as const,
+                      number: restaurant.whatsapp,
+                    },
+                  ]
+                : []),
+            ],
+            latitude: lat,
+            longitude: lng,
+          });
+        } catch (error) {
+          // 400 (invalid slug) / 409 (already taken by another business) —
+          // shown right under the field so it's clear what to fix, on top
+          // of the generic save-failed toast the mutation itself fires
+          if (
+            error instanceof ApiError &&
+            (error.status === 400 || error.status === 409)
+          ) {
+            setSlugError(error.message);
+          }
+          throw error;
+        }
+        setSlugError(undefined);
         setEditing(false);
       }}
       onCancel={() => {
         setName(snapshot.current.name);
+        setSlug(snapshot.current.slug);
+        setSlugError(undefined);
         setDescription(snapshot.current.description);
         setSubTypeId(snapshot.current.subTypeId);
         setPhone(snapshot.current.phone);
@@ -295,6 +329,32 @@ function AccountInfoSection({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="mt-5 space-y-2">
+        <Label htmlFor="p-slug">{t.auth.slugLabel}</Label>
+        <Input
+          id="p-slug"
+          dir="ltr"
+          className="h-11"
+          disabled={!editing}
+          value={slug}
+          aria-invalid={!!slugError}
+          onChange={(e) => handleSlugChange(e.target.value)}
+        />
+        <FieldError message={slugError} />
+        {!slugError && (
+          <p className="text-xs text-muted-foreground">{t.auth.slugHint}</p>
+        )}
+        {slug && (
+          <p
+            className="truncate text-xs font-semibold text-primary"
+            dir="ltr"
+          >
+            {typeof window !== "undefined" ? window.location.origin : ""}/
+            {lang}/{slug}
+          </p>
+        )}
       </div>
 
       <div className="mt-5 space-y-2">
@@ -1419,7 +1479,15 @@ function agentRegionNames(
   regions: Region[] | undefined,
   lang: I18n["lang"],
 ): string {
-  return agent.regionIds
+  // defensive against the backend not having shipped the regionIds array
+  // yet (still sending the old singular regionId, or nothing at all) —
+  // see update.md
+  const ids =
+    agent.regionIds ??
+    (typeof (agent as { regionId?: string }).regionId === "string"
+      ? [(agent as { regionId?: string }).regionId as string]
+      : []);
+  return ids
     .map((id) => regions?.find((r) => r.id === id)?.name[lang])
     .filter((name): name is string => !!name)
     .join(lang === "ar" ? " و" : " & ");

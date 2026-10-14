@@ -60,6 +60,7 @@ function applyInput(business: Restaurant, input: BusinessProfileInput): Restaura
   const next: Restaurant = { ...business };
 
   if (input.name !== undefined) next.name = { ar: input.name, en: input.name };
+  if (input.slug !== undefined) next.slug = input.slug;
   if (input.description !== undefined) {
     next.description = { ar: input.description, en: input.description };
   }

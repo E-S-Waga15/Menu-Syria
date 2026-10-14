@@ -173,12 +173,18 @@ export function OfferModal({
         <div className="space-y-5 p-5" dir={dir}>
           <div>
             {/* the two prices, together — the saving is the argument */}
-            <p className="flex items-baseline gap-2.5" dir="ltr">
-              <span className="font-heading text-2xl font-bold text-[var(--menu-primary)]">
+            <p className="flex items-baseline gap-2.5">
+              <span
+                dir="ltr"
+                className="font-heading text-2xl font-bold text-[var(--menu-primary)]"
+              >
                 {formatPrice(offer.price, t.common.currency)}
               </span>
               {offer.originalPrice > offer.price && (
-                <span className="text-sm font-semibold text-muted-foreground line-through">
+                <span
+                  dir="ltr"
+                  className="text-sm font-semibold text-muted-foreground line-through"
+                >
                   {formatPrice(offer.originalPrice, t.common.currency)}
                 </span>
               )}
