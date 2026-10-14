@@ -197,6 +197,27 @@ export function CartSheet({
     business.name[lang],
   ]);
 
+  // a plain `<a download>` only works same-origin — payment QR images now
+  // live on Cloudinary (cross-origin), so the browser silently ignores
+  // `download` there and just opens the image instead. Fetching it as a
+  // blob first and downloading from an object URL works regardless of
+  // origin, as long as the host allows the fetch (Cloudinary does).
+  const downloadPaymentQr = async () => {
+    if (!business.paymentQrCode) return;
+    try {
+      const response = await fetch(business.paymentQrCode);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = paymentQrFileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(t.restaurant.shareFailed);
+    }
+  };
+
   const recordOrder = () => {
     if (session?.role !== "user") return;
     addOrderEntry({
@@ -665,16 +686,14 @@ export function CartSheet({
                           className="object-contain"
                         />
                       </div>
-                      <a
-                        href={business.paymentQrCode}
-                        download={paymentQrFileName}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => void downloadPaymentQr()}
                         className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <Download className="size-3.5" />
                         {copy.downloadQr}
-                      </a>
+                      </button>
                     </div>
                   )}
 

@@ -1929,14 +1929,24 @@ export function BusinessProfile() {
     restaurant.name[lang],
   ]);
 
-  const downloadLogo = () => {
+  // a plain `<a download>` only works same-origin — logos now live on
+  // Cloudinary (cross-origin), so the browser ignores `download` there and
+  // just opens the image in a new tab instead. Fetching it as a blob first
+  // works regardless of origin.
+  const downloadLogo = async () => {
     if (!restaurant.logoUrl) return;
-    const link = document.createElement("a");
-    link.href = restaurant.logoUrl;
-    link.download = logoFileName;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.click();
+    try {
+      const response = await fetch(restaurant.logoUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = logoFileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    }
   };
 
   const confirmDeleteLogo = async () => {
@@ -2089,7 +2099,7 @@ export function BusinessProfile() {
             setPhotoViewerOpen(false);
             logoInputRef.current?.click();
           }}
-          onSaveClick={downloadLogo}
+          onSaveClick={() => void downloadLogo()}
           onDeleteClick={() => {
             setPhotoViewerOpen(false);
             setConfirmingDeleteLogo(true);

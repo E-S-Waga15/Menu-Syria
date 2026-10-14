@@ -339,14 +339,24 @@ export function AgentProfileView() {
 
   const photoFileName = qrFileName([t.common.agentWord, agent.name[lang]]);
 
-  const downloadPhoto = () => {
+  // a plain `<a download>` only works same-origin — photos now live on
+  // Cloudinary (cross-origin), so the browser ignores `download` there and
+  // just opens the image in a new tab instead. Fetching it as a blob first
+  // works regardless of origin.
+  const downloadPhoto = async () => {
     if (!agent.photoUrl) return;
-    const link = document.createElement("a");
-    link.href = agent.photoUrl;
-    link.download = photoFileName;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.click();
+    try {
+      const response = await fetch(agent.photoUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = photoFileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    }
   };
 
   const confirmDeletePhoto = async () => {
@@ -429,7 +439,7 @@ export function AgentProfileView() {
           setPhotoViewerOpen(false);
           photoInputRef.current?.click();
         }}
-        onSaveClick={downloadPhoto}
+        onSaveClick={() => void downloadPhoto()}
         onDeleteClick={() => {
           setPhotoViewerOpen(false);
           setConfirmingDeletePhoto(true);
