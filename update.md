@@ -1,5 +1,11 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🆕 New ask: confirm `planName` (and `planStartedAt`) are actually present on `GET /me/agent/restaurants` / `GET /me/agent/stores`
+
+**Why:** the agent overview's new "latest subscriptions" card reads `planName` off each referred business to badge what plan they're on, and `planStartedAt` to sort/date the list — both fields are already documented and confirmed working on the **owner's own** `GET /me/restaurant`/`GET /me/store` read, but every business coming back from the agent's two referral-list endpoints shows the generic fallback label instead of a real plan name, and several have no `planStartedAt` at all.
+
+Since the code reading these fields is identical to what already works correctly on the owner-facing reads, the most likely explanation is that `/me/agent/restaurants` and `/me/agent/stores` serialize businesses through a different (older or narrower) path that was never updated to include `planName`/`planStartedAt` alongside the other business fields. Could you confirm directly against the response body of these two endpoints whether both fields are actually present for a business that has them set on its own `/me/restaurant` read? If they're missing here specifically, that's the fix — the frontend doesn't need anything further once they're included.
+
 ## ✅ `viewCount` on `GET /me/menu` — confirmed shipped
 
 Said as done on the backend side. Frontend reads `item.viewCount` straight off the menu list now (previously only read from whatever `GET /statistics/items/:id` happened to leave in the client cache, so every card showed "—" until that item's own stats modal had been opened once in the session). Please double check live that the field is actually present on a few real items — the frontend falls back to the old cache-based behavior, then to "—", so a still-missing field would silently look like "nothing happened" rather than an obvious error.
