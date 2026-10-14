@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -1843,6 +1843,16 @@ export function BusinessProfile() {
       return next;
     });
   }, []);
+  // a fresh `{ registerEditing }` object on every render was changing
+  // `ctx` by reference even when nothing meaningful did — every mounted
+  // ProfileSection's effect depends on `ctx`, so each one re-ran, called
+  // this again, which re-rendered this component, which made a new object
+  // again: React error #185 (max update depth) the moment any section's
+  // own `editing` state actually changed
+  const editingGuardValue = useMemo(
+    () => ({ registerEditing }),
+    [registerEditing],
+  );
 
   // closing the tab, refreshing, or typing a new URL — the browser's own
   // prompt is the only one that can actually block that, a custom toast
@@ -1957,7 +1967,7 @@ export function BusinessProfile() {
   };
 
   return (
-    <EditingGuardContext.Provider value={{ registerEditing }}>
+    <EditingGuardContext.Provider value={editingGuardValue}>
       <div className="space-y-6">
         {/* header */}
         <div className="flex items-start justify-between gap-3">
