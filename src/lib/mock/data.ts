@@ -199,7 +199,7 @@ export const restaurants: Restaurant[] = [
       id: "a1",
       name: "أحمد الحموي",
       governorateId: "damascus",
-      regionId: "bab-touma",
+      regionIds: ["bab-touma", "mazzeh"],
       phone: "+963 944 100 200",
       whatsapp: "+963 944 100 200",
       instagram: "ahmad.menusyria",

@@ -105,6 +105,7 @@ function normalizeItem(raw: Raw, businessId: string): WithMessage<MenuItem> {
     optionGroups: optionGroups?.length ? optionGroups : undefined,
     isAvailable: raw.isAvailable !== false,
     sortOrder: toNumber(raw.sortOrder),
+    viewCount: raw.viewCount != null ? toNumber(raw.viewCount) : undefined,
     message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }

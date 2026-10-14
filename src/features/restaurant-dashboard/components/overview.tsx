@@ -29,6 +29,7 @@ import {
   getBusinessInsights,
   getCategoriesAnalytics,
   getMyAnalytics,
+  getMyRestaurant,
   getOverviewStats,
 } from "@/features/restaurant-dashboard/services";
 import { formatPrice } from "@/features/public-menu/lib/format";
@@ -56,6 +57,13 @@ export function DashboardOverview() {
   const overviewStatsQuery = useQuery({
     queryKey: queryKeys.statistics.overview,
     queryFn: getOverviewStats,
+  });
+  // the same source (and calculation) the settings page's subscription tab
+  // already uses reliably — /statistics/overview's own daysUntilSubscriptionExpiry
+  // was coming back empty, so this reads straight off the business record instead
+  const restaurantQuery = useQuery({
+    queryKey: queryKeys.me.business,
+    queryFn: getMyRestaurant,
   });
   const insightsQuery = useQuery({
     queryKey: queryKeys.statistics.insights,
@@ -87,6 +95,16 @@ export function DashboardOverview() {
   }
 
   const stats = overviewStatsQuery.data;
+  const daysRemaining = restaurantQuery.data
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(restaurantQuery.data.planExpiresAt).getTime() -
+            new Date().getTime()) /
+            86_400_000,
+        ),
+      )
+    : null;
 
   // mirrors the sidebar, minus the page the reader is already on. Orders and
   // dining tables are hidden for now — not part of this release's plan yet.
@@ -137,7 +155,6 @@ export function DashboardOverview() {
           value={stats?.mostAddedToCart?.name ?? t.dashboard.noDataYet}
           icon={ShoppingCart}
           accent="berry"
-          highlight
         />
         <StatCard
           label={t.dashboard.mostViewedNoPurchase}
@@ -153,11 +170,7 @@ export function DashboardOverview() {
         />
         <StatCard
           label={t.dashboard.subscriptionDaysLeft}
-          value={
-            stats?.daysUntilSubscriptionExpiry != null
-              ? String(stats.daysUntilSubscriptionExpiry)
-              : "—"
-          }
+          value={daysRemaining != null ? String(daysRemaining) : "—"}
           icon={CalendarDays}
           accent="zest"
         />

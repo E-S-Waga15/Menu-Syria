@@ -96,7 +96,8 @@ export interface BusinessAgent {
   id: string;
   name: string;
   governorateId: string;
-  regionId: string;
+  /** one or two region ids, matching Agent.regionIds — see update.md */
+  regionIds: string[];
   phone: string;
   whatsapp: string;
   instagram?: string;

@@ -1393,6 +1393,38 @@ function AppearanceSection({
  * tab (where the activation came from) and the dedicated support page
  * (where it's the whole point) — one component so the two never drift.
  */
+/** Renders a `{agentName}`-templated dictionary string with the agent's
+ * name in bold — `fmt` alone only produces plain text, and this is the
+ * one spot on the page that needs the name itself to stand out. */
+function renderAgentNotice(
+  template: string,
+  agentName: string,
+  region: string,
+) {
+  const [before, after] = template.split("{agentName}");
+  return (
+    <>
+      {before && fmt(before, { region })}
+      <strong className="font-extrabold">{agentName}</strong>
+      {after && fmt(after, { region })}
+    </>
+  );
+}
+
+/** Joins an agent's one or two region names — falls back to "" so callers
+ * can decide what to show (the governorate name, usually) when regions
+ * haven't loaded yet or none resolve. */
+function agentRegionNames(
+  agent: BusinessAgent,
+  regions: Region[] | undefined,
+  lang: I18n["lang"],
+): string {
+  return agent.regionIds
+    .map((id) => regions?.find((r) => r.id === id)?.name[lang])
+    .filter((name): name is string => !!name)
+    .join(lang === "ar" ? " و" : " & ");
+}
+
 function AgentContactCard({
   agent,
   governorates,
@@ -1408,7 +1440,7 @@ function AgentContactCard({
 }) {
   const governorateName = governorates?.find((g) => g.id === agent.governorateId)
     ?.name[lang];
-  const regionName = regions?.find((r) => r.id === agent.regionId)?.name[lang];
+  const regionName = agentRegionNames(agent, regions, lang);
   const location = [governorateName, regionName].filter(Boolean).join(
     lang === "ar" ? "، " : ", ",
   );
@@ -1531,14 +1563,14 @@ function SubscriptionSection({
       {agent && (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
           <p className="text-sm font-semibold">
-            {fmt(t.dashboard.subscriptionByAgentNotice, {
-              agentName: agent.name,
-              region:
-                regions?.find((r) => r.id === agent.regionId)?.name[lang] ??
+            {renderAgentNotice(
+              t.dashboard.subscriptionByAgentNotice,
+              agent.name,
+              agentRegionNames(agent, regions, lang) ||
                 governorates?.find((g) => g.id === agent.governorateId)
-                  ?.name[lang] ??
+                  ?.name[lang] ||
                 "",
-            })}
+            )}
           </p>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {t.dashboard.subscriptionAgentContactHint}
@@ -1649,8 +1681,8 @@ export function SupportSection({
 }) {
   const agent = restaurant.agent;
   const region =
-    regions?.find((r) => r.id === agent?.regionId)?.name[lang] ??
-    governorates?.find((g) => g.id === agent?.governorateId)?.name[lang] ??
+    (agent && agentRegionNames(agent, regions, lang)) ||
+    governorates?.find((g) => g.id === agent?.governorateId)?.name[lang] ||
     "";
 
   return (

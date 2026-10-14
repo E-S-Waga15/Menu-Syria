@@ -125,7 +125,6 @@ export function AnalyticsView() {
             value={business.visitCount.toLocaleString("en-US")}
             icon={Eye}
             accent="info"
-            highlight
           />
           <StatCard
             label={t.dashboard.mostAddedToCart}
@@ -292,6 +291,12 @@ export function AnalyticsView() {
             </div>
           )}
         </Card>
+      </div>
+
+      <div className="flex justify-center">
+        <Badge className="bg-zest-soft text-zest-soft-foreground">
+          {t.dashboard.analyticsMoreSoon}
+        </Badge>
       </div>
     </div>
   );

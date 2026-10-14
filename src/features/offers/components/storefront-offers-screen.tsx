@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
@@ -9,9 +10,14 @@ import { Tag } from "lucide-react";
 import { OfferCard } from "@/features/offers/components/offer-card";
 import { getLiveOffers } from "@/features/offers/services";
 import { BackToMenuBar } from "@/features/public-menu/components/back-to-menu-bar";
+import { CartSheet } from "@/features/public-menu/components/cart-sheet";
+import { FloatingCartBar } from "@/features/public-menu/components/cart";
+import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import type { Business, Offer } from "@/lib/types";
+import { selectCartCount, useCartStore } from "@/stores/cart-store";
+import { useUiStore } from "@/stores/ui-store";
+import type { Business, FulfillmentMode, Offer } from "@/lib/types";
 
 const OfferModal = dynamic(
   () =>
@@ -48,7 +54,13 @@ export function StorefrontOffersScreen({
   initialOffers: Offer[];
 }) {
   const { t, lang } = useI18n();
+  const router = useRouter();
   const [opened, setOpened] = useState<Offer | null>(null);
+  const cartCount = useCartStore(selectCartCount);
+  const setCartSheetOpen = useUiStore((s) => s.setCartSheetOpen);
+  const [fulfillment, setFulfillment] = useState<FulfillmentMode>(
+    () => getSupportedFulfillment(business)[0] ?? "pickup",
+  );
 
   const { data: offers } = useQuery({
     queryKey: queryKeys.offers.live(business.id),
@@ -104,6 +116,23 @@ export function StorefrontOffersScreen({
           businessId={business.id}
           theme={business.theme}
           onClose={() => setOpened(null)}
+        />
+      )}
+
+      <FloatingCartBar copy={isStore ? t.storeFront : t.menu} />
+      {/* mount lazily, same as the menu page's own cart sheet */}
+      {cartCount > 0 && (
+        <CartSheet
+          business={business}
+          copy={isStore ? t.storeFront : t.menu}
+          fulfillment={fulfillment}
+          onFulfillmentChange={setFulfillment}
+          onOpenItem={() => {
+            // no item-detail panel on this page — send the shopper back to
+            // the full menu, where every item can open its own panel
+            setCartSheetOpen(false);
+            router.push(menuHref);
+          }}
         />
       )}
     </main>

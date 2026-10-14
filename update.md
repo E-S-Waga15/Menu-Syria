@@ -1,23 +1,28 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
-## 🆕 New ask: per-item `viewCount` on `GET /me/menu` (and the store products equivalent)
+## ✅ `viewCount` on `GET /me/menu` — confirmed shipped
 
-**Why:** the dashboard's menu list shows a small eye-icon view count on every product card, but today that number only appears once the owner has opened that specific item's stats modal at least once in the session (it reads from whatever `GET /statistics/items/:id` happened to leave in the client cache) — every card shows "—" on a fresh page load otherwise. We want the real count showing immediately, for every item, without a modal click first.
+Said as done on the backend side. Frontend reads `item.viewCount` straight off the menu list now (previously only read from whatever `GET /statistics/items/:id` happened to leave in the client cache, so every card showed "—" until that item's own stats modal had been opened once in the session). Please double check live that the field is actually present on a few real items — the frontend falls back to the old cache-based behavior, then to "—", so a still-missing field would silently look like "nothing happened" rather than an obvious error.
 
-Rather than add a new bulk endpoint, the simplest fix is a new field directly on the items `GET /me/menu` (and the store equivalent, if products are served separately) already returns:
+## 🆕 New ask: same `agent.regionIds` fix on `BusinessAgent` (`GET /me/restaurant` / `GET /me/store`)
+
+**Why:** the owner's dashboard now shows "activated by {agent}, in {region}" and lists **both** regions when the agent covers two — but `BusinessAgent.regionId` (the read-only agent-contact snapshot on a business's own read, §1 below) is still a single id. Please mirror the same change already requested for `Agent.regionIds` onto this shape too:
 
 ```jsonc
-// GET /me/menu — each item gains one field, everything else unchanged
+// GET /me/restaurant / GET /me/store — business.agent
 {
-  "id": "i1",
-  "name": "...",
-  // ...existing fields...
-  "viewCount": 128
+  "agent": {
+    "id": "a1",
+    "name": "أحمد الحموي",
+    "governorateId": "damascus",
+    "regionIds": ["bab-touma", "mazzeh"],   // was regionId: string
+    "phone": "...",
+    "whatsapp": "..."
+  }
 }
 ```
 
-- Same meaning as `ItemStatistics.viewCount` from `GET /statistics/items/:id` (§4 below) — times the item's detail view was opened by a customer.
-- The frontend already reads `item.viewCount` if present (falls back to the old per-item-stats-modal cache, then to "—"), so this is safe to ship whenever convenient — no frontend deploy needed once it's there.
+Until this ships, the frontend falls back to the business's own governorate name in that message, which is correct but less specific than it should be.
 
 ## ✅ §1-§6 below: confirmed shipped and verified (both locally and on production)
 

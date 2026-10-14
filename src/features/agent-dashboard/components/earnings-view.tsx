@@ -103,7 +103,6 @@ export function AgentEarningsView() {
           icon={Banknote}
           accent="berry"
           badges={[{ icon: TrendingUp, text: "+15%", tone: "success" }]}
-          highlight
         />
         <StatCard
           label={t.agent.collectedCommissions}

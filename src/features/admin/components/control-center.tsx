@@ -122,7 +122,6 @@ export function AdminControlCenter({
           icon={TrendingUp}
           accent="berry"
           badges={[{ icon: TrendingUp, text: "+21%", tone: "success" }]}
-          highlight
         />
         <StatCard
           label={t.admin.activeSubscriptions}
