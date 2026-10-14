@@ -48,6 +48,7 @@ import { GoogleLocationPicker } from "@/components/shared/google-location-picker
 import { GovernorateRegionSelect } from "@/components/shared/governorate-region-select";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PendingChangesBar } from "@/components/shared/pending-changes-bar";
+import { ProfilePhotoViewer } from "@/components/shared/profile-photo-viewer";
 import { RowActions } from "@/components/shared/row-actions";
 import { SafeImage } from "@/components/shared/safe-image";
 import {
@@ -104,6 +105,7 @@ import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { uploadImage } from "@/lib/api/upload";
 import { recoverBusinessFields } from "@/lib/business-text";
+import { qrFileName } from "@/lib/qr-filename";
 import type {
   BusinessAgent,
   FulfillmentMode,
@@ -279,7 +281,7 @@ function ProfileSection({
 
 /** Confirms an image before it's actually applied: pick a file → preview it
  * here → "تأكيد" commits, "إلغاء" discards and re-opens nothing. */
-function ImagePreviewDialog({
+export function ImagePreviewDialog({
   src,
   onConfirm,
   onCancel,
@@ -1917,6 +1919,9 @@ export function BusinessProfile() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isSavingLogo, setIsSavingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  const [confirmingDeleteLogo, setConfirmingDeleteLogo] = useState(false);
+  const [removingLogo, setRemovingLogo] = useState(false);
 
   const [activeTab, setActiveTab] = useState("account");
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
@@ -2001,6 +2006,33 @@ export function BusinessProfile() {
     if (logoInputRef.current) logoInputRef.current.value = "";
   };
 
+  const logoFileName = qrFileName([
+    isStore ? t.common.storeWord : t.common.restaurantWord,
+    restaurant.name[lang],
+  ]);
+
+  const downloadLogo = () => {
+    if (!restaurant.logoUrl) return;
+    const link = document.createElement("a");
+    link.href = restaurant.logoUrl;
+    link.download = logoFileName;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.click();
+  };
+
+  const confirmDeleteLogo = async () => {
+    setRemovingLogo(true);
+    try {
+      await save({ logo: "" });
+      setConfirmingDeleteLogo(false);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setRemovingLogo(false);
+    }
+  };
+
   const copyLink = async () => {
     await navigator.clipboard.writeText(publicUrl);
     toast.success(t.common.copied);
@@ -2023,18 +2055,25 @@ export function BusinessProfile() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-4">
             <div className="relative shrink-0">
-              <SafeImage
-                src={restaurant.logoUrl}
-                alt=""
-                width={112}
-                height={112}
-                // a freshly picked logo is a data URL, which next/image cannot optimise
-                unoptimized={
-                  typeof restaurant.logoUrl === "string" &&
-                  restaurant.logoUrl.startsWith("data:")
-                }
-                className="size-16 rounded-2xl border border-border object-cover sm:size-24 md:size-28"
-              />
+              <button
+                type="button"
+                aria-label={t.dashboard.viewPhoto}
+                onClick={() => setPhotoViewerOpen(true)}
+                className="block rounded-2xl"
+              >
+                <SafeImage
+                  src={restaurant.logoUrl}
+                  alt=""
+                  width={112}
+                  height={112}
+                  // a freshly picked logo is a data URL, which next/image cannot optimise
+                  unoptimized={
+                    typeof restaurant.logoUrl === "string" &&
+                    restaurant.logoUrl.startsWith("data:")
+                  }
+                  className="size-16 rounded-2xl border border-border object-cover sm:size-24 md:size-28"
+                />
+              </button>
               <button
                 type="button"
                 aria-label={t.dashboard.updatePhoto}
@@ -2123,6 +2162,50 @@ export function BusinessProfile() {
           confirming={isSavingLogo}
           t={t}
         />
+
+        <ProfilePhotoViewer
+          open={photoViewerOpen}
+          onOpenChange={setPhotoViewerOpen}
+          src={restaurant.logoUrl}
+          onChangeClick={() => {
+            setPhotoViewerOpen(false);
+            logoInputRef.current?.click();
+          }}
+          onSaveClick={downloadLogo}
+          onDeleteClick={() => {
+            setPhotoViewerOpen(false);
+            setConfirmingDeleteLogo(true);
+          }}
+        />
+
+        <AlertDialog
+          open={confirmingDeleteLogo}
+          onOpenChange={(open) => !open && !removingLogo && setConfirmingDeleteLogo(false)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t.dashboard.confirmDeletePhotoTitle}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t.dashboard.confirmDeletePhotoBody}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={removingLogo}
+                onClick={() => setConfirmingDeleteLogo(false)}
+              >
+                {t.common.cancel}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                loading={removingLogo}
+                onClick={() => void confirmDeleteLogo()}
+              >
+                {t.common.delete}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* sections */}
         <Tabs

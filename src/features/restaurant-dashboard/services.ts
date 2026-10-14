@@ -232,10 +232,10 @@ export async function getBusinessInsights(): Promise<BusinessInsight[]> {
 
 /**
  * `GET /statistics/items/:id` — one product's own performance (views,
- * cart-adds, units sold, revenue…), for the per-item stats modal. This
- * endpoint does not exist on the backend yet — see the API spec written for
- * it — so a 404 here is expected and surfaces as "not available yet" rather
- * than an error; a 403 still means the plan itself has no statistics.
+ * cart-adds, units sold, revenue…), for the per-item stats modal. A 404
+ * (item not found/not this business's) surfaces as "not available" rather
+ * than an error. No plan gate applies here currently — every business can
+ * read it regardless of plan.
  */
 export async function getItemStatistics(
   itemId: string,
