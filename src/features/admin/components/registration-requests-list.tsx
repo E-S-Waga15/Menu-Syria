@@ -6,9 +6,11 @@ import {
   Calendar,
   Check,
   Clock3,
+  MapPin,
   Phone,
   Store,
   User,
+  UserCheck,
   X,
 } from "lucide-react";
 
@@ -46,9 +48,11 @@ import {
   type RegistrationRequest,
   type SubscriptionDurationType,
 } from "@/features/admin/services";
+import { formatPrice } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
+import type { Plan } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TYPE_ICON: Record<RegistrationRequest["type"], typeof Store> = {
@@ -64,6 +68,23 @@ const maxEndDateIso = () => {
   return d.toISOString().slice(0, 10);
 };
 
+/** preview-only — the real end date is always computed server-side from the
+ * approval moment, this just shows the admin what to expect before confirming */
+function previewEndDate(
+  durationType: SubscriptionDurationType,
+  durationMonths: number,
+  endDate: string,
+): Date | null {
+  if (durationType === "custom") {
+    const d = new Date(endDate);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date();
+  if (durationType === "yearly") d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + durationMonths);
+  return d;
+}
+
 export function RegistrationRequestsList({
   initialRequests,
 }: {
@@ -71,9 +92,7 @@ export function RegistrationRequestsList({
 }) {
   const { t, lang } = useI18n();
   const [requests, setRequests] = useState(initialRequests);
-  const [plans, setPlans] = useState<
-    { id: string; name: { ar: string; en: string } }[]
-  >([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
     void getAdminPlans().then(setPlans);
@@ -91,6 +110,15 @@ export function RegistrationRequestsList({
   // reject confirm
   const [rejecting, setRejecting] = useState<RegistrationRequest | null>(null);
   const [savingReject, setSavingReject] = useState(false);
+
+  const selectedPlan = plans.find((p) => p.id === planId);
+  const planItems = Object.fromEntries(
+    plans.map((p) => [
+      p.id,
+      `${p.name[lang]} — ${formatPrice(p.priceMonthly, p.currency, lang)}${t.admin.pricePerMonth}`,
+    ]),
+  );
+  const endDatePreview = previewEndDate(durationType, durationMonths, endDate);
 
   const openApprove = (request: RegistrationRequest) => {
     setApproving(request);
@@ -173,6 +201,12 @@ export function RegistrationRequestsList({
         <ul className="space-y-3">
           {requests.map((request) => {
             const TypeIcon = TYPE_ICON[request.type] ?? User;
+            const typeWord =
+              request.type === "restaurant"
+                ? t.common.restaurantWord
+                : request.type === "store"
+                  ? t.common.storeWord
+                  : t.common.agentWord;
             const canReview =
               request.status === "pending" ||
               (request.status === "approved" && !request.applicantUserId);
@@ -185,7 +219,12 @@ export function RegistrationRequestsList({
                   <TypeIcon className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{request.applicantName}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">{request.applicantName}</p>
+                    <Badge variant="secondary" className="text-[11px]">
+                      {typeWord}
+                    </Badge>
+                  </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1" dir="ltr">
                       <Phone className="size-3.5" />
@@ -197,7 +236,19 @@ export function RegistrationRequestsList({
                         lang === "ar" ? "ar-SY" : "en-GB",
                       ).format(new Date(request.createdAt))}
                     </span>
+                    {request.district?.name && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="size-3.5" />
+                        {request.district.name}
+                      </span>
+                    )}
                   </div>
+                  {request.agent?.name && (
+                    <p className="mt-1.5 flex items-center gap-1 text-sm text-success">
+                      <UserCheck className="size-3.5" />
+                      {t.admin.referredByAgent} {request.agent.name}
+                    </p>
+                  )}
                   {request.plan && (
                     <p className="mt-1.5 text-sm font-semibold text-primary">
                       {request.plan.name}
@@ -254,18 +305,31 @@ export function RegistrationRequestsList({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t.admin.selectPlan}</Label>
-              <Select value={planId} onValueChange={(v) => v && setPlanId(v)}>
+              <Select
+                value={planId || null}
+                onValueChange={(v) => v && setPlanId(v)}
+                items={planItems}
+              >
                 <SelectTrigger className="h-10 w-full">
                   <SelectValue placeholder={t.admin.selectPlan} />
                 </SelectTrigger>
                 <SelectContent>
                   {plans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name[lang]}
+                      {plan.name[lang]} —{" "}
+                      {formatPrice(plan.priceMonthly, plan.currency, lang)}
+                      {t.admin.pricePerMonth}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedPlan && (
+                <p className="text-xs text-muted-foreground">
+                  {formatPrice(selectedPlan.priceYearly, selectedPlan.currency, lang)}
+                  {" "}
+                  {t.admin.pricePerYear}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -275,6 +339,11 @@ export function RegistrationRequestsList({
                 onValueChange={(v) =>
                   v && setDurationType(v as SubscriptionDurationType)
                 }
+                items={{
+                  monthly: t.admin.durationMonthly,
+                  custom: t.admin.durationCustom,
+                  yearly: t.admin.durationYearly,
+                }}
               >
                 <SelectTrigger className="h-10 w-full">
                   <SelectValue />
@@ -334,6 +403,21 @@ export function RegistrationRequestsList({
               <p className="text-sm text-muted-foreground">
                 {t.admin.durationYearlyHint}
               </p>
+            )}
+
+            {endDatePreview && (
+              <div className="rounded-xl bg-primary/5 px-3.5 py-2.5 text-sm">
+                <span className="text-muted-foreground">
+                  {t.admin.subscriptionEndsOn}{" "}
+                </span>
+                <span className="font-semibold text-primary">
+                  {new Intl.DateTimeFormat(lang === "ar" ? "ar-SY" : "en-GB", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }).format(endDatePreview)}
+                </span>
+              </div>
             )}
           </div>
 

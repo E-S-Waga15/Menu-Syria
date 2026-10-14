@@ -228,10 +228,13 @@ export function AdminBusinessDetail({
             </dt>
             <dd className="mt-1.5 text-sm font-semibold">
               <Select
-                value={currentSubscription?.planId ?? ""}
+                value={currentSubscription?.planId || null}
                 onValueChange={(value) => {
                   if (value) void changePlan(value);
                 }}
+                items={Object.fromEntries(
+                  plans.map((plan) => [plan.id, plan.name[lang]]),
+                )}
                 disabled={
                   savingPlan || plans.length === 0 || !currentSubscription
                 }

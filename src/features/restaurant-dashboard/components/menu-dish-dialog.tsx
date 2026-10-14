@@ -8,6 +8,7 @@ import { Controller, useForm, useWatch, type Control } from "react-hook-form";
 
 import { FieldError } from "@/components/shared/field-error";
 import { FileDropzone } from "@/components/shared/file-dropzone";
+import { UploadProgressRing } from "@/components/shared/upload-progress-ring";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,9 +40,20 @@ import {
   type DishFormValues,
 } from "@/features/restaurant-dashboard/schemas";
 import { fmt, useI18n } from "@/i18n/client";
-import { uploadImage } from "@/lib/api/upload";
+import { ApiError } from "@/lib/api/client";
+import { uploadImageWithProgress } from "@/lib/api/upload";
 import { toast } from "@/lib/toast";
 import type { CatalogOptionGroup, MenuCategory, MenuItem } from "@/lib/types";
+
+interface GalleryImage {
+  id: string;
+  /** local object URL — shows instantly, before the upload even starts */
+  previewUrl: string;
+  progress: number;
+  /** the saved server URL, set once the upload resolves; null means still
+   * uploading, so this is also what submit blocks on */
+  url: string | null;
+}
 
 /**
  * Create/edit panel for a single menu item, lifted out of MenuManager so the
@@ -102,7 +114,7 @@ export function MenuDishDialog({
         ? "$"
         : "SYP";
 
-  const [images, setImages] = useState<string[]>([]);
+  const [gallery, setGallery] = useState<GalleryImage[]>([]);
   const [categoryId, setCategoryId] = useState("");
 
   // Re-seed the fields whenever a different dish is opened (during render, no effect)
@@ -124,12 +136,56 @@ export function MenuDishDialog({
     setCategoryId(editing?.categoryId ?? categories[0]?.id ?? "");
     // an older item may only have the single imageUrl; treat it as a gallery
     // of one so editing never silently drops it
-    setImages(
-      editing ? (editing.images ?? [editing.imageUrl]).filter(Boolean) : [],
+    const seedUrls = editing
+      ? (editing.images ?? [editing.imageUrl]).filter(Boolean)
+      : [];
+    setGallery(
+      seedUrls.map((url) => ({ id: url, previewUrl: url, progress: 100, url })),
     );
   }
 
+  const uploading = gallery.some((g) => !g.url);
+
+  const addImage = (file: File) => {
+    const id = crypto.randomUUID();
+    const previewUrl = URL.createObjectURL(file);
+    setGallery((prev) => [...prev, { id, previewUrl, progress: 0, url: null }]);
+    uploadImageWithProgress(file, "items", (percent) => {
+      setGallery((prev) =>
+        prev.map((g) => (g.id === id ? { ...g, progress: percent } : g)),
+      );
+    })
+      .then(({ url }) => {
+        setGallery((prev) =>
+          prev.map((g) => (g.id === id ? { ...g, url, progress: 100 } : g)),
+        );
+      })
+      .catch((error) => {
+        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+        setGallery((prev) => prev.filter((g) => g.id !== id));
+      });
+  };
+
+  const removeImage = (id: string) => {
+    setGallery((prev) => {
+      const target = prev.find((g) => g.id === id);
+      if (target?.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((g) => g.id !== id);
+    });
+  };
+
   const submit = (values: DishFormValues) => {
+    if (uploading) {
+      toast.error(t.dashboard.imageStillUploading);
+      return;
+    }
+    if (gallery.length === 0) {
+      toast.error(t.dashboard.imageRequired);
+      return;
+    }
+
     // only built/sent when creating — see the `optionGroups` prop note above
     let optionGroups: CatalogOptionGroup[] | undefined;
     if (!editing) {
@@ -153,7 +209,7 @@ export function MenuDishDialog({
       price: Number(values.price) || 0,
       currency: values.currency,
       categoryId,
-      images,
+      images: gallery.map((g) => g.url!),
       optionGroups,
     });
   };
@@ -274,21 +330,22 @@ export function MenuDishDialog({
                 {isStore ? t.dashboard.productImage : t.dashboard.dishImage}
               </Label>
 
-              {images.length > 0 && (
+              {gallery.length > 0 && (
                 <ul className="grid grid-cols-3 gap-2">
-                    {images.map((src, index) => (
+                    {gallery.map((image, index) => (
                       <li
-                        key={src}
+                        key={image.id}
                         className="group/img relative aspect-square overflow-hidden rounded-xl border border-border/60"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element --
                             object URLs from the picker are not remote patterns
                             next/image can resolve */}
                         <img
-                          src={src}
+                          src={image.previewUrl}
                           alt=""
                           className="size-full object-cover"
                         />
+                        {!image.url && <UploadProgressRing percent={image.progress} />}
                         {index === 0 && (
                           <span className="absolute inset-x-0 bottom-0 bg-black/55 py-0.5 text-center text-[10px] font-bold text-white">
                             {t.dashboard.mainImage}
@@ -297,9 +354,7 @@ export function MenuDishDialog({
                         <button
                           type="button"
                           aria-label={t.dashboard.removeImage}
-                          onClick={() =>
-                            setImages((prev) => prev.filter((s) => s !== src))
-                          }
+                          onClick={() => removeImage(image.id)}
                           className="absolute end-1 top-1 flex size-6 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-destructive"
                         >
                           <X className="size-3.5" />
@@ -312,10 +367,8 @@ export function MenuDishDialog({
               <FileDropzone
                 label={t.dashboard.addPhoto}
                 hint={t.dashboard.imagesHint}
-                onFile={async (file) => {
-                    if (!file) return;
-                    const { url } = await uploadImage(file, "items");
-                    setImages((prev) => [...prev, url]);
+                onFile={(file) => {
+                  if (file) addImage(file);
                 }}
               />
             </div>
@@ -341,9 +394,10 @@ export function MenuDishDialog({
             <Button
               type="submit"
               loading={isSubmitting}
+              disabled={uploading}
               className="w-full shadow-glow"
             >
-              {t.common.save}
+              {uploading ? t.dashboard.imageStillUploading : t.common.save}
             </Button>
           </DialogFooter>
         </form>

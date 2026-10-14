@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
@@ -8,6 +8,7 @@ import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 
 import { FieldError } from "@/components/shared/field-error";
 import { FileDropzone } from "@/components/shared/file-dropzone";
+import { UploadProgressRing } from "@/components/shared/upload-progress-ring";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -30,8 +31,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { offerSchema, type OfferValues } from "@/features/offers/schemas";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
-import { uploadImage } from "@/lib/api/upload";
+import { ApiError } from "@/lib/api/client";
+import { uploadImageWithProgress } from "@/lib/api/upload";
+import { toast } from "@/lib/toast";
 import type { Offer, OfferBadge } from "@/lib/types";
+
+interface PendingUpload {
+  id: string;
+  previewUrl: string;
+  progress: number;
+}
 
 /** today, as the `<input type="date">` value format */
 const today = () => new Date().toISOString().slice(0, 10);
@@ -88,6 +97,37 @@ export function OfferDialog({
   const images = useWatch({ control, name: "images" }) ?? [];
   const price = useWatch({ control, name: "price" });
   const originalPrice = useWatch({ control, name: "originalPrice" });
+
+  // local-only, outside the form's own `images` field — a pick shows its
+  // local preview with a progress ring immediately, and only joins
+  // `images` (letting submit through) once the upload actually resolves
+  const [pending, setPending] = useState<PendingUpload[]>([]);
+  // cleared on the same open-edge the form itself resets on, during render
+  // rather than an effect — an effect-body setState here would double-render
+  const [pendingResetFor, setPendingResetFor] = useState(open);
+  if (pendingResetFor !== open) {
+    setPendingResetFor(open);
+    if (open) setPending([]);
+  }
+
+  const addImage = (file: File) => {
+    const id = crypto.randomUUID();
+    const previewUrl = URL.createObjectURL(file);
+    setPending((prev) => [...prev, { id, previewUrl, progress: 0 }]);
+    uploadImageWithProgress(file, "offers", (percent) => {
+      setPending((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, progress: percent } : p)),
+      );
+    })
+      .then(({ url }) => {
+        setPending((prev) => prev.filter((p) => p.id !== id));
+        setValue("images", [...images, url], { shouldDirty: true });
+      })
+      .catch((error) => {
+        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+        setPending((prev) => prev.filter((p) => p.id !== id));
+      });
+  };
 
   // reset when the dialog opens so a previous edit never leaks into the next
   useEffect(() => {
@@ -173,7 +213,7 @@ export function OfferDialog({
           {/* photos */}
           <div className="space-y-2">
             <Label>{t.offers.offerImages}</Label>
-            {images.length > 0 && (
+            {(images.length > 0 || pending.length > 0) && (
               <ul className="grid grid-cols-3 gap-2">
                 {images.map((src, index) => (
                   <li
@@ -205,15 +245,25 @@ export function OfferDialog({
                     </button>
                   </li>
                 ))}
+                {pending.map((p) => (
+                  <li
+                    key={p.id}
+                    className="relative aspect-square overflow-hidden rounded-xl border border-border/60"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element --
+                        object URLs from the picker are not remote patterns
+                        next/image can resolve */}
+                    <img src={p.previewUrl} alt="" className="size-full object-cover" />
+                    <UploadProgressRing percent={p.progress} />
+                  </li>
+                ))}
               </ul>
             )}
             <FileDropzone
               label={t.dashboard.addPhoto}
               hint={t.offers.imagesHint}
-              onFile={async (file) => {
-                if (!file) return;
-                const { url } = await uploadImage(file, "offers");
-                setValue("images", [...images, url], { shouldDirty: true });
+              onFile={(file) => {
+                if (file) addImage(file);
               }}
             />
           </div>
@@ -377,8 +427,13 @@ export function OfferDialog({
           <Button type="button" variant="ghost" onClick={onClose}>
             {t.common.cancel}
           </Button>
-          <Button type="submit" form="offer-form" loading={isSubmitting}>
-            {t.offers.saveOffer}
+          <Button
+            type="submit"
+            form="offer-form"
+            loading={isSubmitting}
+            disabled={pending.length > 0}
+          >
+            {pending.length > 0 ? t.dashboard.imageStillUploading : t.offers.saveOffer}
           </Button>
         </DialogFooter>
       </DialogContent>

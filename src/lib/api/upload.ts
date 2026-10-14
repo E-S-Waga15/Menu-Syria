@@ -108,6 +108,48 @@ export async function uploadImage(
 }
 
 /**
+ * Same as `uploadImage`, but over `XMLHttpRequest` instead of `fetch` so the
+ * caller can show a real 0-100% progress ring instead of an indefinite
+ * spinner — `fetch` has no upload-progress event, `XMLHttpRequest` does.
+ */
+export function uploadImageWithProgress(
+  file: File,
+  folder: UploadFolder = "general",
+  onProgress?: (percent: number) => void,
+): Promise<UploadFileResponse> {
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    return Promise.reject(new ApiError(413, "Image size must be 5 MB or less"));
+  }
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}/uploads?folder=${folder}`);
+    const token = getStoredAccessToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(extractUploadFile(JSON.parse(xhr.responseText)));
+        } catch {
+          reject(new ApiError(500, "Upload succeeded but returned no file info"));
+        }
+      } else {
+        const { message, details } = extractErrorMessage(xhr.status, xhr.responseText);
+        reject(new ApiError(xhr.status, message, details));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError(0, "Network error during upload"));
+    xhr.send(formData);
+  });
+}
+
+/**
  * Uploads several image files at once via multipart/form-data.
  */
 export async function uploadImages(
