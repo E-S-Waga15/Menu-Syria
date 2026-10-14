@@ -81,7 +81,18 @@ export function AgentOverviewView() {
   const storeCount = stores.length;
   const totalBusinesses = restaurantCount + storeCount;
   const discountPercent = plans?.[0]?.agentDiscountPercent ?? 30;
-  const owed = dues?.totalOwedByCurrency.SYP ?? 0;
+  // never summed across currencies (a SYP total and a USD total are not the
+  // same number) — reading only `.SYP` silently showed 0 for an agent whose
+  // dues happened to be in USD. Each non-zero currency gets its own figure.
+  const owedEntries = Object.entries(dues?.totalOwedByCurrency ?? {}).filter(
+    ([, amount]) => amount > 0,
+  );
+  const owedLabel =
+    owedEntries.length > 0
+      ? owedEntries
+          .map(([currency, amount]) => formatPrice(amount, currency, lang))
+          .join(" + ")
+      : formatPrice(0, t.common.currency, lang);
 
   const quickAccess: QuickAccessItem[] = [
     {
@@ -186,7 +197,7 @@ export function AgentOverviewView() {
         />
         <StatCard
           label={t.agent.amountOwed}
-          value={formatPrice(owed, t.common.currency)}
+          value={owedLabel}
           icon={Wallet}
           accent="zest"
         />

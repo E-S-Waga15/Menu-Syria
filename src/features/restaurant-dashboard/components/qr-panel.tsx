@@ -159,7 +159,12 @@ export function QrPanel() {
           {t.dashboard.preview}
         </h2>
         <div className="mt-6 flex justify-center">
-          <div className="relative w-[19rem] overflow-hidden rounded-[2.6rem] border-[10px] border-[#191c1d] bg-background dark:border-black">
+          {/* the frame's interior must match a real phone's CSS width
+              (~375-390px) — a narrower box squeezes the page below any
+              real device's viewport and makes a genuinely responsive page
+              wrap/overflow here without that ever happening on an actual
+              phone */}
+          <div className="relative w-[25rem] overflow-hidden rounded-[2.6rem] border-[10px] border-[#191c1d] bg-background dark:border-black">
             {/* notch */}
             <div className="absolute inset-x-0 top-0 z-10 flex justify-center">
               <div className="h-6 w-32 rounded-b-2xl bg-[#191c1d] dark:bg-black" />
