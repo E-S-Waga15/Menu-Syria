@@ -29,6 +29,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       // production API-hosted business images
       { protocol: "https", hostname: "menusyria.softup.agency" },
+      // every upload (business/agent photos, items, offers) now lives here
+      // since the backend's migration off local filesystem storage
+      { protocol: "https", hostname: "res.cloudinary.com" },
       // storefront logos and covers once uploads move to a real bucket
       { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
       // filesystem-backed uploads served by the Nest backend in dev
