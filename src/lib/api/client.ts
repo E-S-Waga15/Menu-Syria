@@ -45,6 +45,14 @@ export function extractErrorMessage(
   status: number,
   rawBody: string,
 ): { message: string; details: string[] } {
+  // NestJS's default rate-limit guard throws "ThrottlerException: Too Many
+  // Requests" — a framework class name, not a sentence meant for a toast.
+  // Caught before the JSON parse below so it overrides whatever the body
+  // actually says, same as every other 429 the backend might ever send.
+  if (status === 429) {
+    const message = "Too many requests — please wait a moment and try again.";
+    return { message, details: [message] };
+  }
   if (rawBody) {
     try {
       const parsed = JSON.parse(rawBody) as { message?: unknown };
