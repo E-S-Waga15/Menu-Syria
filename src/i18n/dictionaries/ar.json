@@ -320,6 +320,8 @@
     "emptyCta": "تصفح المطاعم"
   },
   "restaurant": {
+    "metaSpecializesIn": "متخصص بـ{type}",
+    "metaDescriptionPrefix": "الوصف: {description}",
     "browseMenu": "عرض المنيو",
     "contactInfo": "معلومات التواصل",
     "favorite": "المفضلة",

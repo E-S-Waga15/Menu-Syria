@@ -6,6 +6,7 @@ import { getPublicMenu } from "@/features/public-menu/services";
 import { getPublicStoreCatalog } from "@/features/public-store/services";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { fmt } from "@/i18n/fmt";
 import { JsonLd, restaurantJsonLd, storeJsonLd } from "@/lib/seo/json-ld";
 import { alternatesFor, SITE_URL } from "@/lib/seo/site";
 import type { Business, LocalizedText } from "@/lib/types";
@@ -48,16 +49,19 @@ export async function generateMetadata({
   const [catalog, t] = await Promise.all([getCatalog(slug), getDictionary(lang)]);
   const business = catalog?.kind === "restaurant" ? catalog.restaurant : catalog?.business;
   if (!business || !catalog) return {};
-  const kindWord =
-    catalog.kind === "restaurant" ? t.common.restaurantWord : t.common.storeWord;
-  const title = `${t.common.menuWord} ${kindWord} ${business.name[lang]}`;
-  // type, then location, then the business's own description — what a
+  const title = `${business.name[lang]} | ${t.common.brand}`;
+  // location, then type, then the business's own description — what a
   // share link's auto-unfurled preview card (WhatsApp and the like) shows
-  // under the title, same order as the details page's content
-  const areaLabel = [catalog.governorateName, catalog.regionName]
+  // under the title
+  const areaLabel = [catalog.governorateName[lang], catalog.regionName[lang]]
     .filter(Boolean)
     .join(lang === "ar" ? "، " : ", ");
-  const description = [business.subType?.name, areaLabel, business.description[lang]]
+  const description = [
+    areaLabel,
+    business.subType?.name && fmt(t.restaurant.metaSpecializesIn, { type: business.subType.name }),
+    business.description[lang] &&
+      fmt(t.restaurant.metaDescriptionPrefix, { description: business.description[lang] }),
+  ]
     .filter(Boolean)
     .join("\n");
   return {

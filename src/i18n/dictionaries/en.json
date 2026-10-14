@@ -320,6 +320,8 @@
     "emptyCta": "Browse restaurants"
   },
   "restaurant": {
+    "metaSpecializesIn": "Specializes in {type}",
+    "metaDescriptionPrefix": "Description: {description}",
     "browseMenu": "View menu",
     "contactInfo": "Contact info",
     "favorite": "Favorite",

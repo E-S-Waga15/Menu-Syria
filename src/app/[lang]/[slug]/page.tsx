@@ -12,6 +12,7 @@ import {
 import { getStoreBySlug } from "@/features/public-store/services";
 import { BackToMenuBar } from "@/features/public-menu/components/back-to-menu-bar";
 import { isLocale } from "@/i18n/config";
+import { fmt } from "@/i18n/fmt";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { breadcrumbsJsonLd, JsonLd, restaurantJsonLd, storeJsonLd } from "@/lib/seo/json-ld";
 import { alternatesFor, SITE_URL } from "@/lib/seo/site";
@@ -34,10 +35,11 @@ export async function generateMetadata({
 }: PageProps<"/[lang]/[slug]">): Promise<Metadata> {
   const { lang, slug } = await params;
   if (!isLocale(lang)) return {};
-  const [resolved, governorates, regions] = await Promise.all([
+  const [resolved, governorates, regions, t] = await Promise.all([
     resolveBusiness(slug),
     getGovernorates(),
     getRegions(),
+    getDictionary(lang),
   ]);
   if (!resolved) return {};
   const { business } = resolved;
@@ -54,10 +56,15 @@ export async function generateMetadata({
   ]
     .filter(Boolean)
     .join(lang === "ar" ? "، " : ", ");
-  const title = business.name[lang];
-  // type, then location, then the business's own description — a crawler
-  // (and a share link's unfurled preview card) reads what/where before why
-  const description = [typeLabel, areaLabel, business.description[lang]]
+  const title = `${business.name[lang]} | ${t.common.brand}`;
+  // location, then type, then the business's own description — a crawler
+  // (and a share link's unfurled preview card) reads where/what before why
+  const description = [
+    areaLabel,
+    typeLabel && fmt(t.restaurant.metaSpecializesIn, { type: typeLabel }),
+    business.description[lang] &&
+      fmt(t.restaurant.metaDescriptionPrefix, { description: business.description[lang] }),
+  ]
     .filter(Boolean)
     .join("\n");
   return {
