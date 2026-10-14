@@ -584,8 +584,11 @@ export interface PlatformUser {
 export interface Plan {
   id: string;
   name: LocalizedText;
-  /** the one price an admin actually sets when creating a plan — SYP per
-   * month */
+  /** which currency every price field on this plan is denominated in —
+   * chosen once, at creation, for the whole plan */
+  currency: CurrencyCode;
+  /** the one price an admin actually sets when creating a plan — in
+   * `currency`, per month */
   priceMonthly: number;
   /** backend-computed from the monthly price and the yearly-discount
    * policy (currently: 10 months' worth for a full year) */

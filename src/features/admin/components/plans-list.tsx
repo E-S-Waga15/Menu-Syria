@@ -26,6 +26,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import {
   createAdminPlan,
@@ -37,7 +44,7 @@ import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
-import type { Plan } from "@/lib/types";
+import type { CurrencyCode, Plan } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** the draft a plan is edited through; `null` means the dialog is shut */
@@ -45,6 +52,7 @@ type Draft = {
   id: string | null;
   name: string;
   priceMonthly: string;
+  currency: CurrencyCode;
   features: string[];
   isPopular: boolean;
 };
@@ -53,6 +61,7 @@ const emptyDraft: Draft = {
   id: null,
   name: "",
   priceMonthly: "",
+  currency: "SYP",
   features: [""],
   isPopular: false,
 };
@@ -82,6 +91,7 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
       id: plan.id,
       name: plan.name?.[lang] ?? "",
       priceMonthly: String(plan.priceMonthly ?? ""),
+      currency: plan.currency ?? "SYP",
       features: (plan.features ?? []).map((f) => f[lang]),
       isPopular: Boolean(plan.isPopular),
     });
@@ -104,12 +114,14 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
         ? await updateAdminPlan(draft.id, {
             name,
             priceMonthly,
+            currency: draft.currency,
             features,
             isPopular: draft.isPopular,
           })
         : await createAdminPlan({
             name,
             priceMonthly,
+            currency: draft.currency,
             features,
             isPopular: draft.isPopular,
           });
@@ -240,12 +252,12 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
                     className="block text-sm text-muted-foreground line-through"
                     dir="ltr"
                   >
-                    {formatPrice(plan.yearlyOriginalPrice, t.common.currency)}
+                    {formatPrice(plan.yearlyOriginalPrice, plan.currency)}
                   </span>
                 )}
                 <p className="flex items-baseline gap-1.5">
                   <span className="font-heading text-2xl font-bold text-primary">
-                    {formatPrice(price, t.common.currency)}
+                    {formatPrice(price, plan.currency)}
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground">
                     {cycle === "monthly" ? t.admin.pricePerMonth : t.admin.pricePerYear}
@@ -263,7 +275,7 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
                     {fmt(t.admin.yearlyPerMonthHint, {
                       price: formatPrice(
                         plan.yearlyPricePerMonth,
-                        t.common.currency,
+                        plan.currency,
                       ),
                     })}
                   </p>
@@ -332,18 +344,41 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="plan-price">{t.admin.planPrice}</Label>
-                <Input
-                  id="plan-price"
-                  inputMode="numeric"
-                  value={draft.priceMonthly}
-                  onChange={(e) =>
-                    setDraft({ ...draft, priceMonthly: e.target.value })
-                  }
-                  className="h-11"
-                  dir="ltr"
-                />
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="plan-price">{t.admin.planPrice}</Label>
+                  <Input
+                    id="plan-price"
+                    inputMode="numeric"
+                    value={draft.priceMonthly}
+                    onChange={(e) =>
+                      setDraft({ ...draft, priceMonthly: e.target.value })
+                    }
+                    className="h-11"
+                    dir="ltr"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="plan-currency">{t.admin.currencyLabel}</Label>
+                  <Select
+                    value={draft.currency}
+                    onValueChange={(v) =>
+                      v && setDraft({ ...draft, currency: v as CurrencyCode })
+                    }
+                    items={{
+                      SYP: t.admin.currencySyp,
+                      USD: t.admin.currencyUsd,
+                    }}
+                  >
+                    <SelectTrigger id="plan-currency" className="h-11! w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SYP">{t.admin.currencySyp}</SelectItem>
+                      <SelectItem value="USD">{t.admin.currencyUsd}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">

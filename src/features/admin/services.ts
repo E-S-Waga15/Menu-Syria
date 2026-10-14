@@ -10,6 +10,7 @@ import {
 import type {
   Agent,
   Business,
+  CurrencyCode,
   Plan,
   PlatformUser,
   Restaurant,
@@ -396,6 +397,9 @@ export async function renewSubscription(
 export interface AdminPlanWriteInput {
   name: string;
   priceMonthly: number;
+  /** which currency `priceMonthly` (and every computed price derived from
+   * it) is denominated in — chosen once, at creation */
+  currency: CurrencyCode;
   features?: string[];
   hasCart?: boolean;
   hasStatistics?: boolean;
@@ -434,6 +438,7 @@ export async function createAdminPlan(
       id: `p${Date.now()}`,
       name: { ar: input.name, en: input.name },
       priceMonthly: input.priceMonthly,
+      currency: input.currency,
       ...mockComputedPricing(input.priceMonthly),
       features: (input.features ?? []).map((f) => ({ ar: f, en: f })),
       subscriberCount: 0,
@@ -458,6 +463,7 @@ export async function updateAdminPlan(
       id,
       name: { ar: input.name ?? "", en: input.name ?? "" },
       priceMonthly,
+      currency: input.currency ?? "SYP",
       ...mockComputedPricing(priceMonthly),
       features: (input.features ?? []).map((f) => ({ ar: f, en: f })),
       subscriberCount: 0,

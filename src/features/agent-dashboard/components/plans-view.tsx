@@ -99,7 +99,7 @@ export function AgentPlansView() {
               <div className="mt-3">
                 <p className="flex items-baseline gap-1.5">
                   <span className="font-heading text-2xl font-bold text-primary">
-                    {formatPrice(price, t.common.currency)}
+                    {formatPrice(price, plan.currency)}
                   </span>
                   <span className="text-xs font-semibold text-muted-foreground">
                     {cycle === "monthly" ? t.admin.pricePerMonth : t.admin.pricePerYear}
@@ -117,7 +117,7 @@ export function AgentPlansView() {
                     {fmt(t.admin.yearlyPerMonthHint, {
                       price: formatPrice(
                         plan.agentYearlyPricePerMonth,
-                        t.common.currency,
+                        plan.currency,
                       ),
                     })}
                   </p>
