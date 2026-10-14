@@ -187,11 +187,15 @@ function AccountInfoSection({
   );
   const [governorateId, setGovernorateId] = useState(restaurant.governorateId);
   const [regionId, setRegionId] = useState(restaurant.regionId);
+  // coerced through Number(): a raw API response can hand back a decimal
+  // column as a string ("33.5138"), which is truthy like a real
+  // coordinate but has no .toFixed() — crashing the map-picker trigger the
+  // moment editing turned it on
   const [lat, setLat] = useState(
-    recovered.location?.lat ?? restaurant.location.lat,
+    Number(recovered.location?.lat ?? restaurant.location.lat) || 0,
   );
   const [lng, setLng] = useState(
-    recovered.location?.lng ?? restaurant.location.lng,
+    Number(recovered.location?.lng ?? restaurant.location.lng) || 0,
   );
   const [mapOpen, setMapOpen] = useState(false);
   const snapshot = useRef({
