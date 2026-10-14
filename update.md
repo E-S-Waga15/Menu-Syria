@@ -1,5 +1,13 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🆕 New ask: `GET /agents/me/dues` returned an unrounded decimal (10.5) for a USD amount the agent expects to be a whole number (105)
+
+**Why:** the agent overview's "amount owed" card was fixed this session to actually read every currency in `totalOwedByCurrency` instead of only `SYP` (it was silently showing 0 for any agent whose dues were in USD — a real frontend bug, now fixed). With that fix live, an agent who should owe **$105** is seeing **$10.5** instead — a value the frontend displays completely unmodified from what `/agents/me/dues` returns (confirmed by reading the code: the amount flows straight from `totalOwedByCurrency[currency]` into the display formatter, which only adds thousands separators — no rounding, division, or any arithmetic happens on it anywhere in the frontend).
+
+This matches the shape of a known risk already called out in this doc's §6 pricing policy — `agentPriceMonthly: round(priceMonthly * 0.7)` — where `round()` is explicitly required server-side. 10.5 is exactly what `15 * 0.7` looks like *before* rounding, so this looks like one specific dues calculation (or sum) somewhere in `/agents/me/dues` skipping that rounding step, rather than a one-off bad value. Could you check the computation behind this agent's USD due amount and confirm the full response body for `/agents/me/dues` matches what's actually owed?
+
+As a safety net (not a fix for the underlying number), the frontend's shared price formatter now rounds whatever it's given for display, since no price in this product is ever meant to carry cents — so this won't resurface as a visibly broken decimal again even if another endpoint has the same gap, but the real amount still needs to be correct at the source.
+
 ## 🆕 New ask: accept an optional `slug` on `POST /registration-requests/public`
 
 **Why:** the restaurant/store registration form now lets the applicant pick their own menu link (e.g. `abod_restaurant`) up front, instead of only being able to set it after approval from the dashboard. It's sent as an optional `slug` field alongside the existing body — same validation rules as the dashboard's own slug editor (English only, no dots, unique across businesses).

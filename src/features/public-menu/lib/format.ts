@@ -38,7 +38,10 @@ export function formatPrice(
       : lang === "ar"
         ? "ل.س"
         : "SYP";
-  return `${(price ?? 0).toLocaleString("en-US")} ${label}`;
+  // every price in this app is a whole currency unit — no cents anywhere in
+  // the product — so a stray decimal (e.g. an unrounded commission split)
+  // is rounded for display rather than shown as "10.5 دولار"
+  return `${Math.round(price ?? 0).toLocaleString("en-US")} ${label}`;
 }
 
 /** Builds the pre-formatted WhatsApp order message and returns a wa.me URL. */
