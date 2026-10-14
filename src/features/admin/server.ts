@@ -1,13 +1,18 @@
 import { ApiError } from "@/lib/api/client";
 import { redirect } from "next/navigation";
 
-import { getSessionAccessToken } from "@/lib/api/server-auth";
+import { getSessionAccessToken, getSessionRefreshToken } from "@/lib/api/server-auth";
+import { refreshAccessTokenServer } from "@/lib/api/server-refresh";
 
 /**
  * Runs a console page's data fetching with the cookie-backed access
- * token, bailing to the login screen on 401: an SSR 401 means the
- * session is missing/expired, and a server render of a stranger should
- * never surface as a 500.
+ * token. A 401 is tried once more with a freshly refreshed token before
+ * giving up — the access token is only good for 15 minutes, so without
+ * this, any SSR load after that window (most visibly a redeploy, since
+ * the first load of a new page is always SSR) 401'd immediately and
+ * looked exactly like the session had expired even though the 7-day
+ * refresh token was still good. Only redirects to login when that
+ * refresh attempt also fails, meaning the session is really gone.
  *
  * Server-only module — it transitively imports `next/headers`, so only
  * server components (the admin pages) may import it. Client components
@@ -23,6 +28,19 @@ export async function fetchAdminPage<T>(
     return await fetcher(accessToken);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
+      const refreshToken = await getSessionRefreshToken();
+      const refreshed = refreshToken
+        ? await refreshAccessTokenServer(refreshToken)
+        : null;
+      if (refreshed) {
+        try {
+          return await fetcher(refreshed);
+        } catch (retryErr) {
+          if (!(retryErr instanceof ApiError && retryErr.status === 401)) {
+            throw retryErr;
+          }
+        }
+      }
       redirect(`/${lang}/admin/login`);
     }
     throw err;

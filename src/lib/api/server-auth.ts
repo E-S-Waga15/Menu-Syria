@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { SESSION_COOKIE } from "@/lib/session-cookie";
+import { REFRESH_SESSION_COOKIE, SESSION_COOKIE } from "@/lib/session-cookie";
 
 /**
  * Server-side read of the access token mirrored into a cookie by every
@@ -15,4 +15,11 @@ import { SESSION_COOKIE } from "@/lib/session-cookie";
 export async function getSessionAccessToken(): Promise<string | null> {
   const cookieStore = await cookies();
   return cookieStore.get(SESSION_COOKIE)?.value ?? null;
+}
+
+/** Server-side read of the refresh token — see `getSessionAccessToken`
+ * above and `lib/api/server-refresh.ts` for what it's used for. */
+export async function getSessionRefreshToken(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(REFRESH_SESSION_COOKIE)?.value ?? null;
 }
