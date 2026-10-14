@@ -22,7 +22,7 @@ src/
 ├── lib/                   # types.ts (domain contracts), api/ (client + query-keys), mock/, seo/, validation.ts
 ├── i18n/                  # config, dictionaries/ar|en.json, get-dictionary (server), client.tsx (useI18n)
 ├── providers/ stores/     # app-level providers; cross-feature zustand stores (cart, favorites, ui)
-└── proxy.ts               # locale routing (root level — this Next version's middleware replacement)
+└── proxy.ts               # locale routing (MUST stay inside src/, not repo root — this Next version's middleware replacement; src/ project ⇒ proxy.ts silently never runs from the repo root)
 ```
 
 Rules:
