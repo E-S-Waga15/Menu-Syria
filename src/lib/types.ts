@@ -430,6 +430,27 @@ export interface Transaction {
   amount: number;
 }
 
+/** `GET /agents/me/dues` — one subscription this agent referred, and what
+ * the agent owes the platform for it. */
+export interface AgentDuesSubscription {
+  subscriptionId: string;
+  businessName: string;
+  planName: string;
+  amountOwed: number;
+  currency: CurrencyCode;
+  paymentStatus: "pending" | "collected";
+  collectedAt: string | null;
+}
+
+/** `GET /agents/me/dues` — the agent's full dues summary. */
+export interface AgentDuesSummary {
+  totalBusinesses: number;
+  /** keyed by currency code, e.g. `{ SYP: 126000 }` — never summed across
+   * currencies on this side */
+  totalOwedByCurrency: Record<string, number>;
+  subscriptions: AgentDuesSubscription[];
+}
+
 export interface AnalyticsPoint {
   label: string;
   value: number;

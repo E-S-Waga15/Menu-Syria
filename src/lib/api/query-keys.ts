@@ -54,8 +54,10 @@ export const queryKeys = {
       ["agents", { governorateId }] as const,
     detail: (id: string) => ["agents", id] as const,
     restaurants: (id: string) => ["agents", id, "restaurants"] as const,
+    stores: (id: string) => ["agents", id, "stores"] as const,
     transactions: (id: string) => ["agents", id, "transactions"] as const,
     plans: ["agents", "plans"] as const,
+    dues: ["agents", "me", "dues"] as const,
   },
   admin: {
     stats: ["admin", "stats"] as const,

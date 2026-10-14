@@ -48,7 +48,7 @@ export function AgentDashboardShell({
   });
 
   const navItems: DashboardNavItem[] = [
-    { href: base, label: t.agent.earnings, icon: LayoutDashboard, exact: true },
+    { href: base, label: t.agent.overview, icon: LayoutDashboard, exact: true },
     { href: `${base}/restaurants`, label: t.agent.myRestaurants, icon: Store },
     { href: `${base}/stores`, label: t.agent.myStores, icon: ShoppingBag },
     { href: `${base}/plans`, label: t.agent.plansTab, icon: Sparkles },

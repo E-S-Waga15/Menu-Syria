@@ -6,7 +6,14 @@ import {
   restaurants,
   stores,
 } from "@/lib/mock/data";
-import type { Agent, Plan, Restaurant, Store, Transaction } from "@/lib/types";
+import type {
+  Agent,
+  AgentDuesSummary,
+  Plan,
+  Restaurant,
+  Store,
+  Transaction,
+} from "@/lib/types";
 
 /**
  * An agent asks the platform to renew (or upgrade) a referred business's
@@ -76,6 +83,31 @@ export async function updateMyAgentProfile(
     headers: authHeaders(auth),
     body: input,
   });
+}
+
+/** `GET /agents/me/dues` — what this agent owes the platform across every
+ * subscription they referred, pending or already collected. */
+export async function getAgentDues(
+  auth: AgentAuth = {},
+): Promise<AgentDuesSummary> {
+  if (IS_MOCK) {
+    return mockDelay({
+      totalBusinesses: restaurants.length + stores.length,
+      totalOwedByCurrency: { SYP: 126000 },
+      subscriptions: [
+        {
+          subscriptionId: "sub-1",
+          businessName: restaurants[0]?.name.ar ?? "",
+          planName: restaurants[0]?.planName ?? "",
+          amountOwed: 42000,
+          currency: "SYP",
+          paymentStatus: "pending",
+          collectedAt: null,
+        },
+      ],
+    });
+  }
+  return apiFetch("/agents/me/dues", { headers: authHeaders(auth) });
 }
 
 export async function getMyTransactions(

@@ -907,7 +907,17 @@
     "accountInfoTitle": "Account info",
     "whatsappLabel": "WhatsApp number",
     "coverageLabel": "Coverage area",
-    "coverageHint": "One governorate, and one or two regions within it — this is where you'll be shown to businesses signing up."
+    "coverageHint": "One governorate, and one or two regions within it — this is where you'll be shown to businesses signing up.",
+    "overview": "Overview",
+    "referredRestaurants": "Referred restaurants",
+    "referredStores": "Referred stores",
+    "discountPercentLabel": "Your discount",
+    "amountOwed": "You owe",
+    "subscriptionsByType": "Subscriptions by type",
+    "noSubscriptionsYet": "No subscriptions yet",
+    "referralCodeLabel": "Your referral code",
+    "upcomingRenewalsTitle": "Subscriptions coming up for renewal",
+    "noUpcomingRenewals": "No subscriptions due for renewal right now"
   },
   "admin": {
     "dashboard": "Central dashboard",

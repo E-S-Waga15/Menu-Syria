@@ -907,7 +907,17 @@
     "accountInfoTitle": "معلومات الحساب",
     "whatsappLabel": "رقم الواتساب",
     "coverageLabel": "منطقة التغطية",
-    "coverageHint": "محافظة واحدة، ومنطقة أو منطقتان ضمنها كحد أقصى — هذا ما سيظهر للمطاعم والمتاجر عند التسجيل."
+    "coverageHint": "محافظة واحدة، ومنطقة أو منطقتان ضمنها كحد أقصى — هذا ما سيظهر للمطاعم والمتاجر عند التسجيل.",
+    "overview": "نظرة عامة",
+    "referredRestaurants": "المطاعم المشتركة",
+    "referredStores": "المتاجر المشتركة",
+    "discountPercentLabel": "نسبة خصمك",
+    "amountOwed": "المستحق عليك دفعه",
+    "subscriptionsByType": "الاشتراكات حسب النوع",
+    "noSubscriptionsYet": "لا توجد اشتراكات بعد",
+    "referralCodeLabel": "رمز الإحالة الخاص بك",
+    "upcomingRenewalsTitle": "اشتراكات قاربت على الانتهاء",
+    "noUpcomingRenewals": "لا توجد اشتراكات قاربت على الانتهاء حالياً"
   },
   "admin": {
     "dashboard": "لوحة التحكم المركزية",
