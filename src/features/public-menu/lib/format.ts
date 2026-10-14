@@ -26,7 +26,7 @@ const fulfillmentLabel: Record<FulfillmentMode, keyof StorefrontCopy> = {
 };
 
 export function formatPrice(
-  price: number,
+  price: number | null | undefined,
   currency: CurrencyCode | string,
   lang: "ar" | "en" = "ar",
 ): string {
@@ -38,7 +38,7 @@ export function formatPrice(
       : lang === "ar"
         ? "ل.س"
         : "SYP";
-  return `${price.toLocaleString("en-US")} ${label}`;
+  return `${(price ?? 0).toLocaleString("en-US")} ${label}`;
 }
 
 /** Builds the pre-formatted WhatsApp order message and returns a wa.me URL. */

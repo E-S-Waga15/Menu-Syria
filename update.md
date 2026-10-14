@@ -8,6 +8,16 @@ Agent linkage, plan name/start date, approval-time duration picker, the new per-
 
 The per-item statistics endpoint currently returns 403 when "the business's plan doesn't include statistics." Please remove that check for now — **every feature should be available to every plan while the product is still being built**; which features belong to which plan hasn't been decided yet, and will be a deliberate, separate pass once the platform is feature-complete. If any other endpoint already has a similar plan-based 403 gate, please lift it the same way until we explicitly ask to reintroduce it. The frontend's own "your plan doesn't support this" messaging for item statistics has already been removed to match.
 
+## 🆕 New ask: check older plan rows for null computed-pricing fields
+
+**Why:** With CORS fixed, `GET /admin/plans` and `GET /subscription-plans` now load, but the admin plans page still crashes on render (caught by our new error boundary — "Something went wrong" instead of a blank browser error, which is at least diagnosable now). A direct test of the endpoints showed one plan with every field populated, but the `Plan` contract from §6 below requires **every** plan row to carry `name`, `priceMonthly`, `priceYearly`, `yearlyOriginalPrice`, `yearlySavingsMonths`, `yearlySavingsAmount`, `agentPriceMonthly`, `agentPriceYearly`, `agentYearlySavingsAmount`, `agentDiscountPercent`, and `features` — the frontend renders these for every row in the list, not just the one that happened to get spot-checked.
+
+The most likely cause of a render crash with a healthy endpoint and no fields missing from *one* tested row: an **older plan record created before the pricing-computation logic shipped**, whose computed columns (`priceYearly`, `agentPriceMonthly`, etc.) were never backfilled and are still `null` — the list renders every plan the endpoint returns, so one incomplete legacy row crashes the whole page even if every newly-created plan is fine.
+
+Please run a query across **all** rows in the plans table (not just the newest one) and confirm every computed field is non-null — particularly for any plan created before §6 shipped. If any are found, backfill them using the same formulas from §6 (`priceYearly = priceMonthly * 10`, `agentPriceMonthly = round(priceMonthly * 0.7)`, etc.) rather than leaving them null.
+
+In the meantime we've also hardened the frontend to render a blank/zero value instead of crashing when a computed field is missing, so a future gap like this won't take the whole page down — but the real fix is making sure no plan row goes out with a null computed field in the first place, since a blank price is still a broken page for whoever's using it.
+
 ## 🆕 New ask: agent's own editable profile — `PATCH /me/agent`, plus a `regionIds` fix on the read shape
 
 **Why:** The agent dashboard now has its own `/agent/profile` page: a fullscreen photo viewer (tap the avatar → view/change/save/delete, same UX as the restaurant/store logo) plus an "account info" card (name, bio, phone, WhatsApp, Instagram, Facebook, and coverage area) editable the same way the business settings page edits its own info — an edit toggle, inline fields, a save/discard bar.

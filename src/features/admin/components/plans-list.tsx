@@ -80,9 +80,9 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
   const openEdit = (plan: Plan) =>
     setDraft({
       id: plan.id,
-      name: plan.name[lang],
-      priceMonthly: String(plan.priceMonthly),
-      features: plan.features.map((f) => f[lang]),
+      name: plan.name?.[lang] ?? "",
+      priceMonthly: String(plan.priceMonthly ?? ""),
+      features: (plan.features ?? []).map((f) => f[lang]),
       isPopular: Boolean(plan.isPopular),
     });
 
@@ -222,7 +222,7 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h2 className="font-heading text-lg font-bold">
-                    {plan.name[lang]}
+                    {plan.name?.[lang] ?? ""}
                   </h2>
                   {plan.isPopular && (
                     <Badge className="mt-1.5 bg-berry-soft text-berry-soft-foreground">
@@ -251,7 +251,7 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
                     {cycle === "monthly" ? t.admin.pricePerMonth : t.admin.pricePerYear}
                   </span>
                 </p>
-                {cycle === "yearly" && (
+                {cycle === "yearly" && plan.yearlySavingsMonths != null && (
                   <Badge className="mt-1.5 bg-success/10 text-success">
                     {fmt(t.admin.yearlySavingsBadge, {
                       months: plan.yearlySavingsMonths,
@@ -270,21 +270,21 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
                   </span>
                   <span className="text-[11px] font-semibold text-muted-foreground">
                     {fmt(t.admin.agentDiscountBadge, {
-                      percent: plan.agentDiscountPercent,
+                      percent: plan.agentDiscountPercent ?? 0,
                     })}
                   </span>
                 </span>
               </div>
 
               <p className="mt-2.5 text-sm font-semibold text-muted-foreground">
-                {fmt(t.admin.subscribers, { count: plan.subscriberCount })}
+                {fmt(t.admin.subscribers, { count: plan.subscriberCount ?? 0 })}
               </p>
 
               <h3 className="label-eyebrow mt-5 text-muted-foreground">
                 {t.admin.planFeatures}
               </h3>
               <ul className="mt-2.5 flex-1 space-y-2">
-                {plan.features.map((feature) => (
+                {(plan.features ?? []).map((feature) => (
                   <li
                     key={feature.en}
                     className="flex items-start gap-2 text-sm text-muted-foreground"
