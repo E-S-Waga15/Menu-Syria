@@ -600,12 +600,19 @@ export interface Plan {
   /** the SYP amount `priceMonthly * 12 - priceYearly` works out to —
    * computed and returned as-is */
   yearlySavingsAmount: number;
+  /** `priceYearly / 12` — the discounted "per month, billed annually" rate
+   * shown under the yearly price (optional: a page simply hides that line
+   * until the backend adds this field) */
+  yearlyPricePerMonth?: number;
   /** what an agent pays for this plan — `priceMonthly`/`priceYearly`
    * after the agent discount (see `agentDiscountPercent`) */
   agentPriceMonthly: number;
   agentPriceYearly: number;
   /** the SYP amount `priceYearly - agentPriceYearly` works out to */
   agentYearlySavingsAmount: number;
+  /** `agentPriceYearly / 12` — the agent's own "per month, billed
+   * annually" rate, same optionality as `yearlyPricePerMonth` */
+  agentYearlyPricePerMonth?: number;
   /** the discount rate applied to get the agent prices above, e.g. 30
    * (meaning 30%) — shown as "X% off" without the frontend computing it
    * from the two price pairs */

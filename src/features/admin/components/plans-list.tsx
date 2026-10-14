@@ -258,6 +258,16 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
                     })}
                   </Badge>
                 )}
+                {cycle === "yearly" && plan.yearlyPricePerMonth != null && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {fmt(t.admin.yearlyPerMonthHint, {
+                      price: formatPrice(
+                        plan.yearlyPricePerMonth,
+                        t.common.currency,
+                      ),
+                    })}
+                  </p>
+                )}
               </div>
 
               <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3.5 py-2.5">

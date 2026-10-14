@@ -4,6 +4,36 @@
 
 Agent linkage, plan name/start date, approval-time duration picker, the new per-item statistics endpoint, and the full server-computed plan pricing model are all live. Thank you — frontend is already reading these fields as specced, no changes needed on either side for §1-§6. Kept below as a reference of what the contract is.
 
+## 🐛 Bug: `PATCH /subscription-plans/:id` rejects the `features` field — but §6's own write shape documents it as accepted
+
+**Reproduced live on production just now:** editing an existing plan (admin console → الخطط والباقات → edit "Basic", change nothing but re-save) returns a 400 with the message `الحقل "features" غير مسموح به في هذا الطلب` ("the field 'features' is not allowed in this request"). The exact request body sent, matching §6's own documented write shape below, is:
+
+```jsonc
+// PATCH /subscription-plans/p3
+{
+  "name": "Basic",
+  "priceMonthly": 250,
+  "features": ["قائمة طعام إلكترونية مع رمز QR"],
+  "isPopular": false
+}
+```
+
+This makes editing a plan's features completely broken right now — not an edge case, every save of an existing plan hits this. Please check whether `PATCH /subscription-plans/:id`'s validation schema dropped (or never had) `features` while `POST /subscription-plans` (create) still accepts it, since that would explain create working while every edit 400s. The frontend hasn't changed anything about this request since §6 was confirmed shipped — this looks like a validation-schema regression or gap specific to the update path.
+
+## 🆕 New ask: a "per month, billed annually" field on `Plan` — `yearlyPricePerMonth` / `agentYearlyPricePerMonth`
+
+**Why:** the pricing cards (admin console and the agent's own plans page) want to show, under the yearly price, the standard SaaS-style breakdown — e.g. "233,333 ل.س شهرياً عند الدفع سنوياً" — the same pattern as `priceYearly / 12`. Per the standing rule for this whole document, the frontend will not compute that division itself; it's waiting on these two fields to render that line (it already renders nothing there until the field exists, so this is safe to ship whenever convenient):
+
+```jsonc
+{
+  // existing fields unchanged
+  "yearlyPricePerMonth": 233333,       // round(priceYearly / 12)
+  "agentYearlyPricePerMonth": 163333   // round(agentPriceYearly / 12)
+}
+```
+
+Both are optional on the response as far as the frontend is concerned, but once either is present the corresponding page starts showing the per-month line immediately — no frontend deploy needed on our side once these ship.
+
 ## 🆕 New ask: remove the plan-gate (403) on item statistics — and more broadly, nothing should be plan-restricted yet
 
 The per-item statistics endpoint currently returns 403 when "the business's plan doesn't include statistics." Please remove that check for now — **every feature should be available to every plan while the product is still being built**; which features belong to which plan hasn't been decided yet, and will be a deliberate, separate pass once the platform is feature-complete. If any other endpoint already has a similar plan-based 403 gate, please lift it the same way until we explicitly ask to reintroduce it. The frontend's own "your plan doesn't support this" messaging for item statistics has already been removed to match.

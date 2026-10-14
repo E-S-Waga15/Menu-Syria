@@ -112,6 +112,16 @@ export function AgentPlansView() {
                     })}
                   </Badge>
                 )}
+                {cycle === "yearly" && plan.agentYearlyPricePerMonth != null && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {fmt(t.admin.yearlyPerMonthHint, {
+                      price: formatPrice(
+                        plan.agentYearlyPricePerMonth,
+                        t.common.currency,
+                      ),
+                    })}
+                  </p>
+                )}
               </div>
 
               <h3 className="label-eyebrow mt-5 text-muted-foreground">

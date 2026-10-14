@@ -960,6 +960,7 @@
     "billingMonthly": "Monthly",
     "billingYearly": "Yearly",
     "yearlySavingsBadge": "Save {months} months free",
+    "yearlyPerMonthHint": "{price}/month billed annually",
     "agentPriceLabel": "Agent price",
     "agentDiscountBadge": "{percent}% off",
     "mostPopular": "Most chosen",

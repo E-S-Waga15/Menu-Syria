@@ -960,6 +960,7 @@
     "billingMonthly": "شهري",
     "billingYearly": "سنوي",
     "yearlySavingsBadge": "وفّر {months} أشهر مجاناً",
+    "yearlyPerMonthHint": "{price} شهرياً عند الدفع سنوياً",
     "agentPriceLabel": "سعر الوكيل",
     "agentDiscountBadge": "خصم {percent}٪",
     "mostPopular": "الأكثر اختياراً",

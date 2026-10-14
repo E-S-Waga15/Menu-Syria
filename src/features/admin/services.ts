@@ -416,9 +416,11 @@ function mockComputedPricing(priceMonthly: number) {
     yearlyOriginalPrice,
     yearlySavingsMonths: 2,
     yearlySavingsAmount: yearlyOriginalPrice - priceYearly,
+    yearlyPricePerMonth: Math.round(priceYearly / 12),
     agentPriceMonthly,
     agentPriceYearly,
     agentYearlySavingsAmount: priceYearly - agentPriceYearly,
+    agentYearlyPricePerMonth: Math.round(agentPriceYearly / 12),
     agentDiscountPercent: 30,
   };
 }
