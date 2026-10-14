@@ -40,6 +40,7 @@ export function StatCard({
   icon: Icon,
   accent = "berry",
   badges,
+  numeric = true,
 }: {
   label: string;
   value: string;
@@ -48,6 +49,11 @@ export function StatCard({
   /** small colored chips shown under the label, e.g. a trend ("+12%") or
    * a secondary count ("5 عميل") — each can carry its own tone */
   badges?: StatCardBadge[];
+  /** true (the default) forces the value LTR, correct for a number or a
+   * price. Pass false when `value` is actual text (a product name, "—")
+   * so it reads in the page's own direction instead of always starting
+   * from the left. */
+  numeric?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-3.5 md:p-4">
@@ -73,8 +79,11 @@ export function StatCard({
             </div>
           )}
           <p
-            className="mt-2 font-heading text-base font-bold tracking-tight md:text-xl"
-            dir="ltr"
+            className={cn(
+              "mt-2 font-heading text-base font-bold tracking-tight md:text-xl",
+              numeric && "truncate",
+            )}
+            dir={numeric ? "ltr" : undefined}
           >
             {value}
           </p>

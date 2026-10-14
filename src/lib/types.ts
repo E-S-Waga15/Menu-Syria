@@ -95,6 +95,9 @@ export interface RestaurantTheme {
 export interface BusinessAgent {
   id: string;
   name: string;
+  /** optional until the backend adds it — see update.md; falls back to a
+   * generic icon avatar until then */
+  photoUrl?: string;
   governorateId: string;
   /** one or two region ids, matching Agent.regionIds — see update.md */
   regionIds: string[];

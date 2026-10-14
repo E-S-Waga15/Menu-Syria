@@ -131,12 +131,14 @@ export function AnalyticsView() {
             value={stats?.mostAddedToCart?.name ?? t.dashboard.noDataYet}
             icon={ShoppingCart}
             accent="berry"
+            numeric={false}
           />
           <StatCard
             label={t.dashboard.mostViewedNoPurchase}
             value={stats?.mostViewedWithoutPurchase?.name ?? t.dashboard.noDataYet}
             icon={TrendingUp}
             accent="success"
+            numeric={false}
           />
         </div>
       )}

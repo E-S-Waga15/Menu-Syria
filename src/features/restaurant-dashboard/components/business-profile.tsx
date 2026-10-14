@@ -43,6 +43,7 @@ import { GovernorateRegionSelect } from "@/components/shared/governorate-region-
 import { ImagePreviewDialog } from "@/components/shared/image-preview-dialog";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { ProfilePhotoViewer } from "@/components/shared/profile-photo-viewer";
+import { SectionErrorBoundary } from "@/components/shared/section-error-boundary";
 import {
   EditingGuardContext,
   ProfileSection,
@@ -351,8 +352,7 @@ function AccountInfoSection({
             className="truncate text-xs font-semibold text-primary"
             dir="ltr"
           >
-            {typeof window !== "undefined" ? window.location.origin : ""}/
-            {lang}/{slug}
+            /{lang}/{slug}
           </p>
         )}
       </div>
@@ -1521,9 +1521,20 @@ function AgentContactCard({
       </h2>
 
       <div className="mt-4 flex items-center gap-3">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <User className="size-5" />
-        </span>
+        {agent.photoUrl ? (
+          <SafeImage
+            src={agent.photoUrl}
+            alt=""
+            width={48}
+            height={48}
+            unoptimized={agent.photoUrl.startsWith("data:")}
+            className="size-12 shrink-0 rounded-full border border-border object-cover"
+          />
+        ) : (
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <User className="size-5" />
+          </span>
+        )}
         <div className="min-w-0">
           <p className="truncate font-semibold">{agent.name}</p>
           {location && (
@@ -1761,12 +1772,9 @@ export function SupportSection({
           {t.dashboard.supportTab}
         </h2>
         {agent ? (
-          <Badge className="mt-4 bg-primary/10 text-primary">
-            {fmt(t.dashboard.supportActivatedByAgent, {
-              agentName: agent.name,
-              region,
-            })}
-          </Badge>
+          <p className="mt-4 w-fit max-w-full rounded-2xl bg-primary/10 px-4 py-2.5 text-sm font-semibold text-primary">
+            {renderAgentNotice(t.dashboard.supportActivatedByAgent, agent.name, region)}
+          </p>
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">
             {t.dashboard.supportNoAgentHint}
@@ -2151,47 +2159,57 @@ export function BusinessProfile() {
           </div>
 
           <TabsContent value="account">
-            <AccountInfoSection
-              restaurant={restaurant}
-              isStore={isStore}
-              t={t}
-              lang={lang}
-              save={save}
-            />
+            <SectionErrorBoundary key={activeTab}>
+              <AccountInfoSection
+                restaurant={restaurant}
+                isStore={isStore}
+                t={t}
+                lang={lang}
+                save={save}
+              />
+            </SectionErrorBoundary>
           </TabsContent>
           <TabsContent value="delivery">
             {/* fulfillment cards lead (the start side), the payment card
                 beside them — unchanged internally, just repositioned */}
-            <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
-              <FulfillmentSection
-                restaurant={restaurant}
-                isStore={isStore}
-                t={t}
-                save={save}
-              />
-              <PaymentQrSection restaurant={restaurant} t={t} save={save} />
-            </div>
+            <SectionErrorBoundary key={activeTab}>
+              <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
+                <FulfillmentSection
+                  restaurant={restaurant}
+                  isStore={isStore}
+                  t={t}
+                  save={save}
+                />
+                <PaymentQrSection restaurant={restaurant} t={t} save={save} />
+              </div>
+            </SectionErrorBoundary>
           </TabsContent>
           <TabsContent value="gallery">
-            <GallerySection restaurant={restaurant} t={t} save={save} />
+            <SectionErrorBoundary key={activeTab}>
+              <GallerySection restaurant={restaurant} t={t} save={save} />
+            </SectionErrorBoundary>
           </TabsContent>
           <TabsContent value="appearance">
             {/* social media first, appearance below it — side by side as two
               columns from the laptop breakpoint up, stacked with a small
               gap on narrower screens */}
-            <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
-              <SocialMediaSection restaurant={restaurant} t={t} save={save} />
-              <AppearanceSection restaurant={restaurant} t={t} save={save} />
-            </div>
+            <SectionErrorBoundary key={activeTab}>
+              <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
+                <SocialMediaSection restaurant={restaurant} t={t} save={save} />
+                <AppearanceSection restaurant={restaurant} t={t} save={save} />
+              </div>
+            </SectionErrorBoundary>
           </TabsContent>
           <TabsContent value="plan">
-            <SubscriptionSection
-              restaurant={restaurant}
-              governorates={governorates}
-              regions={regions}
-              t={t}
-              lang={lang}
-            />
+            <SectionErrorBoundary key={activeTab}>
+              <SubscriptionSection
+                restaurant={restaurant}
+                governorates={governorates}
+                regions={regions}
+                t={t}
+                lang={lang}
+              />
+            </SectionErrorBoundary>
           </TabsContent>
         </Tabs>
       </div>

@@ -149,18 +149,20 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3">
         <StatCard
           label={t.dashboard.mostAddedToCart}
           value={stats?.mostAddedToCart?.name ?? t.dashboard.noDataYet}
           icon={ShoppingCart}
           accent="berry"
+          numeric={false}
         />
         <StatCard
           label={t.dashboard.mostViewedNoPurchase}
           value={stats?.mostViewedWithoutPurchase?.name ?? t.dashboard.noDataYet}
           icon={Eye}
           accent="info"
+          numeric={false}
         />
         <StatCard
           label={t.dashboard.menuViews}
