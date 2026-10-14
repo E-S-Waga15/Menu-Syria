@@ -10,6 +10,7 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  message?: string;
 }
 
 /**
@@ -19,12 +20,19 @@ interface State {
  * boundary, which made every *other* tab look broken too even though only
  * one tab's data ever triggered it. A `key` prop from the caller (e.g. the
  * section's own title) lets switching back and retrying reset this.
+ *
+ * Shows the error's own message under the fallback (small, muted) — there's
+ * no way to reach the browser console remotely, so this is the only way a
+ * report back ever carries the actual exception instead of a guess.
  */
 export class SectionErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown) {
+    return {
+      hasError: true,
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
 
   componentDidCatch(error: unknown) {
@@ -34,7 +42,17 @@ export class SectionErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <FetchError onRetry={() => this.setState({ hasError: false })} />
+        <div>
+          <FetchError onRetry={() => this.setState({ hasError: false })} />
+          {this.state.message && (
+            <p
+              className="mt-2 text-center text-xs text-muted-foreground"
+              dir="ltr"
+            >
+              {this.state.message}
+            </p>
+          )}
+        </div>
       );
     }
     return this.props.children;

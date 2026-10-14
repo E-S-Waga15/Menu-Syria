@@ -50,6 +50,14 @@ export default function Error({
           الرئيسية · Home
         </Link>
       </div>
+      {/* no way to reach the browser console remotely — this is the only
+          way a report back ever carries the real exception, not a guess */}
+      {error.message && (
+        <p className="max-w-md text-xs text-muted-foreground/70" dir="ltr">
+          {error.message}
+          {error.digest ? ` (${error.digest})` : ""}
+        </p>
+      )}
     </main>
   );
 }
