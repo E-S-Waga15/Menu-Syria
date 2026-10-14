@@ -916,6 +916,7 @@
     "subscriptionsByType": "Subscriptions by type",
     "noSubscriptionsYet": "No subscriptions yet",
     "referralCodeLabel": "Your referral code",
+    "latestSubscriptionsTitle": "Latest subscriptions",
     "upcomingRenewalsTitle": "Subscriptions coming up for renewal",
     "noUpcomingRenewals": "No subscriptions due for renewal right now"
   },

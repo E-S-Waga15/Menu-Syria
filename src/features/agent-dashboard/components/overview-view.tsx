@@ -19,6 +19,8 @@ import {
   QuickAccess,
   type QuickAccessItem,
 } from "@/components/shared/quick-access";
+import { SafeImage } from "@/components/shared/safe-image";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { StatCard } from "@/features/restaurant-dashboard/components/stat-card";
@@ -125,6 +127,24 @@ export function AgentOverviewView() {
     (business) => `${base}/subscriptions/${business.id}`,
   ).slice(0, 3);
 
+  // most recently joined first — the business's own real planStartedAt,
+  // never a guess
+  const latestSubscriptions = [...restaurants, ...stores]
+    .filter((b) => b.planStartedAt)
+    .sort(
+      (a, b) =>
+        new Date(b.planStartedAt!).getTime() -
+        new Date(a.planStartedAt!).getTime(),
+    )
+    .slice(0, 5);
+
+  const formatJoinDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(lang === "ar" ? "ar-SY" : "en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+
   const typeBreakdown =
     totalBusinesses > 0
       ? [
@@ -208,6 +228,28 @@ export function AgentOverviewView() {
 
       <QuickAccess title={t.agent.quickAccess} items={quickAccess} />
 
+      {/* referral code */}
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-berry-soft/30 p-5 dark:bg-berry-soft/20">
+        <div>
+          <h2 className="font-heading font-bold">{t.agent.referralCodeLabel}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {t.agent.referralBody}
+          </p>
+        </div>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <code
+            className="flex-1 truncate rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm font-bold sm:min-w-56"
+            dir="ltr"
+          >
+            {agent.referralCode}
+          </code>
+          <Button onClick={() => void copyReferralCode()}>
+            <Copy className="size-4" />
+            {t.common.copy}
+          </Button>
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr]">
         {/* subscriptions by type */}
         <section className="rounded-2xl border border-border/60 bg-card p-5">
@@ -265,24 +307,44 @@ export function AgentOverviewView() {
           )}
         </section>
 
-        {/* referral code */}
-        <section className="flex flex-col justify-center rounded-2xl border border-primary/25 bg-berry-soft/30 p-5 dark:bg-berry-soft/20">
-          <h2 className="font-heading font-bold">{t.agent.referralCodeLabel}</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {t.agent.referralBody}
-          </p>
-          <div className="mt-4 flex w-full items-center gap-2">
-            <code
-              className="flex-1 truncate rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm font-bold"
-              dir="ltr"
-            >
-              {agent.referralCode}
-            </code>
-            <Button onClick={() => void copyReferralCode()}>
-              <Copy className="size-4" />
-              {t.common.copy}
-            </Button>
-          </div>
+        {/* latest subscriptions */}
+        <section className="rounded-2xl border border-border/60 bg-card p-5">
+          <h2 className="font-heading text-base font-semibold">
+            {t.agent.latestSubscriptionsTitle}
+          </h2>
+          {latestSubscriptions.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t.agent.noSubscriptionsYet}
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-border/60">
+              {latestSubscriptions.map((business) => (
+                <li
+                  key={business.id}
+                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <SafeImage
+                    src={business.logoUrl}
+                    alt=""
+                    width={44}
+                    height={44}
+                    className="size-11 shrink-0 rounded-full border border-border object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold">
+                      {business.name[lang]}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">
+                      {formatJoinDate(business.planStartedAt!)}
+                    </p>
+                  </div>
+                  <Badge className="shrink-0 bg-success/10 text-success">
+                    {business.planName || t.dashboard.defaultPlanName}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </div>
