@@ -16,6 +16,12 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 /** the developer's site — external, so it opens in a new tab */
 const CODE_MASTERS_URL = "https://code-masters-gray.vercel.app/";
 
+/** same number as the "tel:" link above it — opens a WhatsApp chat instead
+ * of a call */
+const FOOTER_WHATSAPP_URL = "https://wa.me/963959825575";
+const FOOTER_INSTAGRAM_URL = "https://instagram.com/menu.syria";
+const FOOTER_FACEBOOK_URL = "https://facebook.com/menu.syria";
+
 /**
  * Code Masters' brand purple is #8441A4, which only clears 2.6:1 against this
  * footer's near-black ground — below the 4.5:1 AA floor. This is the same hue
@@ -143,13 +149,15 @@ export function SiteFooter({ lang, t }: { lang: Locale; t: Dictionary }) {
           </ul>
           <div className="mt-5 flex gap-2">
             {[
-              { icon: InstagramIcon, label: "Instagram" },
-              { icon: FacebookIcon, label: "Facebook" },
-              { icon: WhatsAppIcon, label: "WhatsApp" },
-            ].map(({ icon: Icon, label }) => (
+              { icon: InstagramIcon, label: "Instagram", href: FOOTER_INSTAGRAM_URL },
+              { icon: FacebookIcon, label: "Facebook", href: FOOTER_FACEBOOK_URL },
+              { icon: WhatsAppIcon, label: "WhatsApp", href: FOOTER_WHATSAPP_URL },
+            ].map(({ icon: Icon, label, href }) => (
               <a
                 key={label}
-                href="#"
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label={label}
                 className="flex size-9 items-center justify-center rounded-lg bg-white/5 transition-colors hover:bg-primary hover:text-white"
               >
