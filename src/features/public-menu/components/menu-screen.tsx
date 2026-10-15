@@ -19,7 +19,6 @@ import { trackItemCartAdd } from "@/features/public-menu/services";
 import type { StorefrontCopy } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import { getBusinessOpenStatus } from "@/lib/business-hours";
 import { toast } from "@/lib/toast";
 import type {
   Business,
@@ -95,8 +94,9 @@ export function MenuScreen({
   const addItem = useCartStore((s) => s.addItem);
   const clearCart = useCartStore((s) => s.clear);
   const cartCount = useCartStore(selectCartCount);
-  // derived from the real published schedule, not a manually-toggled flag
-  const { isOpen } = getBusinessOpenStatus(business.openingHours);
+  // the backend computes this from the real published schedule itself —
+  // trust it directly rather than re-deriving it client-side
+  const isOpen = business.isOpen;
 
   // a cart left over from a different business should never surface here —
   // scrub it the moment this screen mounts, before its stale count/items

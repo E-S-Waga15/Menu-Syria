@@ -246,8 +246,11 @@ export function CartSheet({
 
   const supportedModes = getSupportedFulfillment(business);
   // derived from the real published schedule, not a manually-toggled flag
-  const { isOpen: businessIsOpen, opensAt: businessOpensAt } =
-    getBusinessOpenStatus(business.openingHours);
+  // the backend computes `isOpen` from the real published schedule itself —
+  // trust it directly for the boolean; the backend doesn't compute a next-
+  // opens-at time, so that part is still derived here from the schedule
+  const businessIsOpen = business.isOpen;
+  const { opensAt: businessOpensAt } = getBusinessOpenStatus(business.openingHours);
   const branches = business.branches ?? [];
   // null = main branch, kept as the default selection — never sent to the
   // backend as a literal "main" value, see placeOrder's `branchId ?? undefined`

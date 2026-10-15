@@ -1,10 +1,12 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
-## ✅ No backend change needed: "is this business open right now" is now derived from `openingHours` entirely in the frontend
+## ✅ Fixed on the backend: `Business.isOpen` was hardcoded `true` everywhere, never actually computed from hours
 
-Previously the open/closed badge and the cart's order-blocking both read `Business.isOpen` — a flag someone has to remember to flip by hand, which drifts out of sync with the business's actual hours the moment nobody updates it (and says nothing useful before the opening-hours editor existed). Now that `openingHours` is real, writable data (see the ask above), "open now" is computed directly from it — the published weekly schedule, checked against the current time in Damascus — everywhere the badge or the order-blocking shows up: the storefront header, the details page, and the cart.
+Confirmed and fixed — `isOpen` was a static `true` on every read (owner's own and the public storefront), not derived from anything. It's now computed server-side from `openingHours` against current Damascus time, and the frontend reads it directly again (an earlier attempt computed it client-side instead while this was still broken server-side — reverted now that the backend sends the real value, so there's exactly one place this is computed, not two that could disagree).
 
-**Why no backend involvement:** this has to reflect the *exact current moment*, not a value computed once when the API responded and then left stale while the page sits open in a tab — and it needs Damascus's timezone specifically, regardless of where the visitor or the server happen to be. Both of those are naturally a frontend concern once the full week's schedule is already in the response (confirmed: public storefront reads already return `openingHours`), so no new field or endpoint is needed here. The existing `isOpen`/`opensAt` fields can stay as-is (unused by the frontend now) or be removed later at your convenience — neither is read anywhere anymore.
+`openingHours` itself is `null` (not a placeholder string) when a business never published hours — matches every other optional field on this API (`planName`, `agent`, `logo`, …), and keeps the empty-state wording the frontend's own call (already handled: the storefront's hours panel already treats an absent/empty array as "not published" distinctly from a `null` day meaning "closed that day"). Writes still always send the full 7-entry array — no partial-week or clear-to-unset support yet; flagged for later if ever needed.
+
+The frontend doesn't compute a "next opens at" time from the response (the backend only sends the boolean) — that part is still derived client-side from `openingHours` for the cart's closed-state message.
 
 ## 🆕 New ask: accept `openingHours` on `PATCH /businesses/:id`
 

@@ -32,7 +32,6 @@ import { formatPrice } from "@/features/public-menu/lib/format";
 import type { Locale } from "@/i18n/config";
 import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/get-dictionary";
-import { getBusinessOpenStatus } from "@/lib/business-hours";
 import type { Business, Governorate, PublicBranch, Region } from "@/lib/types";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -203,9 +202,10 @@ export function BusinessDetailsGrid({
     ? `${t.restaurant.contactInfo} (${selectedBranch.name})`
     : t.restaurant.contactInfo;
 
-  // derived from the real published schedule, not a manually-toggled flag
-  // that drifts out of sync with it
-  const { isOpen } = getBusinessOpenStatus(restaurant.openingHours);
+  // the backend now computes this from the real published schedule itself
+  // (confirmed — no longer a static flag) — trust it directly rather than
+  // re-deriving it client-side
+  const isOpen = restaurant.isOpen;
   const openBadgeClassName = isOpen
     ? "bg-success/10 px-2 py-0.5 text-[11px] text-success md:px-2.5 md:text-xs"
     : "bg-muted px-2 py-0.5 text-[11px] text-muted-foreground md:px-2.5 md:text-xs";
