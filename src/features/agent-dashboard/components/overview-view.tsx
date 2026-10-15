@@ -81,6 +81,19 @@ export function AgentOverviewView() {
   const storeCount = stores.length;
   const totalBusinesses = restaurantCount + storeCount;
   const discountPercent = plans?.[0]?.agentDiscountPercent ?? 30;
+
+  // this page's dues cards kept showing "دولار 105" instead of "105 دولار"
+  // even with dir="ltr" set on the element — something on this page
+  // overrides the plain `dir` attribute's effect specifically here, so
+  // each formatted amount is wrapped in a Unicode LTR isolate
+  // (U+2066/U+2069) as a scoped, local fix rather than touching the
+  // shared formatPrice (which already broke every other correctly-
+  // rendering price on the platform once, the one time this was tried
+  // globally)
+  const ltrIsolate = (s: string) => `⁦${s}⁩`;
+  const moneyLabel = (amount: number, currency: string) =>
+    ltrIsolate(formatPrice(amount, currency, lang));
+
   // never summed across currencies (a SYP total and a USD total are not the
   // same number) — reading only `.SYP` silently showed 0 for an agent whose
   // dues happened to be in USD. Each non-zero currency gets its own figure.
@@ -90,9 +103,9 @@ export function AgentOverviewView() {
   const owedLabel =
     owedEntries.length > 0
       ? owedEntries
-          .map(([currency, amount]) => formatPrice(amount, currency, lang))
+          .map(([currency, amount]) => moneyLabel(amount, currency))
           .join(" + ")
-      : formatPrice(0, t.common.currency, lang);
+      : moneyLabel(0, t.common.currency);
 
   const quickAccess: QuickAccessItem[] = [
     {
@@ -400,14 +413,14 @@ export function AgentOverviewView() {
                     <span>
                       {t.agent.businessPaidLabel}:{" "}
                       <span className="font-bold" dir="ltr">
-                        {formatPrice(sub.businessAmountPaid, sub.currency, lang)}
+                        {moneyLabel(sub.businessAmountPaid, sub.currency)}
                       </span>
                     </span>
                   )}
                   <span>
                     {t.agent.youOweLabel}:{" "}
                     <span className="font-bold text-primary" dir="ltr">
-                      {formatPrice(sub.amountOwed, sub.currency, lang)}
+                      {moneyLabel(sub.amountOwed, sub.currency)}
                     </span>
                   </span>
                 </div>
