@@ -71,10 +71,15 @@ function MoneyValue({
 }) {
   return (
     <span className="inline-flex items-baseline gap-1" style={{ direction: "ltr" }}>
-      <span>{amount.toLocaleString("en-US")}</span>
+      {/* source order deliberately flipped: on this page, "amount then
+          currency" in the markup has consistently rendered visually as
+          "currency then amount" across three different fix attempts —
+          putting the currency first in the markup is what actually shows
+          "105 دولار" on screen */}
       <span>
         {currency === "USD" ? (lang === "ar" ? "دولار" : "$") : currencyLabel}
       </span>
+      <span>{amount.toLocaleString("en-US")}</span>
     </span>
   );
 }
