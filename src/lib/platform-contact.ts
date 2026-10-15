@@ -5,4 +5,6 @@ export const PLATFORM_PHONE_DISPLAY = "+963 959 825 575";
 export const PLATFORM_EMAIL = "menu.syria15@gmail.com";
 export const PLATFORM_WHATSAPP_URL = "https://wa.me/963959825575";
 export const PLATFORM_INSTAGRAM_URL = "https://instagram.com/menu.syria";
-export const PLATFORM_FACEBOOK_URL = "https://facebook.com/menu.syria";
+// the real share link, not a guessed /menu.syria vanity username — this
+// page isn't on one
+export const PLATFORM_FACEBOOK_URL = "https://www.facebook.com/share/1DYVuk4Ssu/";
