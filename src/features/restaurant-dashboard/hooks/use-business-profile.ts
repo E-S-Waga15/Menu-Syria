@@ -94,6 +94,7 @@ function applyInput(business: Restaurant, input: BusinessProfileInput): Restaura
   if (input.fulfillmentModes !== undefined) {
     next.fulfillmentModes = input.fulfillmentModes;
   }
+  if (input.openingHours !== undefined) next.openingHours = input.openingHours;
 
   const whatsapp = input.phones?.find((phone) => phone.numberType === "whatsapp");
   const primary = input.phones?.find((phone) => phone.numberType !== "whatsapp");

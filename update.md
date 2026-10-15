@@ -1,5 +1,33 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🆕 New ask: accept `openingHours` on `PATCH /businesses/:id`
+
+**Why:** the dashboard now has a real opening-hours editor (Settings → Delivery & Payment tab → "ساعات العمل") — 7 days, each independently open or closed with its own start/end time, plus a "apply to every day" quick action. `Business.openingHours` was already a documented read field (`(DayHours | null)[]`, index 0 = Sunday, consumed by the storefront's own hours display), but there was never a way to *write* it — this is the first screen that needs to.
+
+**What we need:** accept `openingHours` as one more field on the existing field-by-field `PATCH /businesses/:id` (the same endpoint every other profile section already writes through — no new endpoint needed), and return it back on the updated `Business`/`Restaurant`/`Store` read.
+
+### Write shape
+
+```jsonc
+// PATCH /businesses/:id
+{
+  "openingHours": [
+    { "opens": "09:00", "closes": "22:00" },  // index 0 = Sunday
+    { "opens": "09:00", "closes": "22:00" },  // Monday
+    null,                                      // Tuesday — closed that day
+    { "opens": "09:00", "closes": "22:00" },
+    { "opens": "09:00", "closes": "22:00" },
+    { "opens": "09:00", "closes": "23:00" },
+    { "opens": "09:00", "closes": "23:00" }    // Saturday
+  ]
+}
+```
+
+- Always sent as the full 7-entry array (the dashboard always has a complete week in state) — simplest to just replace the whole column rather than merge by index.
+- `null` for a day means closed that day — distinct from the field being absent entirely, which (per the existing read contract) means hours were never published at all. An update that includes `openingHours` should always result in exactly 7 entries, never a partial week.
+- `opens`/`closes` are `"HH:mm"` 24-hour strings. The frontend already validates `closes` is after `opens` before sending, but worth validating server-side too since this endpoint is reachable directly.
+- No new read field — `GET /me/restaurant`/`GET /me/store` and the public storefront reads already return `openingHours` in this exact shape today (confirmed: the storefront's own opening-hours display already consumes it), so the write just needs to persist into whatever column already backs that read.
+
 ## ✅ Fixed: `GET /agents/me/dues` was computing the agent's commission off the monthly rate instead of the subscription's real billing cycle
 
 Confirmed and fixed on the backend — the $10.5-instead-of-$105 case was exactly what it looked like (the monthly agent price used for a yearly subscription). `GET /agents/me/dues` now returns, per subscription: `billingCycle` ("monthly" | "yearly"), `startDate`/`endDate`, and `businessAmountPaid` (what the business itself paid), alongside the existing `amountOwed` — and `amountOwed` is sent exactly, with no rounding, so a genuine fractional amount (e.g. `10.5`) is real and should be shown as-is.

@@ -25,6 +25,7 @@ import type {
   CatalogOptionGroup,
   CategoriesAnalytics,
   CurrencyCode,
+  DayHours,
   DiningTable,
   FulfillmentMode,
   ItemStatistics,
@@ -497,6 +498,9 @@ export interface BusinessProfileInput {
   deliveryFee?: number | null;
   /** which of dine-in/pickup/delivery this business offers; see update.md §1 */
   fulfillmentModes?: FulfillmentMode[];
+  /** index 0 = Sunday; `null` for a day the business is closed. Always sent
+   * as the full 7-entry array — see update.md for the requested endpoint. */
+  openingHours?: (DayHours | null)[];
 }
 
 export async function updateBusinessProfile(

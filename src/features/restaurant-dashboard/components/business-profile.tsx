@@ -107,6 +107,7 @@ import { recoverBusinessFields } from "@/lib/business-text";
 import { qrFileName } from "@/lib/qr-filename";
 import type {
   BusinessAgent,
+  DayHours,
   FulfillmentMode,
   Governorate,
   Region,
@@ -1386,6 +1387,206 @@ function FulfillmentSection({
   );
 }
 
+const EMPTY_WEEK: (DayHours | null)[] = Array.from({ length: 7 }, () => null);
+
+function timeToMinutes(value: string): number {
+  const [h, m] = value.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/**
+ * Opening hours — 7 days, each independently open/closed with its own
+ * start/end time. A quick-setup row lets the owner set one range and stamp
+ * it onto every day at once (the common case: open the same hours daily),
+ * then fine-tune or disable any single day afterward.
+ */
+function OpeningHoursSection({
+  restaurant,
+  t,
+  save,
+}: {
+  restaurant: Restaurant;
+  t: I18n["t"];
+  save: SaveProfile;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [hours, setHours] = useState<(DayHours | null)[]>(
+    restaurant.openingHours && restaurant.openingHours.length === 7
+      ? restaurant.openingHours
+      : EMPTY_WEEK,
+  );
+  const [quickOpens, setQuickOpens] = useState("09:00");
+  const [quickCloses, setQuickCloses] = useState("22:00");
+  const [applyAllConfirm, setApplyAllConfirm] = useState(false);
+  const [rangeError, setRangeError] = useState<number | null>(null);
+  const snapshot = useRef(hours);
+
+  const setDay = (index: number, next: DayHours | null) => {
+    setHours((prev) => prev.map((d, i) => (i === index ? next : d)));
+    setRangeError((prev) => (prev === index ? null : prev));
+  };
+
+  const toggleDay = (index: number, open: boolean) => {
+    setDay(index, open ? { opens: quickOpens, closes: quickCloses } : null);
+  };
+
+  const applyToAll = () => {
+    setHours(
+      Array.from({ length: 7 }, () => ({ opens: quickOpens, closes: quickCloses })),
+    );
+    setRangeError(null);
+    setApplyAllConfirm(false);
+  };
+
+  return (
+    <ProfileSection
+      title={t.dashboard.openingHoursTitle}
+      icon={CalendarClock}
+      editing={editing}
+      t={t}
+      onEdit={() => {
+        snapshot.current = hours;
+        setEditing(true);
+      }}
+      onSave={async () => {
+        const invalidIndex = hours.findIndex(
+          (d) => d && timeToMinutes(d.closes) <= timeToMinutes(d.opens),
+        );
+        if (invalidIndex !== -1) {
+          setRangeError(invalidIndex);
+          throw new Error(t.dashboard.openingHoursInvalidRange);
+        }
+        await save({ openingHours: hours });
+        setEditing(false);
+      }}
+      onCancel={() => {
+        setHours(snapshot.current);
+        setRangeError(null);
+        setEditing(false);
+      }}
+    >
+      <p className="text-sm text-muted-foreground">{t.dashboard.openingHoursBody}</p>
+
+      {editing && (
+        <div className="mt-4 space-y-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4">
+          <div>
+            <p className="text-sm font-bold">{t.dashboard.openingHoursQuickSetupTitle}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t.dashboard.openingHoursQuickSetupBody}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="oh-quick-opens" className="text-xs">
+                {t.dashboard.openingHoursOpensLabel}
+              </Label>
+              <Input
+                id="oh-quick-opens"
+                type="time"
+                dir="ltr"
+                className="h-10 w-32"
+                value={quickOpens}
+                onChange={(e) => setQuickOpens(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="oh-quick-closes" className="text-xs">
+                {t.dashboard.openingHoursClosesLabel}
+              </Label>
+              <Input
+                id="oh-quick-closes"
+                type="time"
+                dir="ltr"
+                className="h-10 w-32"
+                value={quickCloses}
+                onChange={(e) => setQuickCloses(e.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10"
+              onClick={() => setApplyAllConfirm(true)}
+            >
+              {t.dashboard.openingHoursApplyAll}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ul className="mt-4 divide-y divide-border/60">
+        {t.restaurant.dayNames.map((dayName, index) => {
+          const day = hours[index];
+          return (
+            <li key={dayName} className="flex flex-wrap items-center gap-3 py-3">
+              <div className="flex min-w-32 flex-1 items-center gap-2.5">
+                <Switch
+                  checked={!!day}
+                  disabled={!editing}
+                  onCheckedChange={(checked) => toggleDay(index, checked)}
+                />
+                <span className="text-sm font-semibold">{dayName}</span>
+              </div>
+              {day ? (
+                <div className="flex flex-wrap items-center gap-2" dir="ltr">
+                  <Input
+                    type="time"
+                    aria-label={t.dashboard.openingHoursOpensLabel}
+                    className="h-9 w-28"
+                    disabled={!editing}
+                    value={day.opens}
+                    onChange={(e) => setDay(index, { ...day, opens: e.target.value })}
+                  />
+                  <span className="text-muted-foreground">—</span>
+                  <Input
+                    type="time"
+                    aria-label={t.dashboard.openingHoursClosesLabel}
+                    className="h-9 w-28"
+                    disabled={!editing}
+                    value={day.closes}
+                    onChange={(e) => setDay(index, { ...day, closes: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {t.dashboard.openingHoursDayClosed}
+                </span>
+              )}
+              {rangeError === index && (
+                <FieldError message={t.dashboard.openingHoursInvalidRange} />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <AlertDialog open={applyAllConfirm} onOpenChange={setApplyAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t.dashboard.openingHoursApplyAllConfirmTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription dir="ltr">
+              {fmt(t.dashboard.openingHoursApplyAllConfirmBody, {
+                opens: quickOpens,
+                closes: quickCloses,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setApplyAllConfirm(false)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={applyToAll}>
+              {t.dashboard.openingHoursApplyAll}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </ProfileSection>
+  );
+}
+
 function AppearanceSection({
   restaurant,
   t,
@@ -2226,14 +2427,17 @@ export function BusinessProfile() {
             {/* fulfillment cards lead (the start side), the payment card
                 beside them — unchanged internally, just repositioned */}
             <SectionErrorBoundary key={activeTab}>
-              <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
-                <FulfillmentSection
-                  restaurant={restaurant}
-                  isStore={isStore}
-                  t={t}
-                  save={save}
-                />
-                <PaymentQrSection restaurant={restaurant} t={t} save={save} />
+              <div className="space-y-5">
+                <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
+                  <FulfillmentSection
+                    restaurant={restaurant}
+                    isStore={isStore}
+                    t={t}
+                    save={save}
+                  />
+                  <PaymentQrSection restaurant={restaurant} t={t} save={save} />
+                </div>
+                <OpeningHoursSection restaurant={restaurant} t={t} save={save} />
               </div>
             </SectionErrorBoundary>
           </TabsContent>
