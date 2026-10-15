@@ -1,12 +1,13 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
-## 🆕 New ask: `GET /agents/me/dues` is computing this agent's USD due off the monthly commission instead of the yearly one — $10.5 instead of $105
+## ✅ Fixed: `GET /agents/me/dues` was computing the agent's commission off the monthly rate instead of the subscription's real billing cycle
 
-**Why:** the agent overview's "amount owed" card was fixed this session to actually read every currency in `totalOwedByCurrency` instead of only `SYP` (it was silently showing 0 for any agent whose dues were in USD — a real frontend bug, now fixed). With that fix live, an agent whose referred restaurant is on an **annual** subscription is seeing **$10.5** owed instead of the **$105** they actually owe — a value the frontend displays completely unmodified from what `/agents/me/dues` returns (confirmed by reading the code: the amount flows straight from `totalOwedByCurrency[currency]` into the display formatter, which only adds thousands separators — no rounding, division, or any arithmetic happens on it anywhere in the frontend).
+Confirmed and fixed on the backend — the $10.5-instead-of-$105 case was exactly what it looked like (the monthly agent price used for a yearly subscription). `GET /agents/me/dues` now returns, per subscription: `billingCycle` ("monthly" | "yearly"), `startDate`/`endDate`, and `businessAmountPaid` (what the business itself paid), alongside the existing `amountOwed` — and `amountOwed` is sent exactly, with no rounding, so a genuine fractional amount (e.g. `10.5`) is real and should be shown as-is.
 
-This now has a confirmed root cause rather than just a rounding-slip guess: $10.5 is `15 * 0.7` — the plan's **monthly** price run through the agent discount (§6's `agentPriceMonthly` formula) — while the business's actual subscription is **yearly**, which per §6 should price out to `agentPriceYearly` (10 months' worth, discounted) — and `150 * 0.7 = 105`, exactly the amount the agent expects. So the dues calculation behind `/agents/me/dues` looks like it's always pricing a referral off the plan's monthly rate, never checking whether the underlying subscription period is actually monthly or yearly. Could you check whether this endpoint reads the subscription's real billing period (the same `durationType`/`endDate` set at approval time, §3) before picking which agent price to charge, and fix it to use `agentPriceYearly` for a yearly subscription the same way it (presumably, correctly) uses `agentPriceMonthly` for a monthly one?
-
-As a safety net (not a fix for the underlying number), the frontend's shared price formatter now rounds whatever it's given for display, since no price in this product is ever meant to carry cents — but the real amount still needs to reflect the subscription's actual billing period at the source.
+**Frontend side (done this session, matching the above):**
+- `formatPrice` no longer rounds — every price on the platform is shown exactly as the backend sends it, decimals included.
+- `AgentDuesSubscription` extended with `billingCycle`, `startDate`, `endDate`, `businessAmountPaid`.
+- The agent overview page gained a "dues breakdown" section listing each referred subscription's billing period, what the business paid, and what the agent owes — previously only the summed total was shown anywhere.
 
 ## 🆕 New ask: accept an optional `slug` on `POST /registration-requests/public`
 

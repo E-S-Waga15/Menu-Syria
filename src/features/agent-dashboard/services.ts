@@ -97,8 +97,13 @@ export async function getAgentDues(
       subscriptions: [
         {
           subscriptionId: "sub-1",
+          businessId: restaurants[0]?.id,
           businessName: restaurants[0]?.name.ar ?? "",
           planName: restaurants[0]?.planName ?? "",
+          billingCycle: "yearly",
+          startDate: "2026-10-14",
+          endDate: "2027-10-14",
+          businessAmountPaid: 150,
           amountOwed: 42000,
           currency: "SYP",
           paymentStatus: "pending",

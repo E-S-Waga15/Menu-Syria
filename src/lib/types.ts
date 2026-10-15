@@ -434,8 +434,18 @@ export interface Transaction {
  * the agent owes the platform for it. */
 export interface AgentDuesSubscription {
   subscriptionId: string;
+  businessId?: string;
   businessName: string;
   planName: string;
+  /** which cycle this subscription actually billed on — the agent's cut is
+   * the yearly agent price for a yearly subscription, not the monthly one
+   * scaled up, so this is what the amount owed is actually computed from */
+  billingCycle?: "monthly" | "yearly";
+  startDate?: string;
+  endDate?: string;
+  /** what the business itself paid for this period, in `currency` */
+  businessAmountPaid?: number;
+  /** exact, never rounded — e.g. `10.5` is a real amount, not a display bug */
   amountOwed: number;
   currency: CurrencyCode;
   paymentStatus: "pending" | "collected";

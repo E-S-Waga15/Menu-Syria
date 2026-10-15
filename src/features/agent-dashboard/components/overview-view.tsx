@@ -360,6 +360,62 @@ export function AgentOverviewView() {
           )}
         </section>
       </div>
+
+      {dues && dues.subscriptions.length > 0 && (
+        <section className="rounded-2xl border border-border/60 bg-card p-5">
+          <h2 className="font-heading text-base font-semibold">
+            {t.agent.duesBreakdownTitle}
+          </h2>
+          <ul className="mt-3 divide-y divide-border/60">
+            {dues.subscriptions.map((sub) => (
+              <li key={sub.subscriptionId} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-bold">{sub.businessName}</p>
+                  <Badge
+                    className={
+                      sub.paymentStatus === "collected"
+                        ? "bg-success/10 text-success"
+                        : "bg-zest-soft text-zest-soft-foreground"
+                    }
+                  >
+                    {sub.paymentStatus === "collected"
+                      ? t.admin.requestStatusApproved
+                      : t.admin.requestStatusPending}
+                  </Badge>
+                </div>
+                {sub.billingCycle && sub.startDate && sub.endDate && (
+                  <p className="mt-1 text-xs text-muted-foreground" dir="ltr">
+                    {fmt(t.agent.billingCyclePeriod, {
+                      cycle:
+                        sub.billingCycle === "yearly"
+                          ? t.agent.billingCycleYearly
+                          : t.agent.billingCycleMonthly,
+                      start: formatJoinDate(sub.startDate),
+                      end: formatJoinDate(sub.endDate),
+                    })}
+                  </p>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+                  {sub.businessAmountPaid != null && (
+                    <span>
+                      {t.agent.businessPaidLabel}:{" "}
+                      <span className="font-bold" dir="ltr">
+                        {formatPrice(sub.businessAmountPaid, sub.currency, lang)}
+                      </span>
+                    </span>
+                  )}
+                  <span>
+                    {t.agent.youOweLabel}:{" "}
+                    <span className="font-bold text-primary" dir="ltr">
+                      {formatPrice(sub.amountOwed, sub.currency, lang)}
+                    </span>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

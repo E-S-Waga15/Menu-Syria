@@ -923,7 +923,13 @@
     "referralCodeLabel": "رمز الإحالة الخاص بك",
     "latestSubscriptionsTitle": "آخر الاشتراكات",
     "upcomingRenewalsTitle": "اشتراكات قاربت على الانتهاء",
-    "noUpcomingRenewals": "لا توجد اشتراكات قاربت على الانتهاء حالياً"
+    "noUpcomingRenewals": "لا توجد اشتراكات قاربت على الانتهاء حالياً",
+    "duesBreakdownTitle": "تفاصيل المستحقات",
+    "billingCycleMonthly": "اشتراك شهري",
+    "billingCycleYearly": "اشتراك سنوي",
+    "billingCyclePeriod": "{cycle} من {start} إلى {end}",
+    "businessPaidLabel": "المطعم/المتجر دفع",
+    "youOweLabel": "عليك دفعه"
   },
   "admin": {
     "dashboard": "لوحة التحكم المركزية",

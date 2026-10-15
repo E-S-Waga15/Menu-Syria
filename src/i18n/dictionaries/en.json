@@ -923,7 +923,13 @@
     "referralCodeLabel": "Your referral code",
     "latestSubscriptionsTitle": "Latest subscriptions",
     "upcomingRenewalsTitle": "Subscriptions coming up for renewal",
-    "noUpcomingRenewals": "No subscriptions due for renewal right now"
+    "noUpcomingRenewals": "No subscriptions due for renewal right now",
+    "duesBreakdownTitle": "Dues breakdown",
+    "billingCycleMonthly": "Monthly subscription",
+    "billingCycleYearly": "Yearly subscription",
+    "billingCyclePeriod": "{cycle} from {start} to {end}",
+    "businessPaidLabel": "Business paid",
+    "youOweLabel": "You owe"
   },
   "admin": {
     "dashboard": "Central dashboard",
