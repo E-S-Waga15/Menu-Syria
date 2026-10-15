@@ -40,13 +40,10 @@ export function formatPrice(
         : "SYP";
   // shown exactly as the backend sends it — no rounding anywhere in this
   // platform; a decimal (e.g. an exact commission split) stays a decimal.
-  // Wrapped in U+2066/U+2069 (an LTR isolate): without it, a caller that
-  // renders this inside RTL text without its own `dir="ltr"` gets the
-  // Arabic currency word reordered in FRONT of the number by the browser's
-  // bidi algorithm ("دولار 105" instead of "105 دولار") — the isolate
-  // guarantees "number then currency" everywhere this string lands,
-  // regardless of whether the call site remembered `dir="ltr"`.
-  return `⁦${(price ?? 0).toLocaleString("en-US")} ${label}⁩`;
+  // Every call site is responsible for wrapping this in `dir="ltr"` (an
+  // isolate baked in here instead broke the order everywhere it was
+  // already rendered correctly with an explicit `dir="ltr"` wrapper).
+  return `${(price ?? 0).toLocaleString("en-US")} ${label}`;
 }
 
 /** Builds the pre-formatted WhatsApp order message and returns a wa.me URL. */
