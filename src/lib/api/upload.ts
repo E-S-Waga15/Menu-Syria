@@ -6,7 +6,9 @@
  */
 import { API_BASE_URL, ApiError, extractErrorMessage, getStoredAccessToken } from "./client";
 
-export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+// matches the backend/Cloudinary cap — keep in sync if that ever changes
+export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const IMAGE_TOO_LARGE_MESSAGE = "حجم الصورة يجب ألا يتجاوز 10 ميجابايت";
 
 export const UPLOAD_FOLDERS = [
   "users",
@@ -85,7 +87,7 @@ export async function uploadImage(
   folder: UploadFolder = "general",
 ): Promise<UploadFileResponse> {
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    throw new ApiError(413, "Image size must be 5 MB or less");
+    throw new ApiError(413, IMAGE_TOO_LARGE_MESSAGE);
   }
   const formData = new FormData();
   formData.append("file", file);
@@ -118,7 +120,7 @@ export function uploadImageWithProgress(
   onProgress?: (percent: number) => void,
 ): Promise<UploadFileResponse> {
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    return Promise.reject(new ApiError(413, "Image size must be 5 MB or less"));
+    return Promise.reject(new ApiError(413, IMAGE_TOO_LARGE_MESSAGE));
   }
   return new Promise((resolve, reject) => {
     const formData = new FormData();
@@ -157,7 +159,7 @@ export async function uploadImages(
   folder: UploadFolder = "general",
 ): Promise<{ urls: string[]; files: UploadFileResponse[] }> {
   if (files.some((file) => file.size > MAX_IMAGE_SIZE_BYTES)) {
-    throw new ApiError(413, "Image size must be 5 MB or less");
+    throw new ApiError(413, IMAGE_TOO_LARGE_MESSAGE);
   }
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
