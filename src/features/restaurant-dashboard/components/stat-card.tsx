@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType, SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,9 @@ export function StatCard({
   numeric = true,
 }: {
   label: string;
-  value: string;
+  /** usually a plain string; pass JSX when a price/number needs its own
+   * explicit layout control instead of relying on bidi text reordering */
+  value: ReactNode;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   accent?: Tone;
   /** small colored chips shown under the label, e.g. a trend ("+12%") or

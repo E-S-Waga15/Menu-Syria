@@ -32,8 +32,8 @@ import {
   getMyReferredStores,
 } from "@/features/agent-dashboard/services";
 import { buildSubscriptionNotifications } from "@/features/notifications/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
+import type { Locale } from "@/i18n/config";
 import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
 
@@ -47,6 +47,37 @@ const tooltipStyle = {
   fontSize: 12,
   fontWeight: 600,
 };
+
+/**
+ * This page's dues cards kept showing "دولار 105" instead of "105 دولار"
+ * even with dir="ltr" on the text and a Unicode LTR isolate wrapped around
+ * it — neither stopped the browser reordering it here specifically. Laid
+ * out as two separate flex items in an explicitly LTR flex row instead:
+ * DOM/box order, not text bidi, decides what's on which side, so there's
+ * no run of Unicode bidi logic left to go wrong. Declared at module scope
+ * (not inside the component) so it isn't recreated every render.
+ */
+function MoneyValue({
+  amount,
+  currency,
+  lang,
+  currencyLabel,
+}: {
+  amount: number;
+  currency: string;
+  lang: Locale;
+  /** the SYP label (t.common.currency) — USD always renders as "دولار"/"$" */
+  currencyLabel: string;
+}) {
+  return (
+    <span className="inline-flex items-baseline gap-1" style={{ direction: "ltr" }}>
+      <span>{amount.toLocaleString("en-US")}</span>
+      <span>
+        {currency === "USD" ? (lang === "ar" ? "دولار" : "$") : currencyLabel}
+      </span>
+    </span>
+  );
+}
 
 export function AgentOverviewView() {
   const { t, lang } = useI18n();
@@ -82,18 +113,6 @@ export function AgentOverviewView() {
   const totalBusinesses = restaurantCount + storeCount;
   const discountPercent = plans?.[0]?.agentDiscountPercent ?? 30;
 
-  // this page's dues cards kept showing "دولار 105" instead of "105 دولار"
-  // even with dir="ltr" set on the element — something on this page
-  // overrides the plain `dir` attribute's effect specifically here, so
-  // each formatted amount is wrapped in a Unicode LTR isolate
-  // (U+2066/U+2069) as a scoped, local fix rather than touching the
-  // shared formatPrice (which already broke every other correctly-
-  // rendering price on the platform once, the one time this was tried
-  // globally)
-  const ltrIsolate = (s: string) => `⁦${s}⁩`;
-  const moneyLabel = (amount: number, currency: string) =>
-    ltrIsolate(formatPrice(amount, currency, lang));
-
   // never summed across currencies (a SYP total and a USD total are not the
   // same number) — reading only `.SYP` silently showed 0 for an agent whose
   // dues happened to be in USD. Each non-zero currency gets its own figure.
@@ -101,11 +120,28 @@ export function AgentOverviewView() {
     ([, amount]) => amount > 0,
   );
   const owedLabel =
-    owedEntries.length > 0
-      ? owedEntries
-          .map(([currency, amount]) => moneyLabel(amount, currency))
-          .join(" + ")
-      : moneyLabel(0, t.common.currency);
+    owedEntries.length > 0 ? (
+      <span className="inline-flex flex-wrap items-baseline gap-1.5">
+        {owedEntries.map(([currency, amount], i) => (
+          <span key={currency} className="inline-flex items-baseline gap-1.5">
+            {i > 0 && <span>+</span>}
+            <MoneyValue
+              amount={amount}
+              currency={currency}
+              lang={lang}
+              currencyLabel={t.common.currency}
+            />
+          </span>
+        ))}
+      </span>
+    ) : (
+      <MoneyValue
+        amount={0}
+        currency={t.common.currency}
+        lang={lang}
+        currencyLabel={t.common.currency}
+      />
+    );
 
   const quickAccess: QuickAccessItem[] = [
     {
@@ -410,17 +446,27 @@ export function AgentOverviewView() {
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
                   {sub.businessAmountPaid != null && (
-                    <span>
+                    <span className="inline-flex items-baseline gap-1">
                       {t.agent.businessPaidLabel}:{" "}
-                      <span className="font-bold" dir="ltr">
-                        {moneyLabel(sub.businessAmountPaid, sub.currency)}
+                      <span className="font-bold">
+                        <MoneyValue
+                          amount={sub.businessAmountPaid}
+                          currency={sub.currency}
+                          lang={lang}
+                          currencyLabel={t.common.currency}
+                        />
                       </span>
                     </span>
                   )}
-                  <span>
+                  <span className="inline-flex items-baseline gap-1">
                     {t.agent.youOweLabel}:{" "}
-                    <span className="font-bold text-primary" dir="ltr">
-                      {moneyLabel(sub.amountOwed, sub.currency)}
+                    <span className="font-bold text-primary">
+                      <MoneyValue
+                        amount={sub.amountOwed}
+                        currency={sub.currency}
+                        lang={lang}
+                        currencyLabel={t.common.currency}
+                      />
                     </span>
                   </span>
                 </div>
