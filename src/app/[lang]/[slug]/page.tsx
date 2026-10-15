@@ -42,14 +42,14 @@ export async function generateMetadata({
     getDictionary(lang),
   ]);
   if (!resolved) return {};
-  const { business } = resolved;
+  const { kind, business } = resolved;
+  // trusted from `kind` (which lookup resolved), not duck-typed off the
+  // business object's own fields — see the note in BusinessDetailsGrid
   const typeLabel =
     business.subType?.name ??
-    ("cuisine" in business
-      ? (business as { cuisine: typeof business.name }).cuisine[lang]
-      : "category" in business
-        ? (business as { category: typeof business.name }).category[lang]
-        : null);
+    (kind === "restaurant"
+      ? (business as unknown as { cuisine: typeof business.name }).cuisine[lang]
+      : (business as unknown as { category: typeof business.name }).category[lang]);
   const areaLabel = [
     governorates.find((g) => g.id === business.governorateId)?.name[lang],
     regions.find((r) => r.id === business.regionId)?.name[lang],
@@ -141,6 +141,7 @@ export default async function BusinessDetailsPage({
       </div>
       <RestaurantDetailsBody
         restaurant={business}
+        kind={kind}
         reviews={reviews}
         governorateName={governorateName}
         regionName={regionName}

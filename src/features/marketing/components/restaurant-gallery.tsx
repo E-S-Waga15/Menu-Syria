@@ -90,6 +90,14 @@ export function RestaurantGallery({ images }: { images: string[] }) {
                 alt=""
                 fill
                 priority={index === 0}
+                // every slide but the first otherwise lazy-loads — but a
+                // carousel slide sits off-screen via a CSS transform inside
+                // an overflow-hidden track, not outside the viewport, so
+                // next/image's intersection-observer-based lazy load never
+                // fires for it: the slot becomes reachable but stays blank
+                // forever. Eager-loading every slide (the carousel itself
+                // already gates what's actually shown) fixes that.
+                loading={index === 0 ? undefined : "eager"}
                 sizes="100vw"
                 className="object-cover"
                 draggable={false}

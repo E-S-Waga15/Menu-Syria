@@ -54,18 +54,18 @@ export function FavoritesList({
   if (!hydrated || !isCustomer) return null;
 
   const separator = lang === "ar" ? "، " : ", ";
-  const locationLabel = (item: Restaurant | Store) => {
+  // `kind` comes from which array the item was already known to be in
+  // (restaurants/stores are separately-typed props, no duck-typing needed)
+  // — a restaurant's own API response can carry an unused `category` key
+  // too, which `"category" in item` would otherwise misread as a store
+  const locationLabel = (item: Restaurant | Store, kind: "restaurant" | "store") => {
     const gov = governorates.find((g) => g.id === item.governorateId)?.name[
       lang
     ];
     const region = regions.find((r) => r.id === item.regionId)?.name[lang];
     const base = [gov, region].filter(Boolean).join(separator);
     const category: LocalizedText | undefined =
-      "category" in item
-        ? item.category
-        : "cuisine" in item
-          ? item.cuisine
-          : undefined;
+      kind === "store" ? (item as Store).category : (item as Restaurant).cuisine;
     return category ? `${base} · ${category[lang]}` : base;
   };
 
@@ -73,7 +73,10 @@ export function FavoritesList({
     favoriteIds.includes(r.id),
   );
   const favoriteStores = stores.filter((s) => favoriteIds.includes(s.id));
-  const items = [...favoriteRestaurants, ...favoriteStores];
+  const items = [
+    ...favoriteRestaurants.map((r) => ({ kind: "restaurant" as const, business: r })),
+    ...favoriteStores.map((s) => ({ kind: "store" as const, business: s })),
+  ];
 
   if (items.length === 0) {
     return (
@@ -91,11 +94,11 @@ export function FavoritesList({
 
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((item) => (
+      {items.map(({ kind, business }) => (
         <RestaurantCard
-          key={item.id}
-          restaurant={item}
-          locationLabel={locationLabel(item)}
+          key={business.id}
+          restaurant={business}
+          locationLabel={locationLabel(business, kind)}
         />
       ))}
     </div>

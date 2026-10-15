@@ -100,6 +100,7 @@ function Panel({
  */
 export function BusinessDetailsGrid({
   restaurant,
+  kind,
   description,
   mainAddress,
   mainLocation,
@@ -116,6 +117,9 @@ export function BusinessDetailsGrid({
   t,
 }: {
   restaurant: Business;
+  /** which kind this business actually resolved as — see the `isStore`
+   * note below for why this is trusted over duck-typing */
+  kind: "restaurant" | "store";
   /** already recovered from the old notes-dump, plain text or "" */
   description: string;
   mainAddress: string;
@@ -179,7 +183,11 @@ export function BusinessDetailsGrid({
           .join(separator)
       : null;
 
-  const isStore = "category" in restaurant;
+  // trusted from the resolved `kind`, not a duck-typed `"category" in
+  // restaurant` check — a restaurant's own API response can carry a
+  // `category` key too (even if unused), which misread it as a store
+  // and showed "about the store" on a restaurant's own details page
+  const isStore = kind === "store";
   const aboutTitle = isStore
     ? t.restaurant.aboutStoreTitle
     : t.restaurant.aboutRestaurantTitle;

@@ -13,6 +13,7 @@ import type {
 
 export function RestaurantDetailsBody({
   restaurant,
+  kind,
   reviews,
   governorateName,
   regionName,
@@ -25,6 +26,10 @@ export function RestaurantDetailsBody({
   menuHref,
 }: {
   restaurant: Business;
+  /** which kind this business actually resolved as — trusted over any
+   * duck-typing on the business object's own fields (see the `isStore`
+   * note in `BusinessDetailsGrid`) */
+  kind: "restaurant" | "store";
   reviews: Review[];
   governorateName: string;
   regionName: string;
@@ -53,19 +58,21 @@ export function RestaurantDetailsBody({
   // the one field that tells a visitor *what* this place sells — the real
   // sub-type the owner picked (e.g. "مطعم إيطالي") when the business has
   // one; a restaurant without one falls back to `cuisine` (free text, often
-  // a generic "منوع" default), a store to `category`
+  // a generic "منوع" default), a store to `category`. Branches on `kind`,
+  // not on which of `cuisine`/`category` happens to be present on the
+  // object — a stray `category` key on a restaurant's own API response
+  // (even unused) would otherwise misread it as a store.
   const typeLabel =
     restaurant.subType?.name ??
-    ("cuisine" in restaurant
-      ? (restaurant as { cuisine: typeof restaurant.name }).cuisine[lang]
-      : "category" in restaurant
-        ? (restaurant as { category: typeof restaurant.name }).category[lang]
-        : null);
+    (kind === "restaurant"
+      ? (restaurant as unknown as { cuisine: typeof restaurant.name }).cuisine[lang]
+      : (restaurant as unknown as { category: typeof restaurant.name }).category[lang]);
 
   return (
     <div className="container-page">
       <BusinessDetailsGrid
         restaurant={restaurant}
+        kind={kind}
         description={description}
         mainAddress={address}
         mainLocation={location}
