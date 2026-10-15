@@ -89,7 +89,13 @@ export function RestaurantGallery({ images }: { images: string[] }) {
                 src={src}
                 alt=""
                 fill
-                priority={index === 0}
+                // `priority` is deprecated as of Next 16 in favor of
+                // `preload` — this version warns (and apparently can fail
+                // to render) if `priority`/`preload` and `loading` are
+                // both passed across sibling images the way this carousel
+                // needs, so index 0 preloads and every other slide eager-
+                // loads, never both on the same element.
+                {...(index === 0 ? { preload: true } : { loading: "eager" })}
                 // every slide but the first otherwise lazy-loads — but a
                 // carousel slide sits off-screen via a CSS transform inside
                 // an overflow-hidden track, not outside the viewport, so
@@ -97,7 +103,6 @@ export function RestaurantGallery({ images }: { images: string[] }) {
                 // fires for it: the slot becomes reachable but stays blank
                 // forever. Eager-loading every slide (the carousel itself
                 // already gates what's actually shown) fixes that.
-                loading={index === 0 ? undefined : "eager"}
                 sizes="100vw"
                 className="object-cover"
                 draggable={false}

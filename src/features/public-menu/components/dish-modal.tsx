@@ -186,7 +186,14 @@ export function DishModal({
                       src={src}
                       alt={item.name[lang]}
                       fill
-                      priority={index === 0}
+                      // a carousel slide past the first sits off-screen via
+                      // a CSS transform, not outside the viewport, so next/
+                      // image's lazy-load intersection observer never fires
+                      // for it — eager-load every slide but the preloaded
+                      // first one instead of leaving it blank. `priority`/
+                      // `preload` and `loading` can't both be set on the
+                      // same image (Next 16) — never both here.
+                      {...(index === 0 ? { preload: true } : { loading: "eager" })}
                       sizes="(max-width: 640px) 100vw, 28rem"
                       className="object-cover"
                       draggable={false}
