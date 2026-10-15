@@ -7,7 +7,6 @@ import { ChevronDown, Menu } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { Logo } from "@/components/shared/logo";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -90,7 +89,6 @@ export function SiteHeader() {
 
           <div className="flex items-center gap-1.5">
             <LanguageSwitcher className="hidden sm:inline-flex" />
-            <ThemeToggle />
             {hydrated && session ? (
               <>
                 <NotificationBell href={`/${lang}/notifications`} ids={[]} />

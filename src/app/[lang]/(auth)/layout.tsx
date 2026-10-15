@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { AuthBackButton } from "@/components/shared/auth-back-button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { Logo } from "@/components/shared/logo";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 
@@ -21,7 +20,6 @@ export default async function AuthLayout({
         <Logo lang={lang} brand={t.common.brand} />
         <div className="flex items-center gap-1">
           <LanguageSwitcher />
-          <ThemeToggle />
         </div>
       </header>
 

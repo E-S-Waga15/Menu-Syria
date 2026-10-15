@@ -9,7 +9,6 @@ import { ExternalLink, LogOut } from "lucide-react";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { Logo } from "@/components/shared/logo";
 import { LogoMark } from "@/components/shared/logo-mark";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -151,12 +150,7 @@ export function DashboardShell({
           <h1 className="flex-1 truncate font-heading text-base font-bold md:text-lg">
             {activeLabel}
           </h1>
-          {accountMenu ?? (
-            <>
-              <LanguageSwitcher />
-              <ThemeToggle />
-            </>
-          )}
+          {accountMenu ?? <LanguageSwitcher />}
         </header>
         <div className="flex-1 p-4 md:p-6 lg:p-8">{children}</div>
       </SidebarInset>

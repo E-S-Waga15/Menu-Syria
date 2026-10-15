@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { useI18n } from "@/i18n/client";
 
 /**
@@ -34,7 +33,6 @@ export function BackToMenuBar({
           {label ?? t.menu.backToMenu}
         </Link>
         <div className="ms-auto flex items-center gap-1">
-          <ThemeToggle />
           <LanguageSwitcher />
         </div>
       </div>

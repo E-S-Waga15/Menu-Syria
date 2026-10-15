@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Globe,
   LogOut,
-  Monitor,
   Moon,
   Sun,
   UserRound,
@@ -118,12 +117,12 @@ function AccountPanel({
   lang: Locale;
   languageItems: Record<Locale, string>;
   setLocale: (locale: Locale) => void;
-  currentThemeMode: "light" | "dark" | "system";
+  currentThemeMode: "light" | "dark";
   themeIcons: Record<
-    "light" | "dark" | "system",
+    "light" | "dark",
     React.ComponentType<{ className?: string }>
   >;
-  themeItems: Record<"light" | "dark" | "system", string>;
+  themeItems: Record<"light" | "dark", string>;
   setTheme: (mode: string) => void;
   handleLogout: () => void;
   t: ReturnType<typeof useI18n>["t"];
@@ -389,13 +388,14 @@ export function AccountMenu({
     ar: "العربية",
     en: "English",
   };
-  const themeIcons = { light: Sun, dark: Moon, system: Monitor };
+  const themeIcons = { light: Sun, dark: Moon };
   const themeItems = {
     light: t.common.themeLight,
     dark: t.common.themeDark,
-    system: t.common.themeSystem,
   };
-  const currentThemeMode = (theme ?? "system") as keyof typeof themeIcons;
+  const currentThemeMode = (
+    theme === "dark" ? "dark" : "light"
+  ) as keyof typeof themeIcons;
 
   return (
     <div className="relative">
