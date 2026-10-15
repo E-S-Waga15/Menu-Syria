@@ -257,16 +257,12 @@ function AccountInfoSection({
             ...(subTypeId ? { subTypeId } : {}),
             address,
             districtId: regionId || undefined,
+            // the account phone and WhatsApp number are the same number —
+            // one field, kept in sync on both numberType entries so there's
+            // never a second number quietly left stale in the other one
             phones: [
               { numberType: "mobile", number: phone },
-              ...(restaurant.whatsapp
-                ? [
-                    {
-                      numberType: "whatsapp" as const,
-                      number: restaurant.whatsapp,
-                    },
-                  ]
-                : []),
+              { numberType: "whatsapp", number: phone },
             ],
             latitude: lat,
             longitude: lng,
@@ -383,6 +379,9 @@ function AccountInfoSection({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">
+            {t.auth.phoneIsWhatsappHint}
+          </p>
         </div>
         <div className="space-y-2">
           <Label>{t.auth.governorateLabel}</Label>
@@ -490,6 +489,53 @@ function AccountInfoSection({
   );
 }
 
+/**
+ * A long profile URL used to overflow its input and run under the leading
+ * brand icon — the icon sits at the box's logical "start" (the page's RTL
+ * side), but the input itself is forced `dir="ltr"` for the URL to read
+ * correctly, so its own `ps-*` padding resolved against its *own* ltr
+ * direction (the left) instead of matching where the icon actually sits.
+ * Giving the wrapper the same forced `dir="ltr"` makes the icon and the
+ * input agree on which side "start" means, and `truncate` (only while not
+ * editing) keeps a long link from reaching past the input's own box instead
+ * of running under the icon.
+ */
+function SocialLinkField({
+  id,
+  icon: Icon,
+  iconClassName,
+  label,
+  editing,
+  value,
+  onChange,
+}: {
+  id: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconClassName: string;
+  label: string;
+  editing: boolean;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="relative" dir="ltr">
+      <Icon className={cn("pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2", iconClassName)} />
+      <Label htmlFor={id} className="sr-only">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        dir="ltr"
+        placeholder={label}
+        className={cn("h-10 ps-9", !editing && "truncate")}
+        disabled={!editing}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 function SocialMediaSection({
   restaurant,
   t,
@@ -500,10 +546,9 @@ function SocialMediaSection({
   save: SaveProfile;
 }) {
   const [editing, setEditing] = useState(false);
-  const [whatsapp, setWhatsapp] = useState(restaurant.whatsapp);
   const [instagram, setInstagram] = useState(restaurant.instagram ?? "");
   const [facebook, setFacebook] = useState(restaurant.facebook ?? "");
-  const snapshot = useRef({ whatsapp, instagram, facebook });
+  const snapshot = useRef({ instagram, facebook });
 
   return (
     <ProfileSection
@@ -512,17 +557,17 @@ function SocialMediaSection({
       editing={editing}
       t={t}
       onEdit={() => {
-        snapshot.current = { whatsapp, instagram, facebook };
+        snapshot.current = { instagram, facebook };
         setEditing(true);
       }}
       onSave={async () => {
         await save({
-          // the contact section owns the primary phone, so it rides along
+          // the account phone *is* the WhatsApp number now (edited in the
+          // account info section) — kept in sync on both numberType
+          // entries here too, rather than left stale
           phones: [
             { numberType: "mobile", number: restaurant.phone },
-            ...(whatsapp
-              ? [{ numberType: "whatsapp" as const, number: whatsapp }]
-              : []),
+            { numberType: "whatsapp", number: restaurant.phone },
           ],
           // an emptied field removes the link rather than storing a blank one
           socialLinks: [
@@ -536,58 +581,42 @@ function SocialMediaSection({
         setEditing(false);
       }}
       onCancel={() => {
-        setWhatsapp(snapshot.current.whatsapp);
         setInstagram(snapshot.current.instagram);
         setFacebook(snapshot.current.facebook);
         setEditing(false);
       }}
     >
       <div className="space-y-3">
-        <div className="relative">
+        <div className="relative" dir="ltr">
           <WhatsAppIcon className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-[#128C4A] dark:text-[#4cd97f]" />
-          <Label htmlFor="p-wa" className="sr-only">
-            {t.auth.whatsappLabel}
-          </Label>
           <Input
-            id="p-wa"
             dir="ltr"
-            placeholder={t.auth.whatsappLabel}
-            className="h-10 ps-9"
-            disabled={!editing}
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
+            className="h-10 truncate ps-9"
+            disabled
+            value={restaurant.phone}
           />
         </div>
-        <div className="relative">
-          <InstagramIcon className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-[#c13584]" />
-          <Label htmlFor="p-ig" className="sr-only">
-            {t.auth.instagramLabel}
-          </Label>
-          <Input
-            id="p-ig"
-            dir="ltr"
-            placeholder={t.auth.instagramLabel}
-            className="h-10 ps-9"
-            disabled={!editing}
-            value={instagram}
-            onChange={(e) => setInstagram(e.target.value)}
-          />
-        </div>
-        <div className="relative">
-          <FacebookIcon className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-[#1462c4] dark:text-[#6ba8f5]" />
-          <Label htmlFor="p-fb" className="sr-only">
-            {t.auth.facebookLabel}
-          </Label>
-          <Input
-            id="p-fb"
-            dir="ltr"
-            placeholder={t.auth.facebookLabel}
-            className="h-10 ps-9"
-            disabled={!editing}
-            value={facebook}
-            onChange={(e) => setFacebook(e.target.value)}
-          />
-        </div>
+        <p className="text-xs text-muted-foreground">
+          {t.auth.phoneIsWhatsappHint}
+        </p>
+        <SocialLinkField
+          id="p-ig"
+          icon={InstagramIcon}
+          iconClassName="text-[#c13584]"
+          label={t.auth.instagramLabel}
+          editing={editing}
+          value={instagram}
+          onChange={setInstagram}
+        />
+        <SocialLinkField
+          id="p-fb"
+          icon={FacebookIcon}
+          iconClassName="text-[#1462c4] dark:text-[#6ba8f5]"
+          label={t.auth.facebookLabel}
+          editing={editing}
+          value={facebook}
+          onChange={setFacebook}
+        />
       </div>
     </ProfileSection>
   );

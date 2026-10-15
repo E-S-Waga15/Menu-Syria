@@ -10,14 +10,22 @@ import type { Business, CurrencyCode, FulfillmentMode } from "@/lib/types";
  */
 export type StorefrontCopy = Dictionary["menu"];
 
-type PickupTime = "asap" | "15m" | "30m" | "1h";
-
-const pickupTimeLabel: Record<PickupTime, keyof StorefrontCopy> = {
-  asap: "pickupTimeAsap",
-  "15m": "pickupTime15",
-  "30m": "pickupTime30",
-  "1h": "pickupTime60",
-};
+/**
+ * `pickupTime` is either the literal "asap" or an exact "HH:mm" (24h) the
+ * customer picked from the pickup-time modal — formatted here as a 12-hour
+ * clock reading ("4:30 م"/"4:30 PM") for both the on-screen summary and the
+ * WhatsApp message, so the two never say the time differently.
+ */
+export function formatPickupTime(value: string, copy: StorefrontCopy): string {
+  if (value === "asap") return copy.pickupTimeAsap;
+  const [hourStr, minuteStr] = value.split(":");
+  const hour24 = Number(hourStr);
+  const minute = Number(minuteStr);
+  if (Number.isNaN(hour24) || Number.isNaN(minute)) return value;
+  const period = hour24 >= 12 ? copy.pickupPeriodPM : copy.pickupPeriodAM;
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+}
 
 const fulfillmentLabel: Record<FulfillmentMode, keyof StorefrontCopy> = {
   dineIn: "fulfillmentDineIn",
@@ -78,7 +86,8 @@ export function buildWhatsAppOrderUrl({
   fulfillment: FulfillmentMode;
   tableNumber?: string;
   customerName?: string;
-  pickupTime?: PickupTime;
+  /** "asap", or the exact "HH:mm" (24h) time the customer picked */
+  pickupTime?: string;
   phone?: string;
   address?: string;
   notes?: string;
@@ -137,7 +146,7 @@ export function buildWhatsAppOrderUrl({
   if (customerName) parts.push(fmt(copy.whatsappName, { name: customerName }));
   if (pickupTime)
     parts.push(
-      fmt(copy.whatsappPickupTime, { time: copy[pickupTimeLabel[pickupTime]] }),
+      fmt(copy.whatsappPickupTime, { time: formatPickupTime(pickupTime, copy) }),
     );
   if (phone) parts.push(fmt(copy.whatsappPhone, { phone }));
   if (address) parts.push(fmt(copy.whatsappAddress, { address }));

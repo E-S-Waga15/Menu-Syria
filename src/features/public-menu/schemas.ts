@@ -15,7 +15,8 @@ export const cartDetailsSchema = (v: ValidationMessages) =>
       fulfillment: z.enum(["dineIn", "pickup", "delivery"]),
       tableNumber: z.string().regex(/^\d*$/, v.numbersOnly),
       customerName: z.string(),
-      pickupTime: z.enum(["asap", "15m", "30m", "1h"]).optional(),
+      // "asap", or an exact "HH:mm" (24h) time the customer picked
+      pickupTime: z.string().optional(),
       phone: z.string(),
       address: z.string(),
       notes: z.string(),

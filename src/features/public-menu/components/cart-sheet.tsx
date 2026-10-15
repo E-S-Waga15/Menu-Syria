@@ -24,6 +24,12 @@ import { qrFileName } from "@/lib/qr-filename";
 import { WhatsAppIcon } from "@/components/shared/brand-icons";
 import { FieldError } from "@/components/shared/field-error";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,6 +50,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { placeExternalOrder } from "@/features/public-menu/services";
 import {
   buildWhatsAppOrderUrl,
+  formatPickupTime,
   formatPrice,
   type StorefrontCopy,
 } from "@/features/public-menu/lib/format";
@@ -68,6 +75,143 @@ import { useUiStore } from "@/stores/ui-store";
  * value) can't ride through Base UI's Select value prop, which wants a
  * string */
 const MAIN_BRANCH_VALUE = "main";
+
+const PICKUP_HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+const PICKUP_MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+
+/**
+ * "15 دقيقة / 30 دقيقة / ساعة" quick options didn't give the customer what
+ * they actually wanted — an exact clock time ("4:30 مساءً"). This opens a
+ * small modal with hour/minute/AM-PM pickers instead; the chosen time is
+ * stored as "HH:mm" (24h) and only ever formatted for display, both here
+ * and in the WhatsApp message, by the shared `formatPickupTime`.
+ */
+function PickupTimePicker({
+  value,
+  onChange,
+  invalid,
+  copy,
+}: {
+  value: string | undefined;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+  copy: StorefrontCopy;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const isCustomTime = !!value && value !== "asap";
+  const [hour, setHour] = useState(12);
+  const [minute, setMinute] = useState(0);
+  const [period, setPeriod] = useState<"AM" | "PM">("PM");
+
+  const openPicker = () => {
+    if (isCustomTime) {
+      const [h, m] = value.split(":").map(Number);
+      setPeriod(h >= 12 ? "PM" : "AM");
+      setHour(h % 12 || 12);
+      setMinute(m - (m % 5));
+    }
+    setOpen(true);
+  };
+
+  const confirm = () => {
+    const hour24 = period === "PM" ? (hour % 12) + 12 : hour % 12;
+    onChange(`${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+    setOpen(false);
+  };
+
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => onChange("asap")}
+        aria-pressed={value === "asap"}
+        className={cn(
+          "h-10 flex-1 rounded-lg border px-3 text-sm font-semibold transition-colors",
+          value === "asap"
+            ? "border-primary/40 bg-primary/5 text-primary"
+            : "border-input text-foreground/80 hover:bg-accent",
+        )}
+      >
+        {copy.pickupTimeAsap}
+      </button>
+      <button
+        type="button"
+        onClick={openPicker}
+        aria-pressed={isCustomTime}
+        className={cn(
+          "h-10 flex-1 rounded-lg border px-3 text-sm font-semibold transition-colors",
+          isCustomTime
+            ? "border-primary/40 bg-primary/5 text-primary"
+            : "border-input text-foreground/80 hover:bg-accent",
+          invalid && "border-destructive",
+        )}
+      >
+        {isCustomTime ? formatPickupTime(value, copy) : copy.pickupTimePickButton}
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>{copy.pickupTimeModalTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-2" dir="ltr">
+            <Select
+              value={String(hour)}
+              onValueChange={(v) => v && setHour(Number(v))}
+              items={Object.fromEntries(PICKUP_HOURS.map((h) => [String(h), String(h)]))}
+            >
+              <SelectTrigger className="h-11 w-full" aria-label={copy.pickupHourLabel}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PICKUP_HOURS.map((h) => (
+                  <SelectItem key={h} value={String(h)}>
+                    {h}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={String(minute)}
+              onValueChange={(v) => v && setMinute(Number(v))}
+              items={Object.fromEntries(
+                PICKUP_MINUTES.map((m) => [String(m), m.toString().padStart(2, "0")]),
+              )}
+            >
+              <SelectTrigger className="h-11 w-full" aria-label={copy.pickupMinuteLabel}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PICKUP_MINUTES.map((m) => (
+                  <SelectItem key={m} value={String(m)}>
+                    {m.toString().padStart(2, "0")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={period}
+              onValueChange={(v) => v && setPeriod(v as "AM" | "PM")}
+              items={{ AM: copy.pickupPeriodAM, PM: copy.pickupPeriodPM }}
+            >
+              <SelectTrigger className="h-11 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AM">{copy.pickupPeriodAM}</SelectItem>
+                <SelectItem value="PM">{copy.pickupPeriodPM}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="button" className="mt-2 w-full" onClick={confirm}>
+            {t.common.confirm}
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
 export function CartSheet({
   business,
@@ -285,13 +429,6 @@ export function CartSheet({
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t.auth.genericError);
     }
-  };
-
-  const pickupTimeItems: Record<string, string> = {
-    asap: copy.pickupTimeAsap,
-    "15m": copy.pickupTime15,
-    "30m": copy.pickupTime30,
-    "1h": copy.pickupTime60,
   };
 
   return (
@@ -578,27 +715,12 @@ export function CartSheet({
                     control={control}
                     name="pickupTime"
                     render={({ field }) => (
-                      <Select
+                      <PickupTimePicker
                         value={field.value}
-                        onValueChange={(v) => v && field.onChange(v)}
-                        items={pickupTimeItems}
-                      >
-                        <SelectTrigger
-                          className="h-10 w-full"
-                          aria-invalid={!!errors.pickupTime}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(pickupTimeItems).map(
-                            ([id, label]) => (
-                              <SelectItem key={id} value={id}>
-                                {label}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
+                        onChange={field.onChange}
+                        invalid={!!errors.pickupTime}
+                        copy={copy}
+                      />
                     )}
                   />
                   <FieldError message={errors.pickupTime?.message} />
