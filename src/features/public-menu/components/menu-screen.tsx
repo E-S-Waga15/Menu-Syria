@@ -19,6 +19,7 @@ import { trackItemCartAdd } from "@/features/public-menu/services";
 import type { StorefrontCopy } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { getBusinessOpenStatus } from "@/lib/business-hours";
 import { toast } from "@/lib/toast";
 import type {
   Business,
@@ -94,6 +95,8 @@ export function MenuScreen({
   const addItem = useCartStore((s) => s.addItem);
   const clearCart = useCartStore((s) => s.clear);
   const cartCount = useCartStore(selectCartCount);
+  // derived from the real published schedule, not a manually-toggled flag
+  const { isOpen } = getBusinessOpenStatus(business.openingHours);
 
   // a cart left over from a different business should never surface here —
   // scrub it the moment this screen mounts, before its stale count/items
@@ -311,7 +314,7 @@ export function MenuScreen({
                 <span
                   className={cn(
                     "flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs",
-                    business.isOpen
+                    isOpen
                       ? "bg-success/10 text-success"
                       : "bg-muted text-muted-foreground",
                   )}
@@ -319,12 +322,10 @@ export function MenuScreen({
                   <span
                     className={cn(
                       "size-1.5 rounded-full",
-                      business.isOpen ? "bg-success" : "bg-muted-foreground",
+                      isOpen ? "bg-success" : "bg-muted-foreground",
                     )}
                   />
-                  {business.isOpen
-                    ? t.restaurant.openNow
-                    : t.restaurant.closedNow}
+                  {isOpen ? t.restaurant.openNow : t.restaurant.closedNow}
                 </span>
               )}
             </div>

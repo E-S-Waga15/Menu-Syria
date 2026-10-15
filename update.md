@@ -1,5 +1,11 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## ✅ No backend change needed: "is this business open right now" is now derived from `openingHours` entirely in the frontend
+
+Previously the open/closed badge and the cart's order-blocking both read `Business.isOpen` — a flag someone has to remember to flip by hand, which drifts out of sync with the business's actual hours the moment nobody updates it (and says nothing useful before the opening-hours editor existed). Now that `openingHours` is real, writable data (see the ask above), "open now" is computed directly from it — the published weekly schedule, checked against the current time in Damascus — everywhere the badge or the order-blocking shows up: the storefront header, the details page, and the cart.
+
+**Why no backend involvement:** this has to reflect the *exact current moment*, not a value computed once when the API responded and then left stale while the page sits open in a tab — and it needs Damascus's timezone specifically, regardless of where the visitor or the server happen to be. Both of those are naturally a frontend concern once the full week's schedule is already in the response (confirmed: public storefront reads already return `openingHours`), so no new field or endpoint is needed here. The existing `isOpen`/`opensAt` fields can stay as-is (unused by the frontend now) or be removed later at your convenience — neither is read anywhere anymore.
+
 ## 🆕 New ask: accept `openingHours` on `PATCH /businesses/:id`
 
 **Why:** the dashboard now has a real opening-hours editor (Settings → Delivery & Payment tab → "ساعات العمل") — 7 days, each independently open or closed with its own start/end time, plus a "apply to every day" quick action. `Business.openingHours` was already a documented read field (`(DayHours | null)[]`, index 0 = Sunday, consumed by the storefront's own hours display), but there was never a way to *write* it — this is the first screen that needs to.

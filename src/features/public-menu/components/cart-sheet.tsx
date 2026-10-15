@@ -55,6 +55,7 @@ import {
   type StorefrontCopy,
 } from "@/features/public-menu/lib/format";
 import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment";
+import { getBusinessOpenStatus } from "@/lib/business-hours";
 import {
   cartDetailsSchema,
   type CartDetailsValues,
@@ -244,6 +245,9 @@ export function CartSheet({
   const subtotal = useCartStore(selectCartTotal);
 
   const supportedModes = getSupportedFulfillment(business);
+  // derived from the real published schedule, not a manually-toggled flag
+  const { isOpen: businessIsOpen, opensAt: businessOpensAt } =
+    getBusinessOpenStatus(business.openingHours);
   const branches = business.branches ?? [];
   // null = main branch, kept as the default selection — never sent to the
   // backend as a literal "main" value, see placeOrder's `branchId ?? undefined`
@@ -857,7 +861,7 @@ export function CartSheet({
             {/* the plan decides which routes exist; a business on one channel
                 gets one button, not a second one greyed out */}
             <div className="space-y-2">
-              {business.isOpen ? (
+              {businessIsOpen ? (
                 <>
                   <p className="text-center text-sm font-semibold text-muted-foreground">
                     {copy.confirmOrderTitle}
@@ -904,15 +908,22 @@ export function CartSheet({
                   )}
                 </>
               ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="flex w-full cursor-not-allowed items-center justify-center gap-2.5 rounded-2xl bg-muted py-4 text-base font-bold text-muted-foreground"
-                >
-                  {fmt(copy.closedCannotOrder, {
-                    time: business.opensAt?.[lang] ?? "",
-                  })}
-                </button>
+                <div className="rounded-2xl bg-muted p-4 text-center">
+                  <p className="text-sm font-bold">{t.restaurant.closedNow}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {businessOpensAt
+                      ? fmt(copy.closedCannotOrder, {
+                          time: formatPickupTime(businessOpensAt, copy),
+                        })
+                      : copy.closedCannotOrderGeneric}
+                  </p>
+                  <a
+                    href={`/${business.slug}#opening-hours`}
+                    className="mt-2 inline-block text-xs font-bold text-primary underline underline-offset-2"
+                  >
+                    {copy.viewOpeningHoursLink}
+                  </a>
+                </div>
               )}
 
               <Button

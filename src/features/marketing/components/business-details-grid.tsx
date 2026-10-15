@@ -32,6 +32,7 @@ import { formatPrice } from "@/features/public-menu/lib/format";
 import type { Locale } from "@/i18n/config";
 import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { getBusinessOpenStatus } from "@/lib/business-hours";
 import type { Business, Governorate, PublicBranch, Region } from "@/lib/types";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -62,11 +63,15 @@ function toInstagramHref(value: string) {
 /** one card shell for every block on this page — smaller, lighter headings
  * than a default <h2> for a quieter, more composed read */
 function Panel({
+  id,
   title,
   icon: Icon,
   action,
   children,
 }: {
+  /** lets a link elsewhere (the cart's "closed — see hours" message) jump
+   * straight to this panel; scroll-mt clears the fixed back bar above it */
+  id?: string;
   title: string;
   /** small mark beside the heading — purely decorative, never the only cue */
   icon?: React.ComponentType<{ className?: string }>;
@@ -75,7 +80,10 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
+    <section
+      id={id}
+      className="scroll-mt-20 rounded-2xl border border-border/60 bg-card p-5 md:p-6"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 font-heading text-base font-semibold">
           {Icon && <Icon className="size-4 text-primary" />}
@@ -195,15 +203,18 @@ export function BusinessDetailsGrid({
     ? `${t.restaurant.contactInfo} (${selectedBranch.name})`
     : t.restaurant.contactInfo;
 
-  const openBadgeClassName = restaurant.isOpen
+  // derived from the real published schedule, not a manually-toggled flag
+  // that drifts out of sync with it
+  const { isOpen } = getBusinessOpenStatus(restaurant.openingHours);
+  const openBadgeClassName = isOpen
     ? "bg-success/10 px-2 py-0.5 text-[11px] text-success md:px-2.5 md:text-xs"
     : "bg-muted px-2 py-0.5 text-[11px] text-muted-foreground md:px-2.5 md:text-xs";
   const openBadgeContent = (
     <>
       <span
-        className={`me-1 size-1.5 rounded-full ${restaurant.isOpen ? "bg-success" : "bg-muted-foreground"}`}
+        className={`me-1 size-1.5 rounded-full ${isOpen ? "bg-success" : "bg-muted-foreground"}`}
       />
-      {restaurant.isOpen ? t.restaurant.openNow : t.restaurant.closedNow}
+      {isOpen ? t.restaurant.openNow : t.restaurant.closedNow}
     </>
   );
 
@@ -584,7 +595,7 @@ export function BusinessDetailsGrid({
           )}
         </Panel>
 
-        <Panel title={t.restaurant.workingHours} icon={Clock}>
+        <Panel id="opening-hours" title={t.restaurant.workingHours} icon={Clock}>
           <OpeningHours hours={restaurant.openingHours} t={t} />
         </Panel>
       </div>
