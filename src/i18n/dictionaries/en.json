@@ -756,6 +756,7 @@
     "supportTab": "Contact support",
     "supportActivatedByAgent": "This account was activated by Menu Syria agent {agentName} for the {region} area",
     "supportNoAgentHint": "This account wasn't activated through an agent. For any question, please contact the Menu Syria team.",
+    "platformContactTitle": "Contact the Menu Syria team",
     "accountInfoTab": "Account info",
     "paymentQrTab": "Payment QR",
     "deliveryTab": "Delivery",

@@ -9,11 +9,13 @@ import {
   Camera,
   CalendarClock,
   Check,
+  Copy,
   Crown,
   Globe,
   Image as ImageIcon,
   LifeBuoy,
   Link2,
+  Mail,
   MapPin,
   MoreVertical,
   PackageOpen,
@@ -104,6 +106,12 @@ import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { uploadImage } from "@/lib/api/upload";
 import { recoverBusinessFields } from "@/lib/business-text";
+import {
+  PLATFORM_EMAIL,
+  PLATFORM_PHONE,
+  PLATFORM_PHONE_DISPLAY,
+  PLATFORM_WHATSAPP_URL,
+} from "@/lib/platform-contact";
 import { qrFileName } from "@/lib/qr-filename";
 import type {
   BusinessAgent,
@@ -1727,6 +1735,87 @@ function agentRegionNames(
     .join(lang === "ar" ? " و" : " & ");
 }
 
+/** Same call/chat card layout as `AgentContactCard`, for a business with no
+ * agent — the platform's own phone and email, each copyable, plus the same
+ * call/WhatsApp buttons. */
+function PlatformContactCard({ t }: { t: I18n["t"] }) {
+  const copy = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(t.common.copied);
+    } catch {
+      toast.error(t.common.saveFailed);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-6">
+      <h2 className="flex items-center gap-2 font-heading text-lg font-semibold">
+        <LifeBuoy className="size-5 text-primary" />
+        {t.dashboard.platformContactTitle}
+      </h2>
+
+      <ul className="mt-4 space-y-2.5 text-sm">
+        <li className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-2.5">
+          <span className="flex items-center gap-2.5">
+            <Phone className="size-4 shrink-0 text-muted-foreground" />
+            <a href={`tel:${PLATFORM_PHONE}`} dir="ltr" className="font-semibold">
+              {PLATFORM_PHONE_DISPLAY}
+            </a>
+          </span>
+          <button
+            type="button"
+            onClick={() => void copy(PLATFORM_PHONE_DISPLAY)}
+            aria-label={t.common.copy}
+            className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Copy className="size-4" />
+          </button>
+        </li>
+        <li className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-2.5">
+          <span className="flex min-w-0 items-center gap-2.5">
+            <Mail className="size-4 shrink-0 text-muted-foreground" />
+            <a
+              href={`mailto:${PLATFORM_EMAIL}`}
+              dir="ltr"
+              className="truncate font-semibold"
+            >
+              {PLATFORM_EMAIL}
+            </a>
+          </span>
+          <button
+            type="button"
+            onClick={() => void copy(PLATFORM_EMAIL)}
+            aria-label={t.common.copy}
+            className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Copy className="size-4" />
+          </button>
+        </li>
+      </ul>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a
+          href={`tel:${PLATFORM_PHONE}`}
+          className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <Phone className="size-4" />
+          {t.restaurant.call}
+        </a>
+        <a
+          href={PLATFORM_WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#1fb855]"
+        >
+          <WhatsAppIcon className="size-4" />
+          {t.restaurant.chat}
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function AgentContactCard({
   agent,
   governorates,
@@ -1972,12 +2061,14 @@ function SubscriptionSection({
 }
 
 /**
- * The account's one line to Menu Syria support — but there is no Menu
- * Syria support contact here, deliberately: the agent who onboarded this
- * business owns that relationship, so this page points there instead of
- * duplicating (or competing with) the subscription tab's own agent card.
- * Exported: this is its own sidebar page now, not a settings tab, so a
- * standalone route renders it directly.
+ * The account's one line to Menu Syria support. A business onboarded by an
+ * agent sees that agent's own contact card (same relationship the
+ * subscription tab already points to) — one relationship, not two
+ * competing contacts. A business with no agent (self-registered) sees the
+ * platform's own contact card instead, in the same call/chat layout, so
+ * "who do I even ask" never goes unanswered. Exported: this is its own
+ * sidebar page now, not a settings tab, so a standalone route renders it
+ * directly.
  */
 export function SupportSection({
   restaurant,
@@ -2016,7 +2107,7 @@ export function SupportSection({
         )}
       </div>
 
-      {agent && (
+      {agent ? (
         <AgentContactCard
           agent={agent}
           governorates={governorates}
@@ -2024,6 +2115,8 @@ export function SupportSection({
           t={t}
           lang={lang}
         />
+      ) : (
+        <PlatformContactCard t={t} />
       )}
     </div>
   );

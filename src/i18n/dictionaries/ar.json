@@ -756,6 +756,7 @@
     "supportTab": "تواصل مع الدعم",
     "supportActivatedByAgent": "تم تفعيل الحساب عن طريق وكيل مينيو سيريا {agentName} في منطقة {region}",
     "supportNoAgentHint": "لم يتم تفعيل هذا الحساب عن طريق وكيل. لأي استفسار، يرجى التواصل مع فريق مينيو سيريا.",
+    "platformContactTitle": "تواصل مع فريق مينيو سيريا",
     "accountInfoTab": "معلومات الحساب",
     "paymentQrTab": "رمز الدفع",
     "deliveryTab": "التوصيل",

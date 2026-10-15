@@ -12,15 +12,17 @@ import {
 import { Logo } from "@/components/shared/logo";
 import type { Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import {
+  PLATFORM_EMAIL,
+  PLATFORM_FACEBOOK_URL,
+  PLATFORM_INSTAGRAM_URL,
+  PLATFORM_PHONE,
+  PLATFORM_PHONE_DISPLAY,
+  PLATFORM_WHATSAPP_URL,
+} from "@/lib/platform-contact";
 
 /** the developer's site — external, so it opens in a new tab */
 const CODE_MASTERS_URL = "https://code-masters-gray.vercel.app/";
-
-/** same number as the "tel:" link above it — opens a WhatsApp chat instead
- * of a call */
-const FOOTER_WHATSAPP_URL = "https://wa.me/963959825575";
-const FOOTER_INSTAGRAM_URL = "https://instagram.com/menu.syria";
-const FOOTER_FACEBOOK_URL = "https://facebook.com/menu.syria";
 
 /**
  * Code Masters' brand purple is #8441A4, which only clears 2.6:1 against this
@@ -132,26 +134,26 @@ export function SiteFooter({ lang, t }: { lang: Locale; t: Dictionary }) {
           <ul className="space-y-3 text-sm">
             <li className="flex items-center gap-2.5">
               <Phone className="size-4 text-white/40" />
-              <a href="tel:+963959825575" dir="ltr" className="hover:text-white">
-                +963 959 825 575
+              <a href={`tel:${PLATFORM_PHONE}`} dir="ltr" className="hover:text-white">
+                {PLATFORM_PHONE_DISPLAY}
               </a>
             </li>
             <li className="flex items-center gap-2.5">
               <Mail className="size-4 text-white/40" />
               <a
-                href="mailto:menu.syria15@gmail.com"
+                href={`mailto:${PLATFORM_EMAIL}`}
                 dir="ltr"
                 className="hover:text-white"
               >
-                menu.syria15@gmail.com
+                {PLATFORM_EMAIL}
               </a>
             </li>
           </ul>
           <div className="mt-5 flex gap-2">
             {[
-              { icon: InstagramIcon, label: "Instagram", href: FOOTER_INSTAGRAM_URL },
-              { icon: FacebookIcon, label: "Facebook", href: FOOTER_FACEBOOK_URL },
-              { icon: WhatsAppIcon, label: "WhatsApp", href: FOOTER_WHATSAPP_URL },
+              { icon: InstagramIcon, label: "Instagram", href: PLATFORM_INSTAGRAM_URL },
+              { icon: FacebookIcon, label: "Facebook", href: PLATFORM_FACEBOOK_URL },
+              { icon: WhatsAppIcon, label: "WhatsApp", href: PLATFORM_WHATSAPP_URL },
             ].map(({ icon: Icon, label, href }) => (
               <a
                 key={label}
