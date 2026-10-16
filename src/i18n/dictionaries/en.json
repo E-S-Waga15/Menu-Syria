@@ -1159,7 +1159,12 @@
     "confirmUnbanUserTitle": "Unban this user?",
     "confirmUnbanUserBody": "{name} will be able to sign in again.",
     "userBanned": "User banned",
-    "userUnbanned": "User unbanned"
+    "userUnbanned": "User unbanned",
+    "deleteAccount": "Delete permanently",
+    "confirmDeleteTitle": "Permanently delete {name}?",
+    "confirmDeleteBody": "This can't be undone — every record of {name} will be permanently removed from the platform.",
+    "accountDeleted": "Deleted permanently",
+    "activatedViaAgent": "Activated via agent {name}"
   },
   "orderHistory": {
     "title": "Past orders",

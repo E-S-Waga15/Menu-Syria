@@ -3,8 +3,18 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { Eye, Power, Store } from "lucide-react";
+import { Eye, Power, Store, Trash2 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
 import { SafeImage } from "@/components/shared/safe-image";
@@ -13,8 +23,8 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { AdminSelect } from "@/features/admin/components/admin-select";
 import { AdminViewToggle } from "@/features/admin/components/admin-view-toggle";
-import { updateAdminAgentStatus } from "@/features/admin/services";
-import { useI18n } from "@/i18n/client";
+import { deleteAdminAgent, updateAdminAgentStatus } from "@/features/admin/services";
+import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
 import type { Agent, Governorate, Region } from "@/lib/types";
@@ -94,6 +104,25 @@ export function AdminAgentsList({
     setPage(1);
   }
 
+  const [pendingDelete, setPendingDelete] = useState<Agent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const agent = pendingDelete;
+    setIsDeleting(true);
+    try {
+      const result = await deleteAdminAgent(agent.id);
+      setAgentRows((current) => current.filter((row) => row.id !== agent.id));
+      toast.success(result?.message ?? t.admin.accountDeleted);
+      setPendingDelete(null);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const placeOf = (agent: Agent) =>
     [
       governorates.find((g) => g.id === agent.governorateId)?.name[lang],
@@ -139,6 +168,12 @@ export function AdminAgentsList({
       icon: Power,
       onSelect: () => void toggleAccount(agent),
       danger: agent.status === "active",
+    },
+    {
+      label: t.admin.deleteAccount,
+      icon: Trash2,
+      onSelect: () => setPendingDelete(agent),
+      danger: true,
     },
   ];
 
@@ -282,6 +317,41 @@ export function AdminAgentsList({
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && !isDeleting && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(t.admin.confirmDeleteTitle, {
+                name: pendingDelete?.name[lang] ?? "",
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.admin.confirmDeleteBody, {
+                name: pendingDelete?.name[lang] ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              onClick={() => setPendingDelete(null)}
+            >
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={isDeleting}
+              onClick={() => void confirmDelete()}
+            >
+              {t.admin.deleteAccount}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1159,7 +1159,12 @@
     "confirmUnbanUserTitle": "إلغاء حظر هذا المستخدم؟",
     "confirmUnbanUserBody": "سيتمكن {name} من تسجيل الدخول مجدداً.",
     "userBanned": "تم حظر المستخدم",
-    "userUnbanned": "تم إلغاء حظر المستخدم"
+    "userUnbanned": "تم إلغاء حظر المستخدم",
+    "deleteAccount": "حذف نهائي",
+    "confirmDeleteTitle": "حذف {name} نهائياً؟",
+    "confirmDeleteBody": "هذا الإجراء نهائي ولا يمكن التراجع عنه — سيتم حذف كل بيانات {name} نهائياً من المنصة.",
+    "accountDeleted": "تم الحذف نهائياً",
+    "activatedViaAgent": "تم التفعيل عبر الوكيل {name}"
   },
   "orderHistory": {
     "title": "طلباتي السابقة",

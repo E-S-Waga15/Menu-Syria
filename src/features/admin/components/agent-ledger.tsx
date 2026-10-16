@@ -2,21 +2,41 @@
 
 import { useState } from "react";
 
+import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownCircle, ArrowUpCircle, Percent, Wallet } from "lucide-react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Percent,
+  Phone,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { WhatsAppIcon, FacebookIcon, InstagramIcon } from "@/components/shared/brand-icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { SafeImage } from "@/components/shared/safe-image";
 import {
+  deleteAdminAgent,
   getAdminAgentById,
   getAdminAgentLedger,
   updateAdminAgent,
 } from "@/features/admin/services";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { StatCard } from "@/features/restaurant-dashboard/components/stat-card";
-import { useI18n } from "@/i18n/client";
+import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
@@ -24,9 +44,12 @@ import { cn } from "@/lib/utils";
 
 export function AdminAgentLedger({ agentId }: { agentId: string }) {
   const { t, lang } = useI18n();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [commissionRate, setCommissionRate] = useState("");
   const [savingRate, setSavingRate] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: agent, isPending } = useQuery({
     queryKey: queryKeys.agents.detail(agentId),
@@ -71,6 +94,18 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
     }
   };
 
+  const confirmDeleteAgent = async () => {
+    setDeleting(true);
+    try {
+      const result = await deleteAdminAgent(agent.id);
+      toast.success(result?.message ?? t.admin.accountDeleted);
+      router.push(`/${lang}/admin/agents`);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+      setDeleting(false);
+    }
+  };
+
   const credit = ledger
     .filter((tx) => tx.amount > 0)
     .reduce((sum, tx) => sum + tx.amount, 0);
@@ -82,26 +117,98 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
   return (
     <div className="space-y-6">
       {/* profile strip */}
-      <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-card p-5">
-        <SafeImage
-          src={agent.photoUrl}
-          alt=""
-          width={64}
-          height={64}
-          className="size-16 rounded-full object-cover"
-        />
-        <div className="flex-1">
-          <h1 className="font-heading text-xl font-bold">{agent.name[lang]}</h1>
-          <p
-            className="mt-1 text-sm font-semibold text-muted-foreground"
-            dir="ltr"
+      <section className="rounded-2xl border border-border/60 bg-card p-5">
+        <div className="flex flex-wrap items-center gap-4">
+          <SafeImage
+            src={agent.photoUrl}
+            alt=""
+            width={64}
+            height={64}
+            className="size-16 rounded-full object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-heading text-xl font-bold">
+                {agent.name[lang]}
+              </h1>
+              <Badge
+                className={
+                  agent.status === "active"
+                    ? "bg-success/10 text-success"
+                    : "bg-destructive/10 text-destructive"
+                }
+              >
+                {agent.status === "active"
+                  ? t.admin.statusActive
+                  : t.admin.statusBanned}
+              </Badge>
+            </div>
+            <p
+              className="mt-1 text-sm font-semibold text-muted-foreground"
+              dir="ltr"
+            >
+              {agent.phone} · {agent.referralCode}
+            </p>
+          </div>
+          <Badge className="bg-berry-soft text-berry-soft-foreground">
+            {agent.restaurantsCount} {t.home.agentRestaurantsCount}
+          </Badge>
+          <Button
+            variant="outline"
+            className="border-[1.5px] border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setConfirmingDelete(true)}
           >
-            {agent.phone} · {agent.referralCode}
-          </p>
+            <Trash2 className="size-4" />
+            {t.admin.deleteAccount}
+          </Button>
         </div>
-        <Badge className="bg-berry-soft text-berry-soft-foreground">
-          {agent.restaurantsCount} {t.home.agentRestaurantsCount}
-        </Badge>
+
+        {agent.bio[lang] && (
+          <p className="mt-4 border-t border-border/60 pt-4 text-sm leading-relaxed text-muted-foreground">
+            {agent.bio[lang]}
+          </p>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-4">
+          <a
+            href={`tel:${agent.phone.replace(/\s/g, "")}`}
+            className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Phone className="size-4" />
+            {t.restaurant.call}
+          </a>
+          <a
+            href={`https://wa.me/${agent.whatsapp.replace(/[+\s]/g, "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#1fb855]"
+          >
+            <WhatsAppIcon className="size-4" />
+            {t.restaurant.chat}
+          </a>
+          {agent.facebook && (
+            <a
+              href={`https://facebook.com/${agent.facebook}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex size-9 items-center justify-center rounded-full bg-[#1877F2]/10 text-[#1462c4] transition-colors hover:bg-[#1877F2]/20 dark:text-[#6ba8f5]"
+              aria-label={t.restaurant.facebook}
+            >
+              <FacebookIcon className="size-4" />
+            </a>
+          )}
+          {agent.instagram && (
+            <a
+              href={`https://instagram.com/${agent.instagram}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex size-9 items-center justify-center rounded-full bg-gradient-to-r from-[#f9ce34]/15 via-[#ee2a7b]/15 to-[#6228d7]/15 text-[#c13584] transition-colors hover:from-[#f9ce34]/25 hover:via-[#ee2a7b]/25 hover:to-[#6228d7]/25"
+              aria-label={t.restaurant.instagram}
+            >
+              <InstagramIcon className="size-4" />
+            </a>
+          )}
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -208,6 +315,37 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
           ))}
         </ol>
       </section>
+
+      <AlertDialog
+        open={confirmingDelete}
+        onOpenChange={(open) => !open && !deleting && setConfirmingDelete(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(t.admin.confirmDeleteTitle, { name: agent.name[lang] })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.admin.confirmDeleteBody, { name: agent.name[lang] })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleting}
+              onClick={() => setConfirmingDelete(false)}
+            >
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={deleting}
+              onClick={() => void confirmDeleteAgent()}
+            >
+              {t.admin.deleteAccount}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

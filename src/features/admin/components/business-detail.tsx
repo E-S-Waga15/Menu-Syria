@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -13,6 +14,7 @@ import {
   Power,
   RefreshCw,
   Star,
+  Trash2,
   Wallet,
 } from "lucide-react";
 
@@ -40,6 +42,7 @@ import { SafeImage } from "@/components/shared/safe-image";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import {
   changeBusinessPlan,
+  deleteAdminBusiness,
   getAdminPlans,
   getBusinessSubscriptions,
   renewSubscription,
@@ -71,11 +74,14 @@ export function AdminBusinessDetail({
   kind: "restaurant" | "store";
 }) {
   const { t, lang } = useI18n();
+  const router = useRouter();
   const [enabled, setEnabled] = useState(business.status === "active");
   const [savingStatus, setSavingStatus] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { data: plans = [] } = useQuery({
     queryKey: ["admin", "plans"],
     queryFn: () => getAdminPlans(),
@@ -146,6 +152,18 @@ export function AdminBusinessDetail({
     }
   };
 
+  const confirmDeleteBusiness = async () => {
+    setDeleting(true);
+    try {
+      const result = await deleteAdminBusiness(business.id);
+      toast.success(result?.message ?? t.admin.accountDeleted);
+      router.push(`/${lang}/admin/${kind === "restaurant" ? "restaurants" : "stores"}`);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
@@ -161,41 +179,63 @@ export function AdminBusinessDetail({
         }
       />
 
-      <section className="flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 md:p-6">
-        <SafeImage
-          src={business.logoUrl}
-          alt=""
-          width={72}
-          height={72}
-          className="size-16 shrink-0 rounded-2xl object-cover"
-        />
-        <div className="min-w-0 flex-1">
-          <h2 className="font-heading text-xl font-bold">
-            {business.name[lang]}
-          </h2>
-          <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <MapPin className="size-4" />
-              {governorateName}
-              {lang === "ar" ? "، " : ", "}
-              {regionName}
-            </span>
-            <span className="flex items-center gap-1 font-semibold text-foreground">
-              <Star className="size-4 fill-zest text-zest" />
-              {business.rating}
-            </span>
-          </p>
+      <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <SafeImage
+            src={business.logoUrl}
+            alt=""
+            width={72}
+            height={72}
+            className="size-16 shrink-0 rounded-2xl object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="font-heading text-xl font-bold">
+              {business.name[lang]}
+            </h2>
+            <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="size-4" />
+                {governorateName}
+                {lang === "ar" ? "، " : ", "}
+                {regionName}
+              </span>
+              <span className="flex items-center gap-1 font-semibold text-foreground">
+                <Star className="size-4 fill-zest text-zest" />
+                {business.rating}
+              </span>
+            </p>
+          </div>
+          <Badge
+            className={cn(
+              "shrink-0",
+              enabled
+                ? "bg-success/10 text-success"
+                : "bg-destructive/10 text-destructive",
+            )}
+          >
+            {enabled ? t.admin.statusActive : t.admin.statusBanned}
+          </Badge>
+          <Button
+            variant="outline"
+            className="h-9 border-[1.5px] border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setConfirmingDelete(true)}
+          >
+            <Trash2 className="size-4" />
+            {t.admin.deleteAccount}
+          </Button>
         </div>
-        <Badge
-          className={cn(
-            "shrink-0",
-            enabled
-              ? "bg-success/10 text-success"
-              : "bg-destructive/10 text-destructive",
-          )}
-        >
-          {enabled ? t.admin.statusActive : t.admin.statusBanned}
-        </Badge>
+
+        {business.agent && (
+          <Badge className="mt-4 bg-berry-soft text-berry-soft-foreground">
+            {fmt(t.admin.activatedViaAgent, { name: business.agent.name })}
+          </Badge>
+        )}
+
+        {business.description[lang] && (
+          <p className="mt-4 border-t border-border/60 pt-4 text-sm leading-relaxed text-muted-foreground">
+            {business.description[lang]}
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
@@ -347,6 +387,37 @@ export function AdminBusinessDetail({
               onClick={() => void toggleAccount()}
             >
               {enabled ? t.admin.disableAccount : t.admin.enableAccount}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmingDelete}
+        onOpenChange={(open) => !open && !deleting && setConfirmingDelete(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(t.admin.confirmDeleteTitle, { name: business.name[lang] })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.admin.confirmDeleteBody, { name: business.name[lang] })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleting}
+              onClick={() => setConfirmingDelete(false)}
+            >
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={deleting}
+              onClick={() => void confirmDeleteBusiness()}
+            >
+              {t.admin.deleteAccount}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

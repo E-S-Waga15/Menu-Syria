@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 
-import { CalendarDays, Eye, ShieldBan, ShieldCheck, UserRound } from "lucide-react";
+import {
+  CalendarDays,
+  Eye,
+  ShieldBan,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 
 import {
   AlertDialog,
@@ -20,7 +27,7 @@ import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminSelect } from "@/features/admin/components/admin-select";
-import { updateAdminUserStatus } from "@/features/admin/services";
+import { deleteAdminUser, updateAdminUserStatus } from "@/features/admin/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
@@ -56,6 +63,8 @@ export function AdminUsersList({
     null,
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PlatformUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const roleLabel: Record<PlatformRole, string> = {
     user: t.admin.roleUser,
@@ -144,6 +153,22 @@ export function AdminUsersList({
   // isn't there.
   const viewDetails = () => toast(t.common.comingSoon);
 
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const user = pendingDelete;
+    setIsDeleting(true);
+    try {
+      const result = await deleteAdminUser(user.id);
+      setUserRows((current) => current.filter((row) => row.id !== user.id));
+      toast.success(result?.message ?? t.admin.accountDeleted);
+      setPendingDelete(null);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const actionsFor = (user: PlatformUser): RowAction[] => [
     { label: t.admin.viewUserDetails, icon: Eye, onSelect: viewDetails },
     user.status === "active"
@@ -160,6 +185,12 @@ export function AdminUsersList({
           onSelect: () =>
             setPendingChange({ user, nextStatus: "active" }),
         },
+    {
+      label: t.admin.deleteAccount,
+      icon: Trash2,
+      onSelect: () => setPendingDelete(user),
+      danger: true,
+    },
   ];
 
   return (
@@ -294,6 +325,41 @@ export function AdminUsersList({
               {pendingChange?.nextStatus === "banned"
                 ? t.admin.banUser
                 : t.admin.unbanUser}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && !isDeleting && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(t.admin.confirmDeleteTitle, {
+                name: pendingDelete?.name ?? "",
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.admin.confirmDeleteBody, {
+                name: pendingDelete?.name ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              onClick={() => setPendingDelete(null)}
+            >
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={isDeleting}
+              onClick={() => void confirmDelete()}
+            >
+              {t.admin.deleteAccount}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

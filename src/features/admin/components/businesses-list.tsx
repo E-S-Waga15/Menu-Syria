@@ -11,6 +11,7 @@ import {
   MapPin,
   Power,
   RefreshCw,
+  Trash2,
   Wallet,
 } from "lucide-react";
 
@@ -31,7 +32,10 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { AdminSelect } from "@/features/admin/components/admin-select";
 import { AdminViewToggle } from "@/features/admin/components/admin-view-toggle";
-import { updateAdminBusinessStatus } from "@/features/admin/services";
+import {
+  deleteAdminBusiness,
+  updateAdminBusinessStatus,
+} from "@/features/admin/services";
 import { daysUntil } from "@/features/notifications/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
@@ -68,6 +72,8 @@ export function AdminBusinessesList({
   const [regionId, setRegionId] = useState(ALL);
   const [pendingToggle, setPendingToggle] = useState<Business | null>(null);
   const [isTogglingAccount, setIsTogglingAccount] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Business | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(1);
 
   const base = `/${lang}/admin`;
@@ -154,6 +160,22 @@ export function AdminBusinessesList({
     }
   };
 
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const business = pendingDelete;
+    setIsDeleting(true);
+    try {
+      const result = await deleteAdminBusiness(business.id);
+      setBusinessRows((current) => current.filter((row) => row.id !== business.id));
+      toast.success(result?.message ?? t.admin.accountDeleted);
+      setPendingDelete(null);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const actionsFor = (business: Business): RowAction[] => [
     {
       label: t.admin.viewProfile,
@@ -188,6 +210,12 @@ export function AdminBusinessesList({
       icon: Power,
       onSelect: () => setPendingToggle(business),
       danger: business.status === "active",
+    },
+    {
+      label: t.admin.deleteAccount,
+      icon: Trash2,
+      onSelect: () => setPendingDelete(business),
+      danger: true,
     },
   ];
 
@@ -421,6 +449,41 @@ export function AdminBusinessesList({
               {pendingToggle?.status === "active"
                 ? t.admin.disableAccount
                 : t.admin.enableAccount}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && !isDeleting && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(t.admin.confirmDeleteTitle, {
+                name: pendingDelete?.name[lang] ?? "",
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.admin.confirmDeleteBody, {
+                name: pendingDelete?.name[lang] ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              onClick={() => setPendingDelete(null)}
+            >
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={isDeleting}
+              onClick={() => void confirmDelete()}
+            >
+              {t.admin.deleteAccount}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

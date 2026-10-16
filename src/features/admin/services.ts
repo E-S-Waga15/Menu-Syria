@@ -286,10 +286,7 @@ export async function updateAdminBusinessStatus(
 /**
  * Bans/unbans a platform account — `PATCH /users/:id/status`, confirmed
  * against the live backend's `UsersController`/`UpdateUserStatusDto`, which
- * only ever accepts `{ status: "active" | "banned" }`. There is no delete
- * endpoint for a user in that controller (just `GET /users`, `GET /users/:id`
- * and this status patch), so the admin card's kebab menu has no delete
- * action — see the Users controller, which only exposes those three routes.
+ * only ever accepts `{ status: "active" | "banned" }`.
  */
 export async function updateAdminUserStatus(
   userId: string,
@@ -301,6 +298,53 @@ export async function updateAdminUserStatus(
     method: "PATCH",
     headers: authHeaders(auth),
     body: { status },
+  });
+}
+
+/**
+ * Permanently deletes a platform account. Not yet confirmed against the
+ * backend — the Users controller only exposed `GET /users`, `GET /users/:id`
+ * and the status patch above as of the last check. Calls the REST-
+ * conventional `DELETE /users/:id`; see update.md for the actual ask.
+ */
+export async function deleteAdminUser(
+  userId: string,
+  auth: AdminAuth = {},
+): Promise<{ message?: string } | undefined> {
+  if (IS_MOCK) return mockDelay(undefined, 150);
+  return apiFetch(`/users/${userId}`, {
+    method: "DELETE",
+    headers: authHeaders(auth),
+  });
+}
+
+/**
+ * Permanently deletes a business (restaurant or store). Not yet confirmed
+ * against the backend — see update.md.
+ */
+export async function deleteAdminBusiness(
+  businessId: string,
+  auth: AdminAuth = {},
+): Promise<{ message?: string } | undefined> {
+  if (IS_MOCK) return mockDelay(undefined, 150);
+  return apiFetch(`/businesses/${businessId}`, {
+    method: "DELETE",
+    headers: authHeaders(auth),
+  });
+}
+
+/**
+ * Permanently deletes an agent account. Not yet confirmed against the
+ * backend — see update.md.
+ */
+export async function deleteAdminAgent(
+  agentId: string,
+  auth: AdminAuth = {},
+): Promise<{ message?: string } | undefined> {
+  if (IS_MOCK) return mockDelay(undefined, 150);
+  return apiFetch(`/agents/${agentId}`, {
+    method: "DELETE",
+    headers: authHeaders(auth),
   });
 }
 

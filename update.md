@@ -1,5 +1,25 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🆕 New ask: delete endpoints for users, businesses and agents
+
+**Why:** the admin console now has a "delete permanently" action on the users list, the restaurants/stores list and detail pages, and the agents list and detail page — the frontend calls these endpoints already, but they aren't confirmed to exist on the backend yet.
+
+```
+DELETE /users/:id
+DELETE /businesses/:id
+DELETE /agents/:id
+```
+
+- Each should hard-delete the record (the confirmation dialog on our side already warns the admin this can't be undone) and return the usual `{ success, message }` envelope.
+- Deleting a business should also clean up/cascade whatever depends on it (menu items, offers, subscriptions, etc.) so no orphaned rows are left behind.
+- Deleting an agent should not delete the businesses they onboarded — just detach them (their `agent` field goes back to absent/`null`).
+
+## 🆕 New ask: `createdAt` on business records
+
+**Why:** the admin business detail page is meant to show when the restaurant/store joined the platform, the same way the users list already shows `joinedAt` — but `GET /businesses/:id` (and the list endpoints) don't return any such field today, so it can't be displayed yet.
+
+Please add a `createdAt` (ISO date string) field to the business object returned by the restaurant/store admin endpoints, set at registration time.
+
 ## 🆕 New ask: real pagination on every admin list endpoint
 
 **Why:** the admin console's list pages (users, restaurants, stores, agents, registration requests, subscriptions) currently fetch the *entire* table in one request and paginate it client-side in the browser — fine today, but it gets slower and heavier for every admin page-load as each list grows, and it's exactly the kind of thing that should be the database's job, not the browser's. The frontend already has a working pager UI (added this session) wired to client-side slicing — switching it to real server pagination later is a small, contained change on our side once these query params exist.
