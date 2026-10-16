@@ -1,65 +1,33 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
-## 🆕 New ask: delete endpoints for users, businesses and agents
+## ✅ Fixed: delete endpoints for users, businesses and agents
 
-**Why:** the admin console now has a "delete permanently" action on the users list, the restaurants/stores list and detail pages, and the agents list and detail page — the frontend calls these endpoints already, but they aren't confirmed to exist on the backend yet.
+Confirmed shipped, `SUPER_ADMIN`-only:
 
-```
-DELETE /users/:id
-DELETE /businesses/:id
-DELETE /agents/:id
-```
+- **`DELETE /businesses/:id`**: a real hard delete when a SUPER_ADMIN calls it (cascades orders, items, categories, offers, tables, staff, branches, photos/links/phones, subscriptions…) — unchanged (still a disable, not a delete) when the owner/staff calls the same route, verified directly so existing behavior for them doesn't regress.
+- **`DELETE /agents/:id`**: detaches the agent from every business they referred (`agentId` → `null`, the business itself stays), detaches their subscriptions and registration requests, then deletes their own login account too. Verified live: the business survived, the agent and their login both disappeared.
+- **`DELETE /users/:id`**: deletes any business the user owns (same cascade as above), detaches any linked agent the same way, deletes their staff record if any, and on orders — keeps the order record but clears `user_id` rather than deleting it (an order is a real business record, shouldn't vanish because the account did).
 
-- Each should hard-delete the record (the confirmation dialog on our side already warns the admin this can't be undone) and return the usual `{ success, message }` envelope.
-- Deleting a business should also clean up/cascade whatever depends on it (menu items, offers, subscriptions, etc.) so no orphaned rows are left behind.
-- Deleting an agent should not delete the businesses they onboarded — just detach them (their `agent` field goes back to absent/`null`).
+Frontend already called these three paths unchanged — no frontend change needed for this part.
 
-## 🆕 New ask: `createdAt` on business records
+## ✅ Fixed: `createdAt` on business records
 
-**Why:** the admin business detail page is meant to show when the restaurant/store joined the platform, the same way the users list already shows `joinedAt` — but `GET /businesses/:id` (and the list endpoints) don't return any such field today, so it can't be displayed yet.
+Was already present — confirmed directly against `/admin/restaurants`, no backend change needed. **Still open on the frontend side**: the admin business detail page doesn't display it yet (not wired up this round) — noted for a follow-up pass, not blocked on anything backend.
 
-Please add a `createdAt` (ISO date string) field to the business object returned by the restaurant/store admin endpoints, set at registration time.
-
-## 🆕 New ask: real pagination on every admin list endpoint
+## ✅ Fixed (with a frontend-side correction needed): real pagination on every admin list endpoint
 
 **Why:** the admin console's list pages (users, restaurants, stores, agents, registration requests, subscriptions) currently fetch the *entire* table in one request and paginate it client-side in the browser — fine today, but it gets slower and heavier for every admin page-load as each list grows, and it's exactly the kind of thing that should be the database's job, not the browser's. The frontend already has a working pager UI (added this session) wired to client-side slicing — switching it to real server pagination later is a small, contained change on our side once these query params exist.
 
 ### Request shape — add to every list endpoint below
 
-```
-GET /users?page=1&limit=24
-GET /restaurants?page=1&limit=24
-GET /stores?page=1&limit=24
-GET /agents?page=1&limit=24
-GET /registration-requests?page=1&limit=24
-```
+Shipped on `GET /users`, `GET /admin/restaurants`, `GET /admin/stores`, `GET /admin/agents`, `GET /registration-requests` — `page`/`limit` accepted (default limit 24, capped at 100 even if a larger one is requested), response is `{ items, meta: { page, limit, total, totalPages } }`. A real TypeORM `.skip()/.offset()` pagination bug (page 2 repeating page 1) was found and fixed during their own testing — confirmed both locally and on production.
 
-- `page`: 1-indexed. Missing/invalid → default to `1`.
-- `limit`: items per page. Missing/invalid → default to `24` (matches the frontend's own default page size — keeping them in sync avoids an off-by-one "page 2 starts mid-row" feeling, though the frontend will always send `limit` explicitly once this ships). Please cap it server-side (e.g. 100) so a crafted `limit=999999` can't force a full-table fetch anyway.
-- Every filter/search query param these endpoints already accept (name search, governorateId, regionId, role, status, …) should keep working exactly as today, just combined with `page`/`limit` rather than replaced by them.
+**Two things this broke on the frontend that are now fixed on our side, documented here so the shape of what shipped is clear:**
 
-### Response shape
+1. **The response has no `{ success, message, data }` envelope** — `{ items, meta }` arrives directly, same as every other plain GET on this API. Our original ask assumed the envelope would wrap it; it doesn't, matching the rest of the API's GET convention instead. `apiFetch`'s envelope-unwrapping already only triggers when `success`/`data` keys are present, so this needed no change — but the five list-fetching functions in `features/admin/services.ts` were still typed/written to expect a bare array, so when this shipped, they received `{ items, meta }` where every admin list page's `.map()`/`.filter()`/`.length` expected an array — **this took the whole admin console down in production** (every page that touches a restaurant/store list, including the dashboard overview, which fetches both through `getAdminSubscriptions`). Fixed now: those five functions unwrap `items` out of either shape (bare array or `{ items }`), so the frontend works whether or not a given endpoint has migrated yet.
+2. **No admin list page sends `page`/`limit` yet** — they still fetch once and paginate client-side, same as before this shipped. Without an explicit `limit`, the new default of 24 would have silently truncated every list to its first 24 rows (not a crash — worse, silent data loss: businesses/users past #24 would just disappear from search, filters, and counts). Stopgap fix shipped on our side: every one of those five calls now sends `?limit=100` (the server's own cap) so nothing is dropped as long as a table stays under 100 rows. This is not the final shape — migrating these five list pages to real server-driven pagination (sending `page`/`limit`/filters and reading `meta.totalPages` instead of slicing a full array client-side) is still open and is the real fix once any list is expected to pass 100 rows.
 
-Keep the existing `{ success, message, data }` envelope, but make `data` an object instead of a bare array:
-
-```jsonc
-{
-  "success": true,
-  "data": {
-    "items": [ /* the same array of users/businesses/agents/requests as today, just one page of it */ ],
-    "meta": {
-      "page": 1,
-      "limit": 24,
-      "total": 143,        // total matching rows across every page, after filters
-      "totalPages": 6
-    }
-  }
-}
-```
-
-`total`/`totalPages` need to reflect the **filtered** count (if a search/filter query param narrowed the result set), not the whole table — the frontend's page count display depends on that being accurate.
-
-This is additive and backward-compatible to design: if easier to ship gradually, any endpoint that doesn't support `page`/`limit` yet can keep returning a bare array for now — the frontend already works that way (full list, paginated client-side) and will keep working unchanged until an endpoint switches over.
+**Question for the backend:** our original ask (and the path the frontend already called) was `/admin/users`, but the confirmation names `/users` for this one specifically, while the other four keep their existing `/admin/...` paths. The frontend kept calling `/admin/users?limit=100` — please confirm whether pagination actually shipped on `/admin/users`, or whether it's really a separate `/users` route and `/admin/users` is unaffected (still a bare array, uncapped) — if the latter, `/admin/users` should get the same `page`/`limit` support for consistency with the other four, since the users list can grow past 100 just like the others.
 
 ## ✅ Fixed on the backend: `Business.isOpen` was hardcoded `true` everywhere, never actually computed from hours
 

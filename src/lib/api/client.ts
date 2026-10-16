@@ -264,6 +264,18 @@ export function mockDelay<T>(data: T, ms = 80): Promise<T> {
 }
 
 /**
+ * A list endpoint migrating to server pagination (see update.md) starts
+ * answering `{ items, meta }` instead of a bare array — but per that same
+ * doc the rollout is endpoint-by-endpoint, so some still answer the old bare
+ * array. This accepts either shape and always returns the array, so a caller
+ * that isn't paginating yet (every admin list page still slices client-side)
+ * doesn't care which one it got.
+ */
+export function unwrapListItems<T>(response: T[] | { items: T[] }): T[] {
+  return Array.isArray(response) ? response : response.items;
+}
+
+/**
  * GET that resolves to `undefined` on a 404 instead of throwing.
  *
  * Services whose pages render `notFound()` when an entity is missing (a

@@ -1,4 +1,10 @@
-import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
+import {
+  apiFetch,
+  apiGetOrUndefined,
+  IS_MOCK,
+  mockDelay,
+  unwrapListItems,
+} from "@/lib/api/client";
 import {
   agentTransactions,
   agents,
@@ -225,16 +231,36 @@ export async function getAdminStats(
   return apiFetch("/admin/stats", { headers: authHeaders(auth) });
 }
 
+/**
+ * Every admin list endpoint now defaults to 24 items per request once no
+ * `page`/`limit` is sent (server pagination shipped — see update.md), while
+ * every admin list page still fetches once and paginates client-side. Until
+ * that's migrated to real server-driven pagination, request the server's own
+ * hard cap so the client-side list isn't silently missing anything past the
+ * first 24 — `?limit=100` is a stopgap, not the final shape.
+ */
+const ADMIN_LIST_FETCH_LIMIT = 100;
+
 export async function getAdminRestaurants(
   auth: AdminAuth = {},
 ): Promise<Restaurant[]> {
   if (IS_MOCK) return mockDelay(restaurants);
-  return apiFetch("/admin/restaurants", { headers: authHeaders(auth) });
+  return unwrapListItems(
+    await apiFetch<Restaurant[] | { items: Restaurant[] }>(
+      `/admin/restaurants?limit=${ADMIN_LIST_FETCH_LIMIT}`,
+      { headers: authHeaders(auth) },
+    ),
+  );
 }
 
 export async function getAdminAgents(auth: AdminAuth = {}): Promise<Agent[]> {
   if (IS_MOCK) return mockDelay(agents);
-  return apiFetch("/admin/agents", { headers: authHeaders(auth) });
+  return unwrapListItems(
+    await apiFetch<Agent[] | { items: Agent[] }>(
+      `/admin/agents?limit=${ADMIN_LIST_FETCH_LIMIT}`,
+      { headers: authHeaders(auth) },
+    ),
+  );
 }
 
 export async function getAdminAgentById(
@@ -255,14 +281,24 @@ export async function getAdminAgentLedger(
 
 export async function getAdminStores(auth: AdminAuth = {}): Promise<Store[]> {
   if (IS_MOCK) return mockDelay(stores);
-  return apiFetch("/admin/stores", { headers: authHeaders(auth) });
+  return unwrapListItems(
+    await apiFetch<Store[] | { items: Store[] }>(
+      `/admin/stores?limit=${ADMIN_LIST_FETCH_LIMIT}`,
+      { headers: authHeaders(auth) },
+    ),
+  );
 }
 
 export async function getAdminUsers(
   auth: AdminAuth = {},
 ): Promise<PlatformUser[]> {
   if (IS_MOCK) return mockDelay(platformUsers);
-  return apiFetch("/admin/users", { headers: authHeaders(auth) });
+  return unwrapListItems(
+    await apiFetch<PlatformUser[] | { items: PlatformUser[] }>(
+      `/admin/users?limit=${ADMIN_LIST_FETCH_LIMIT}`,
+      { headers: authHeaders(auth) },
+    ),
+  );
 }
 
 export async function getAdminPlans(auth: AdminAuth = {}): Promise<Plan[]> {
@@ -352,7 +388,12 @@ export async function getRegistrationRequests(
   auth: AdminAuth = {},
 ): Promise<RegistrationRequest[]> {
   if (IS_MOCK) return mockDelay([]);
-  return apiFetch("/registration-requests", { headers: authHeaders(auth) });
+  return unwrapListItems(
+    await apiFetch<RegistrationRequest[] | { items: RegistrationRequest[] }>(
+      `/registration-requests?limit=${ADMIN_LIST_FETCH_LIMIT}`,
+      { headers: authHeaders(auth) },
+    ),
+  );
 }
 
 /** one request by id — no dedicated read endpoint exists yet, so this reads
