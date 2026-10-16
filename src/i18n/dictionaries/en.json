@@ -1164,7 +1164,9 @@
     "confirmDeleteTitle": "Permanently delete {name}?",
     "confirmDeleteBody": "This can't be undone — every record of {name} will be permanently removed from the platform.",
     "accountDeleted": "Deleted permanently",
-    "activatedViaAgent": "Activated via agent {name}"
+    "activatedViaAgent": "Activated via agent {name}",
+    "subscriptionsViaAgent": "Via agents ({count})",
+    "subscriptionsGeneral": "General ({count})"
   },
   "orderHistory": {
     "title": "Past orders",

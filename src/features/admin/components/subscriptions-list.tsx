@@ -35,6 +35,7 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
   const [kind, setKind] = useState(ALL);
   const [status, setStatus] = useState(ALL);
   const [page, setPage] = useState(1);
+  const [pageGeneral, setPageGeneral] = useState(1);
 
   const hasFilters = query.trim() !== "" || kind !== ALL || status !== ALL;
 
@@ -70,10 +71,24 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
     });
   }, [dated, query, kind, status]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_PAGE_SIZE));
-  const pageRows = filtered.slice(
+  const viaAgent = useMemo(
+    () => filtered.filter((row) => row.business.agent),
+    [filtered],
+  );
+  const general = useMemo(
+    () => filtered.filter((row) => !row.business.agent),
+    [filtered],
+  );
+
+  const totalPagesAgent = Math.max(1, Math.ceil(viaAgent.length / ADMIN_PAGE_SIZE));
+  const pageAgentRows = viaAgent.slice(
     (page - 1) * ADMIN_PAGE_SIZE,
     page * ADMIN_PAGE_SIZE,
+  );
+  const totalPagesGeneral = Math.max(1, Math.ceil(general.length / ADMIN_PAGE_SIZE));
+  const pageGeneralRows = general.slice(
+    (pageGeneral - 1) * ADMIN_PAGE_SIZE,
+    pageGeneral * ADMIN_PAGE_SIZE,
   );
   // reset to page 1 when a filter narrows the result set — compared during
   // render (not an effect), the same re-seed-on-change pattern used
@@ -83,12 +98,74 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
   if (lastFilterKey !== filterKey) {
     setLastFilterKey(filterKey);
     setPage(1);
+    setPageGeneral(1);
   }
 
   const dateFormat = new Intl.DateTimeFormat(
     lang === "ar" ? "ar-SY" : "en-GB",
     { day: "numeric", month: "short", year: "numeric" },
   );
+
+  // the mock carries no start date for every business — inferred a year back
+  // from the expiry when the real field is absent, same fallback used on the
+  // business detail page
+  const startOf = (business: Business) => {
+    if (business.planStartedAt) return new Date(business.planStartedAt);
+    const start = new Date(business.planExpiresAt);
+    start.setFullYear(start.getFullYear() - 1);
+    return start;
+  };
+
+  const renderRow = (row: (typeof filtered)[number]) => {
+    const expired = row.days < 0;
+    const Icon = row.kind === "restaurant" ? UtensilsCrossed : ShoppingBag;
+
+    return (
+      <li
+        key={row.business.id}
+        className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
+      >
+        <Image
+          src={row.business.logoUrl}
+          alt=""
+          width={48}
+          height={48}
+          className="size-12 shrink-0 rounded-xl object-cover"
+        />
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">
+            {row.business.name[lang]}
+          </p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Icon className="size-3.5 shrink-0" />
+            {row.kind === "restaurant" ? t.admin.restaurants : t.admin.stores}
+            {" · "}
+            {row.business.planName || t.dashboard.defaultPlanName}
+          </p>
+        </div>
+
+        <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+          {dateFormat.format(startOf(row.business))}
+          {" – "}
+          {dateFormat.format(new Date(row.business.planExpiresAt))}
+        </span>
+
+        <Badge
+          className={cn(
+            "shrink-0",
+            expired
+              ? "bg-destructive/10 text-destructive"
+              : "bg-success/10 text-success",
+          )}
+        >
+          {expired
+            ? fmt(t.agent.daysOverdue, { days: Math.abs(row.days) })
+            : fmt(t.agent.daysLeft, { days: row.days })}
+        </Badge>
+      </li>
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -135,60 +212,44 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
           {t.admin.noResults}
         </p>
       ) : (
-        <ul className="space-y-2.5">
-          {pageRows.map((row) => {
-            const expired = row.days < 0;
-            const Icon =
-              row.kind === "restaurant" ? UtensilsCrossed : ShoppingBag;
+        <>
+          <section className="space-y-2.5">
+            <h2 className="font-heading text-sm font-bold text-muted-foreground">
+              {fmt(t.admin.subscriptionsViaAgent, { count: viaAgent.length })}
+            </h2>
+            {viaAgent.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {t.admin.noResults}
+              </p>
+            ) : (
+              <ul className="space-y-2.5">{pageAgentRows.map(renderRow)}</ul>
+            )}
+            <Pagination
+              page={page}
+              totalPages={totalPagesAgent}
+              onPageChange={setPage}
+            />
+          </section>
 
-            return (
-              <li
-                key={row.business.id}
-                className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
-              >
-                <Image
-                  src={row.business.logoUrl}
-                  alt=""
-                  width={48}
-                  height={48}
-                  className="size-12 shrink-0 rounded-xl object-cover"
-                />
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">
-                    {row.business.name[lang]}
-                  </p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Icon className="size-3.5 shrink-0" />
-                    {row.kind === "restaurant"
-                      ? t.admin.restaurants
-                      : t.admin.stores}
-                  </p>
-                </div>
-
-                <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-                  {dateFormat.format(new Date(row.business.planExpiresAt))}
-                </span>
-
-                <Badge
-                  className={cn(
-                    "shrink-0",
-                    expired
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-success/10 text-success",
-                  )}
-                >
-                  {expired
-                    ? fmt(t.agent.daysOverdue, { days: Math.abs(row.days) })
-                    : fmt(t.agent.daysLeft, { days: row.days })}
-                </Badge>
-              </li>
-            );
-          })}
-        </ul>
+          <section className="space-y-2.5">
+            <h2 className="font-heading text-sm font-bold text-muted-foreground">
+              {fmt(t.admin.subscriptionsGeneral, { count: general.length })}
+            </h2>
+            {general.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {t.admin.noResults}
+              </p>
+            ) : (
+              <ul className="space-y-2.5">{pageGeneralRows.map(renderRow)}</ul>
+            )}
+            <Pagination
+              page={pageGeneral}
+              totalPages={totalPagesGeneral}
+              onPageChange={setPageGeneral}
+            />
+          </section>
+        </>
       )}
-
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

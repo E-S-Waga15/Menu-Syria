@@ -1164,7 +1164,9 @@
     "confirmDeleteTitle": "حذف {name} نهائياً؟",
     "confirmDeleteBody": "هذا الإجراء نهائي ولا يمكن التراجع عنه — سيتم حذف كل بيانات {name} نهائياً من المنصة.",
     "accountDeleted": "تم الحذف نهائياً",
-    "activatedViaAgent": "تم التفعيل عبر الوكيل {name}"
+    "activatedViaAgent": "تم التفعيل عبر الوكيل {name}",
+    "subscriptionsViaAgent": "اشتراكات عبر الوكلاء ({count})",
+    "subscriptionsGeneral": "اشتراكات عامة ({count})"
   },
   "orderHistory": {
     "title": "طلباتي السابقة",
