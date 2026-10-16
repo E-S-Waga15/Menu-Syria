@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Building2,
   Calendar,
   Check,
   Clock3,
+  Eye,
   MapPin,
   Phone,
   Store,
@@ -220,14 +222,22 @@ export function RegistrationRequestsList({
             return (
               <li
                 key={request.id}
-                className="flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-card p-5"
+                className="flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-colors duration-200 hover:border-primary/35"
               >
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Link
+                  href={`/${lang}/admin/registration-requests/${request.id}`}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+                >
                   <TypeIcon className="size-5" />
-                </span>
+                </Link>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold">{request.applicantName}</p>
+                    <Link
+                      href={`/${lang}/admin/registration-requests/${request.id}`}
+                      className="font-semibold hover:text-primary"
+                    >
+                      {request.applicantName}
+                    </Link>
                     <Badge variant="secondary" className="text-[11px]">
                       {typeWord}
                     </Badge>
@@ -275,20 +285,33 @@ export function RegistrationRequestsList({
                 >
                   {statusLabel(request.status)}
                 </Badge>
-                {canReview && (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => openApprove(request)}>
-                      <Check className="size-4" /> {t.admin.approveRequest}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setRejecting(request)}
-                    >
-                      <X className="size-4" /> {t.admin.rejectRequest}
-                    </Button>
-                  </div>
-                )}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    render={
+                      <Link
+                        href={`/${lang}/admin/registration-requests/${request.id}`}
+                      />
+                    }
+                  >
+                    <Eye className="size-4" /> {t.admin.viewDetails}
+                  </Button>
+                  {canReview && (
+                    <>
+                      <Button size="sm" onClick={() => openApprove(request)}>
+                        <Check className="size-4" /> {t.admin.approveRequest}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setRejecting(request)}
+                      >
+                        <X className="size-4" /> {t.admin.rejectRequest}
+                      </Button>
+                    </>
+                  )}
+                </div>
                 {request.status === "pending" && (
                   <Clock3 className="size-4 shrink-0 text-muted-foreground" />
                 )}

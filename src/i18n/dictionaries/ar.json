@@ -1166,7 +1166,10 @@
     "accountDeleted": "تم الحذف نهائياً",
     "activatedViaAgent": "تم التفعيل عبر الوكيل {name}",
     "subscriptionsViaAgent": "اشتراكات عبر الوكلاء ({count})",
-    "subscriptionsGeneral": "اشتراكات عامة ({count})"
+    "subscriptionsGeneral": "اشتراكات عامة ({count})",
+    "requestDetails": "طلب التسجيل",
+    "submittedOn": "تاريخ التقديم: {date}",
+    "contactInfo": "معلومات التواصل"
   },
   "orderHistory": {
     "title": "طلباتي السابقة",

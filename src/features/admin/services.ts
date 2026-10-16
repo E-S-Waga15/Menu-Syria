@@ -355,6 +355,16 @@ export async function getRegistrationRequests(
   return apiFetch("/registration-requests", { headers: authHeaders(auth) });
 }
 
+/** one request by id — no dedicated read endpoint exists yet, so this reads
+ * off the same full list the requests page already fetches */
+export async function getRegistrationRequestById(
+  id: string,
+  auth: AdminAuth = {},
+): Promise<RegistrationRequest | null> {
+  const requests = await getRegistrationRequests(auth);
+  return requests.find((request) => request.id === id) ?? null;
+}
+
 export async function updateRegistrationRequestStatus(
   id: string,
   status: RegistrationRequestStatus,

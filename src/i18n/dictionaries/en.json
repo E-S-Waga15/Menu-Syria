@@ -1166,7 +1166,10 @@
     "accountDeleted": "Deleted permanently",
     "activatedViaAgent": "Activated via agent {name}",
     "subscriptionsViaAgent": "Via agents ({count})",
-    "subscriptionsGeneral": "General ({count})"
+    "subscriptionsGeneral": "General ({count})",
+    "requestDetails": "Registration request",
+    "submittedOn": "Submitted on {date}",
+    "contactInfo": "Contact info"
   },
   "orderHistory": {
     "title": "Past orders",
