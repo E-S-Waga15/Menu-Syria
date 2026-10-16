@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -50,6 +51,7 @@ export function AdminUsersList({
   const [query, setQuery] = useState("");
   const [role, setRole] = useState(ALL);
   const [status, setStatus] = useState(ALL);
+  const [page, setPage] = useState(1);
   const [pendingChange, setPendingChange] = useState<PendingStatusChange | null>(
     null,
   );
@@ -69,6 +71,7 @@ export function AdminUsersList({
     setQuery("");
     setRole(ALL);
     setStatus(ALL);
+    setPage(1);
   };
 
   const filtered = useMemo(() => {
@@ -85,6 +88,21 @@ export function AdminUsersList({
       return true;
     });
   }, [userRows, query, role, status]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_PAGE_SIZE));
+  const pageRows = filtered.slice(
+    (page - 1) * ADMIN_PAGE_SIZE,
+    page * ADMIN_PAGE_SIZE,
+  );
+  // reset to page 1 when a filter narrows the result set — compared during
+  // render (not an effect), the same re-seed-on-change pattern used
+  // elsewhere for this exact kind of derived reset
+  const filterKey = `${query}|${role}|${status}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (lastFilterKey !== filterKey) {
+    setLastFilterKey(filterKey);
+    setPage(1);
+  }
 
   const governorateName = (id?: string) =>
     governorates.find((g) => g.id === id)?.name[lang] ?? "";
@@ -186,7 +204,7 @@ export function AdminUsersList({
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((user) => (
+          {pageRows.map((user) => (
             <li
               key={user.id}
               className={cn(
@@ -241,6 +259,8 @@ export function AdminUsersList({
           ))}
         </ul>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <AlertDialog
         open={pendingChange !== null}

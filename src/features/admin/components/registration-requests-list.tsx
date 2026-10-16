@@ -16,6 +16,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,6 +94,12 @@ export function RegistrationRequestsList({
   const { t, lang } = useI18n();
   const [requests, setRequests] = useState(initialRequests);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(requests.length / ADMIN_PAGE_SIZE));
+  const pageRequests = requests.slice(
+    (page - 1) * ADMIN_PAGE_SIZE,
+    page * ADMIN_PAGE_SIZE,
+  );
 
   useEffect(() => {
     void getAdminPlans().then(setPlans);
@@ -199,7 +206,7 @@ export function RegistrationRequestsList({
         </p>
       ) : (
         <ul className="space-y-3">
-          {requests.map((request) => {
+          {pageRequests.map((request) => {
             const TypeIcon = TYPE_ICON[request.type] ?? User;
             const typeWord =
               request.type === "restaurant"
@@ -290,6 +297,8 @@ export function RegistrationRequestsList({
           })}
         </ul>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       {/* approve: pick the plan and how long the subscription runs —
           starts the moment this is confirmed, never more than a year */}

@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
@@ -67,6 +68,7 @@ export function AdminBusinessesList({
   const [regionId, setRegionId] = useState(ALL);
   const [pendingToggle, setPendingToggle] = useState<Business | null>(null);
   const [isTogglingAccount, setIsTogglingAccount] = useState(false);
+  const [page, setPage] = useState(1);
 
   const base = `/${lang}/admin`;
   const adminBusinessBase = kind === "restaurant" ? "restaurants" : "stores";
@@ -110,6 +112,18 @@ export function AdminBusinessesList({
       })
       .sort((a, b) => a.days - b.days);
   }, [businessRows, query, governorateId, regionId]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / ADMIN_PAGE_SIZE));
+  const pageRows = rows.slice((page - 1) * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE);
+  // reset to page 1 when a filter narrows the result set — compared during
+  // render (not an effect), the same re-seed-on-change pattern used
+  // elsewhere for this exact kind of derived reset
+  const filterKey = `${query}|${governorateId}|${regionId}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (lastFilterKey !== filterKey) {
+    setLastFilterKey(filterKey);
+    setPage(1);
+  }
 
   const governorateName = (id: string) =>
     governorates.find((g) => g.id === id)?.name[lang] ?? "";
@@ -254,7 +268,7 @@ export function AdminBusinessesList({
         </p>
       ) : view === "grid" ? (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {rows.map(({ business, days }) => (
+          {pageRows.map(({ business, days }) => (
             <li
               key={business.id}
               className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card transition-colors duration-200 hover:border-primary/35"
@@ -329,7 +343,7 @@ export function AdminBusinessesList({
         </ul>
       ) : (
         <ul className="space-y-2.5">
-          {rows.map(({ business, days }) => (
+          {pageRows.map(({ business, days }) => (
             <li
               key={business.id}
               className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
@@ -372,6 +386,8 @@ export function AdminBusinessesList({
           ))}
         </ul>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
       <AlertDialog
         open={pendingToggle !== null}

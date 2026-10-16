@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { CalendarClock, ShoppingBag, UtensilsCrossed } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminSelect } from "@/features/admin/components/admin-select";
@@ -33,6 +34,7 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState(ALL);
   const [status, setStatus] = useState(ALL);
+  const [page, setPage] = useState(1);
 
   const hasFilters = query.trim() !== "" || kind !== ALL || status !== ALL;
 
@@ -67,6 +69,21 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
       return true;
     });
   }, [dated, query, kind, status]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_PAGE_SIZE));
+  const pageRows = filtered.slice(
+    (page - 1) * ADMIN_PAGE_SIZE,
+    page * ADMIN_PAGE_SIZE,
+  );
+  // reset to page 1 when a filter narrows the result set — compared during
+  // render (not an effect), the same re-seed-on-change pattern used
+  // elsewhere for this exact kind of derived reset
+  const filterKey = `${query}|${kind}|${status}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (lastFilterKey !== filterKey) {
+    setLastFilterKey(filterKey);
+    setPage(1);
+  }
 
   const dateFormat = new Intl.DateTimeFormat(
     lang === "ar" ? "ar-SY" : "en-GB",
@@ -119,7 +136,7 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
         </p>
       ) : (
         <ul className="space-y-2.5">
-          {filtered.map((row) => {
+          {pageRows.map((row) => {
             const expired = row.days < 0;
             const Icon =
               row.kind === "restaurant" ? UtensilsCrossed : ShoppingBag;
@@ -170,6 +187,8 @@ export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
           })}
         </ul>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

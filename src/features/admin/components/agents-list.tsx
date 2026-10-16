@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Eye, Power, Store } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
 import { SafeImage } from "@/components/shared/safe-image";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -41,6 +42,7 @@ export function AdminAgentsList({
   const [governorateId, setGovernorateId] = useState(ALL);
   const [regionId, setRegionId] = useState(ALL);
   const [agentRows, setAgentRows] = useState(agents);
+  const [page, setPage] = useState(1);
 
   const base = `/${lang}/admin`;
 
@@ -76,6 +78,21 @@ export function AdminAgentsList({
       return true;
     });
   }, [agentRows, query, governorateId, regionId]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_PAGE_SIZE));
+  const pageRows = filtered.slice(
+    (page - 1) * ADMIN_PAGE_SIZE,
+    page * ADMIN_PAGE_SIZE,
+  );
+  // reset to page 1 when a filter narrows the result set — compared during
+  // render (not an effect), the same re-seed-on-change pattern used
+  // elsewhere for this exact kind of derived reset
+  const filterKey = `${query}|${governorateId}|${regionId}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (lastFilterKey !== filterKey) {
+    setLastFilterKey(filterKey);
+    setPage(1);
+  }
 
   const placeOf = (agent: Agent) =>
     [
@@ -187,7 +204,7 @@ export function AdminAgentsList({
         </p>
       ) : view === "grid" ? (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((agent) => (
+          {pageRows.map((agent) => (
             <li
               key={agent.id}
               className="group flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-4 transition-colors duration-200 hover:border-primary/35"
@@ -222,7 +239,7 @@ export function AdminAgentsList({
         </ul>
       ) : (
         <ul className="space-y-2.5">
-          {filtered.map((agent) => (
+          {pageRows.map((agent) => (
             <li
               key={agent.id}
               className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
@@ -263,6 +280,8 @@ export function AdminAgentsList({
           ))}
         </ul>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

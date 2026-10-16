@@ -1,5 +1,46 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🆕 New ask: real pagination on every admin list endpoint
+
+**Why:** the admin console's list pages (users, restaurants, stores, agents, registration requests, subscriptions) currently fetch the *entire* table in one request and paginate it client-side in the browser — fine today, but it gets slower and heavier for every admin page-load as each list grows, and it's exactly the kind of thing that should be the database's job, not the browser's. The frontend already has a working pager UI (added this session) wired to client-side slicing — switching it to real server pagination later is a small, contained change on our side once these query params exist.
+
+### Request shape — add to every list endpoint below
+
+```
+GET /users?page=1&limit=24
+GET /restaurants?page=1&limit=24
+GET /stores?page=1&limit=24
+GET /agents?page=1&limit=24
+GET /registration-requests?page=1&limit=24
+```
+
+- `page`: 1-indexed. Missing/invalid → default to `1`.
+- `limit`: items per page. Missing/invalid → default to `24` (matches the frontend's own default page size — keeping them in sync avoids an off-by-one "page 2 starts mid-row" feeling, though the frontend will always send `limit` explicitly once this ships). Please cap it server-side (e.g. 100) so a crafted `limit=999999` can't force a full-table fetch anyway.
+- Every filter/search query param these endpoints already accept (name search, governorateId, regionId, role, status, …) should keep working exactly as today, just combined with `page`/`limit` rather than replaced by them.
+
+### Response shape
+
+Keep the existing `{ success, message, data }` envelope, but make `data` an object instead of a bare array:
+
+```jsonc
+{
+  "success": true,
+  "data": {
+    "items": [ /* the same array of users/businesses/agents/requests as today, just one page of it */ ],
+    "meta": {
+      "page": 1,
+      "limit": 24,
+      "total": 143,        // total matching rows across every page, after filters
+      "totalPages": 6
+    }
+  }
+}
+```
+
+`total`/`totalPages` need to reflect the **filtered** count (if a search/filter query param narrowed the result set), not the whole table — the frontend's page count display depends on that being accurate.
+
+This is additive and backward-compatible to design: if easier to ship gradually, any endpoint that doesn't support `page`/`limit` yet can keep returning a bare array for now — the frontend already works that way (full list, paginated client-side) and will keep working unchanged until an endpoint switches over.
+
 ## ✅ Fixed on the backend: `Business.isOpen` was hardcoded `true` everywhere, never actually computed from hours
 
 Confirmed and fixed — `isOpen` was a static `true` on every read (owner's own and the public storefront), not derived from anything. It's now computed server-side from `openingHours` against current Damascus time, and the frontend reads it directly again (an earlier attempt computed it client-side instead while this was still broken server-side — reverted now that the backend sends the real value, so there's exactly one place this is computed, not two that could disagree).
