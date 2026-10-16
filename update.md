@@ -1,5 +1,16 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🚨 Urgent: wrong accidental renewal needs to be reversed — restaurant "أبو زيد", agent "بشر"
+
+**What happened:** an admin accidentally clicked "تجديد الاشتراك" (renew subscription) on restaurant **أبو زيد**'s admin detail page. This calls `POST /subscriptions/:id/renew` for real — it created a genuine new subscription period and, since this business is linked to agent **بشر**, it now owes/credits the agent a commission for a renewal that should never have happened.
+
+**Needed, as soon as possible:**
+1. Find the subscription renewal just created for أبو زيد (should be the most recent one on that business, today's date).
+2. Revert it: remove that renewal period (restore `planExpiresAt`/`planStartedAt` to what they were right before this renewal), and reverse whatever commission/ledger entry it generated for agent بشر so they aren't credited for a renewal that didn't really happen.
+3. There's currently no "undo renewal" or "delete subscription" endpoint the admin console can call to fix this itself — worth considering for later, but for right now this needs a direct database correction on your side.
+
+Please confirm once reversed so we can double check both the business's subscription dates and the agent's ledger on our side.
+
 ## ✅ Fixed: delete endpoints for users, businesses and agents
 
 Confirmed shipped, `SUPER_ADMIN`-only:
