@@ -22,18 +22,13 @@ import { useAuthStore } from "@/features/auth/store";
 import { useHydratedSession } from "@/features/auth/use-hydrated-session";
 import { getMyAgentProfile } from "@/features/agent-dashboard/services";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
-import { buildSubscriptionNotifications } from "@/features/notifications/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import type { Business } from "@/lib/types";
 
 export function AgentDashboardShell({
   children,
-  /** the businesses this agent holds, so the bell can count what is due */
-  businesses = [],
 }: {
   children: ReactNode;
-  businesses?: Business[];
 }) {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -67,13 +62,7 @@ export function AgentDashboardShell({
       accountMenu={
         hydrated && session ? (
           <div className="flex items-center gap-1">
-            <NotificationBell
-              href={`${base}/notifications`}
-              ids={buildSubscriptionNotifications(
-                businesses,
-                (b) => `${base}/subscriptions/${b.id}`,
-              ).map((n) => n.id)}
-            />
+            <NotificationBell href={`${base}/notifications`} />
             <AccountMenu
               session={{
                 ...session,

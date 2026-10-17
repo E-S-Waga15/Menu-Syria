@@ -1,7 +1,5 @@
-import type { AppNotification, Business } from "@/lib/types";
-
-/** inside this window a subscription is worth warning about */
-const EXPIRING_WINDOW_DAYS = 30;
+import { apiFetch, IS_MOCK, mockDelay } from "@/lib/api/client";
+import type { AppNotification } from "@/lib/types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -16,55 +14,47 @@ export function daysUntil(iso: string, now: Date = new Date()): number {
   return Math.round((target - today) / DAY_MS);
 }
 
-/**
- * Builds the notice list from the businesses themselves rather than storing
- * notifications as records.
- *
- * A subscription reminder is a fact about a date, not an event: derive it and
- * it is always true, whereas a stored row keeps warning about an expiry that
- * was renewed last week. The read flags live separately, keyed by an id that
- * is stable for the same business and the same fact.
- */
-export function buildSubscriptionNotifications(
-  businesses: Business[],
-  basePath: (business: Business) => string,
-  now: Date = new Date(),
-): AppNotification[] {
-  return (
-    businesses
-      .flatMap<AppNotification>((business) => {
-        const days = daysUntil(business.planExpiresAt, now);
-        const shared = {
-          subjectName: business.name,
-          createdAt: business.planExpiresAt,
-          href: basePath(business),
-        };
+/** The signed-in user's own notices, newest first — the backend scopes this
+ * to the caller's token, so the same call serves every role's dashboard. */
+export async function getNotifications(
+  unreadOnly = false,
+): Promise<AppNotification[]> {
+  if (IS_MOCK) return mockDelay([]);
+  return apiFetch(`/notifications${unreadOnly ? "?unread=true" : ""}`);
+}
 
-        if (days < 0) {
-          return [
-            {
-              ...shared,
-              id: `expired-${business.id}-${business.planExpiresAt}`,
-              kind: "expired",
-              days: Math.abs(days),
-            },
-          ];
-        }
+export async function markNotificationRead(
+  id: string,
+  isRead: boolean,
+): Promise<AppNotification | undefined> {
+  if (IS_MOCK) return mockDelay(undefined, 100);
+  return apiFetch(`/notifications/${id}/read`, {
+    method: "PATCH",
+    body: { isRead },
+  });
+}
 
-        if (days <= EXPIRING_WINDOW_DAYS) {
-          return [
-            {
-              ...shared,
-              id: `expiring-${business.id}-${business.planExpiresAt}`,
-              kind: "expiringSoon",
-              days,
-            },
-          ];
-        }
+/** Registers this browser/device for real push notifications — called once
+ * the user has granted permission and an FCM token has been obtained. */
+export async function registerPushToken(
+  token: string,
+  userAgent?: string,
+): Promise<{ message?: string } | undefined> {
+  if (IS_MOCK) return mockDelay(undefined, 100);
+  return apiFetch("/push-tokens", {
+    method: "POST",
+    body: { token, userAgent },
+  });
+}
 
-        return [];
-      })
-      // soonest first: an expired subscription outranks one with three weeks left
-      .sort((a, b) => (a.days ?? 0) - (b.days ?? 0))
-  );
+/** Unregisters this device's push token — called on logout so a signed-out
+ * browser stops receiving another account's pushes. */
+export async function unregisterPushToken(
+  token: string,
+): Promise<{ message?: string } | undefined> {
+  if (IS_MOCK) return mockDelay(undefined, 100);
+  return apiFetch("/push-tokens", {
+    method: "DELETE",
+    body: { token },
+  });
 }

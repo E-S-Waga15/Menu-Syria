@@ -91,7 +91,7 @@ export function SiteHeader() {
             <LanguageSwitcher className="hidden sm:inline-flex" />
             {hydrated && session ? (
               <>
-                <NotificationBell href={`/${lang}/notifications`} ids={[]} />
+                <NotificationBell href={`/${lang}/notifications`} />
                 <ProfileMenu session={session} />
               </>
             ) : (

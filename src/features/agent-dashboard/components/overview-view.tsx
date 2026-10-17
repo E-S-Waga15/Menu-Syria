@@ -31,13 +31,62 @@ import {
   getMyReferredRestaurants,
   getMyReferredStores,
 } from "@/features/agent-dashboard/services";
-import { buildSubscriptionNotifications } from "@/features/notifications/services";
+import { daysUntil } from "@/features/notifications/services";
 import { fmt, useI18n } from "@/i18n/client";
 import type { Locale } from "@/i18n/config";
 import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
+import type { Business, LocalizedText } from "@/lib/types";
 
 const CHART_COLORS = ["var(--chart-1)", "var(--chart-2)"];
+
+/** inside this window a subscription is worth flagging on the overview */
+const EXPIRING_WINDOW_DAYS = 30;
+
+interface RenewalReminder {
+  id: string;
+  href: string;
+  kind: "expired" | "expiringSoon";
+  subjectName: LocalizedText;
+  days: number;
+}
+
+/** The soonest-expiring businesses, worth a glance from the overview page —
+ * a lightweight local derivation, not the real notifications feed (which
+ * lives in its own feature and is about events, not this ongoing fact). */
+function nearestRenewals(
+  businesses: Business[],
+  href: (business: Business) => string,
+): RenewalReminder[] {
+  return businesses
+    .flatMap<RenewalReminder>((business) => {
+      const days = daysUntil(business.planExpiresAt);
+      if (days < 0) {
+        return [
+          {
+            id: `expired-${business.id}`,
+            href: href(business),
+            kind: "expired",
+            subjectName: business.name,
+            days: Math.abs(days),
+          },
+        ];
+      }
+      if (days <= EXPIRING_WINDOW_DAYS) {
+        return [
+          {
+            id: `expiring-${business.id}`,
+            href: href(business),
+            kind: "expiringSoon",
+            subjectName: business.name,
+            days,
+          },
+        ];
+      }
+      return [];
+    })
+    .sort((a, b) => a.days - b.days);
+}
 
 const tooltipStyle = {
   borderRadius: 12,
@@ -186,8 +235,7 @@ export function AgentOverviewView() {
     toast.success(t.common.copied);
   };
 
-  // soonest-expiring first, already sorted by buildSubscriptionNotifications
-  const renewals = buildSubscriptionNotifications(
+  const renewals = nearestRenewals(
     [...restaurants, ...stores],
     (business) => `${base}/subscriptions/${business.id}`,
   ).slice(0, 3);

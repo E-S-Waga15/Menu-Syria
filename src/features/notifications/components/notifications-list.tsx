@@ -3,61 +3,86 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { AlertTriangle, Bell, CalendarClock, CheckCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  CalendarClock,
+  CheckCheck,
+  FileText,
+  HandCoins,
+  RefreshCw,
+  ShieldBan,
+  UserCheck,
+  UserPlus,
+  Wallet,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { fmt, useI18n } from "@/i18n/client";
-import type { AppNotification, NotificationKind } from "@/lib/types";
+import { notificationHref } from "@/features/notifications/lib/href";
+import { markNotificationRead } from "@/features/notifications/services";
+import { useI18n } from "@/i18n/client";
+import { ApiError } from "@/lib/api/client";
+import { toast } from "@/lib/toast";
+import type { AppNotification, NotificationType } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useNotificationsStore } from "@/stores/notifications-store";
 
-const KIND_ICON: Record<NotificationKind, typeof Bell> = {
-  expiringSoon: CalendarClock,
-  expired: AlertTriangle,
-  renewed: CheckCheck,
-  joined: Bell,
+const TYPE_ICON: Record<NotificationType, typeof Bell> = {
+  new_user_registered: UserPlus,
+  new_registration_request: FileText,
+  new_subscription_request: Wallet,
+  agent_referral_used: UserCheck,
+  agent_dues_settled: HandCoins,
+  subscription_activated: CheckCheck,
+  subscription_renewed: RefreshCw,
+  subscription_expiring: CalendarClock,
+  subscription_expired: AlertTriangle,
+  account_disabled: ShieldBan,
 };
+
+const URGENT_TYPES: NotificationType[] = [
+  "subscription_expired",
+  "account_disabled",
+];
 
 /**
  * The notice list, shared by every dashboard and by customers.
  *
  * Unread is carried by a left edge and weight rather than a coloured row: the
- * list is read top to bottom, and tinting whole rows made the expired ones —
- * which are the urgent ones — compete with the merely unread.
+ * list is read top to bottom, and tinting whole rows made the urgent ones
+ * compete with the merely unread.
  */
 export function NotificationsList({
   notifications,
+  onChange,
 }: {
   notifications: AppNotification[];
+  /** called after a read/unread toggle actually succeeds, so the caller's
+   * own fetched list (and the header bell's unread count) can refresh */
+  onChange?: () => void;
 }) {
   const { t, lang } = useI18n();
-  const readIds = useNotificationsStore((s) => s.readIds);
-  const markRead = useNotificationsStore((s) => s.markRead);
-  const markAllRead = useNotificationsStore((s) => s.markAllRead);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const isRead = (id: string) => readIds.includes(id);
-  const unreadCount = notifications.filter((n) => !isRead(n.id)).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const shown = unreadOnly ? notifications.filter((n) => !n.isRead) : notifications;
 
-  const shown = unreadOnly
-    ? notifications.filter((n) => !isRead(n.id))
-    : notifications;
-
-  const messageFor = (notification: AppNotification) => {
-    const values = {
-      name: notification.subjectName[lang],
-      days: String(notification.days ?? 0),
-    };
-    switch (notification.kind) {
-      case "expired":
-        return fmt(t.notifications.expiredNotice, values);
-      case "renewed":
-        return fmt(t.notifications.renewedNotice, values);
-      case "joined":
-        return fmt(t.notifications.joinedNotice, values);
-      default:
-        return fmt(t.notifications.expiringSoon, values);
+  const setRead = async (id: string, isRead: boolean) => {
+    setPendingId(id);
+    try {
+      await markNotificationRead(id, isRead);
+      onChange?.();
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setPendingId(null);
     }
+  };
+
+  const markAllRead = async () => {
+    const unread = notifications.filter((n) => !n.isRead);
+    await Promise.all(unread.map((n) => markNotificationRead(n.id, true)));
+    onChange?.();
   };
 
   if (notifications.length === 0) {
@@ -100,11 +125,7 @@ export function NotificationsList({
         </div>
 
         {unreadCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => markAllRead(notifications.map((n) => n.id))}
-          >
+          <Button variant="ghost" size="sm" onClick={() => void markAllRead()}>
             <CheckCheck className="size-4" />
             {t.notifications.markAllRead}
           </Button>
@@ -113,9 +134,11 @@ export function NotificationsList({
 
       <ul className="space-y-2.5">
         {shown.map((notification) => {
-          const Icon = KIND_ICON[notification.kind];
-          const read = isRead(notification.id);
-          const urgent = notification.kind === "expired";
+          const Icon = TYPE_ICON[notification.type] ?? Bell;
+          const read = notification.isRead;
+          const urgent = URGENT_TYPES.includes(notification.type);
+          const href = notificationHref(notification, lang);
+          const pending = pendingId === notification.id;
 
           const body = (
             <>
@@ -136,7 +159,7 @@ export function NotificationsList({
                     read ? "font-medium text-muted-foreground" : "font-bold",
                   )}
                 >
-                  {messageFor(notification)}
+                  {notification.message}
                 </span>
               </span>
               {!read && (
@@ -150,6 +173,7 @@ export function NotificationsList({
 
           const className = cn(
             "flex w-full items-start gap-3 rounded-2xl border border-border/60 border-s-2 bg-card p-3.5 text-start transition-colors duration-200 hover:border-primary/35",
+            pending && "opacity-60",
             read
               ? "border-s-border"
               : urgent
@@ -159,10 +183,10 @@ export function NotificationsList({
 
           return (
             <li key={notification.id}>
-              {notification.href ? (
+              {href ? (
                 <Link
-                  href={notification.href}
-                  onClick={() => markRead(notification.id)}
+                  href={href}
+                  onClick={() => !read && void setRead(notification.id, true)}
                   className={className}
                 >
                   {body}
@@ -170,7 +194,8 @@ export function NotificationsList({
               ) : (
                 <button
                   type="button"
-                  onClick={() => markRead(notification.id)}
+                  disabled={pending}
+                  onClick={() => void setRead(notification.id, !read)}
                   className={cn(className, "cursor-pointer")}
                 >
                   {body}

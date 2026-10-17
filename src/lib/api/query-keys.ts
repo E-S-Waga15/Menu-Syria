@@ -65,4 +65,10 @@ export const queryKeys = {
     agents: ["admin", "agents"] as const,
     whatsappOtp: ["admin", "whatsapp-otp", "status"] as const,
   },
+  notifications: {
+    /** the signed-in user's full notice list, any role — the backend scopes
+     * it to the caller's own token, so one key serves every dashboard */
+    all: ["notifications"] as const,
+    unread: ["notifications", { unread: true }] as const,
+  },
 } as const;

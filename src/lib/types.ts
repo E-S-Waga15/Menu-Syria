@@ -583,20 +583,35 @@ export interface BusinessInsight {
   textAr: string;
 }
 
-/** What a notification is about; the copy for each lives in the dictionary. */
-export type NotificationKind =
-  "expiringSoon" | "expired" | "renewed" | "joined";
+/** What a notification is about — drives which icon it gets and where it
+ * links to; the message text itself is sent ready-made by the backend. */
+export type NotificationType =
+  | "new_user_registered"
+  | "new_registration_request"
+  | "new_subscription_request"
+  | "agent_referral_used"
+  | "agent_dues_settled"
+  | "subscription_activated"
+  | "subscription_renewed"
+  | "subscription_expiring"
+  | "subscription_expired"
+  | "account_disabled";
 
+/** `GET /notifications` — a real, server-stored notice for the signed-in
+ * user (whichever role); `message` arrives as one finished sentence, not a
+ * template the frontend fills in. */
 export interface AppNotification {
   id: string;
-  kind: NotificationKind;
-  /** the business the notice concerns */
-  subjectName: LocalizedText;
-  /** days until expiry (or since, when already expired) */
-  days?: number;
+  userId: string;
+  businessId: string | null;
+  type: NotificationType;
+  message: string;
+  subscriptionId: string | null;
+  /** a related record's id for types that link somewhere specific, e.g. the
+   * registration request behind `new_registration_request` */
+  referenceId: string | null;
+  isRead: boolean;
   createdAt: string;
-  /** where reading it should take you */
-  href?: string;
 }
 
 /** Roles the console can list and act on. Mirrors the auth store's UserRole. */

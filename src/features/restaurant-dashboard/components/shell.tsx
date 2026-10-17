@@ -89,7 +89,7 @@ export function RestaurantDashboardShell({
       accountMenu={
         hydrated && session ? (
           <div className="flex items-center gap-1">
-            <NotificationBell href={`${base}/notifications`} ids={[]} />
+            <NotificationBell href={`${base}/notifications`} />
             <AccountMenu
               session={{
                 ...session,

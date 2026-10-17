@@ -1,40 +1,37 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { NotificationsList } from "@/features/notifications/components/notifications-list";
-import { buildSubscriptionNotifications } from "@/features/notifications/services";
-import { getMyRestaurant } from "@/features/restaurant-dashboard/services";
+import { getNotifications } from "@/features/notifications/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 
-/**
- * An owner's notices, about their own subscription rather than a book of them.
- * Same derivation as the agent's list, pointed at settings instead — that is
- * where an owner acts on a plan.
- */
+/** An owner's own notices — subscription activated/renewed/expiring/expired,
+ * anything the backend routes to their account. */
 export function BusinessNotifications() {
-  const { t, lang } = useI18n();
-
-  const { data: business } = useQuery({
-    queryKey: queryKeys.me.business,
-    queryFn: getMyRestaurant,
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const { data: notifications, isPending } = useQuery({
+    queryKey: queryKeys.notifications.all,
+    queryFn: () => getNotifications(),
   });
 
-  if (!business) return <LoadingSpinner />;
-
-  const notifications = buildSubscriptionNotifications(
-    [business],
-    () => `/${lang}/dashboard/settings`,
-  );
+  if (isPending) return <LoadingSpinner />;
 
   return (
     <div className="space-y-5">
       <h1 className="font-heading text-xl font-bold">
         {t.notifications.title}
       </h1>
-      <NotificationsList notifications={notifications} />
+      <NotificationsList
+        notifications={notifications ?? []}
+        onChange={() => {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unread });
+        }}
+      />
     </div>
   );
 }

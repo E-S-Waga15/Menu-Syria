@@ -2,30 +2,32 @@
 
 import Link from "next/link";
 
+import { useQuery } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 
+import { getNotifications } from "@/features/notifications/services";
 import { useI18n } from "@/i18n/client";
-import { useNotificationsStore } from "@/stores/notifications-store";
+import { queryKeys } from "@/lib/api/query-keys";
 
 /**
  * Header bell with an unread count.
  *
  * It is a link, not a popover: the notice list is a page in its own right
  * (reachable from the account menu too), and one destination is easier to
- * reason about than a panel that has to duplicate it.
+ * reason about than a panel that has to duplicate it. It fetches its own
+ * unread count — the backend already scopes `GET /notifications` to the
+ * signed-in user, so every role's shell renders the same `<NotificationBell>`
+ * with no per-role data to thread in.
  */
-export function NotificationBell({
-  href,
-  ids,
-}: {
-  href: string;
-  /** every notice currently derived for this viewer, to count what is unread */
-  ids: string[];
-}) {
+export function NotificationBell({ href }: { href: string }) {
   const { t } = useI18n();
-  const readIds = useNotificationsStore((s) => s.readIds);
+  const { data: unreadNotifications = [] } = useQuery({
+    queryKey: queryKeys.notifications.unread,
+    queryFn: () => getNotifications(true),
+    refetchInterval: 60_000,
+  });
 
-  const unread = ids.filter((id) => !readIds.includes(id)).length;
+  const unread = unreadNotifications.length;
 
   return (
     <Link
