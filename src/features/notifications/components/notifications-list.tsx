@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   AlertTriangle,
   Bell,
+  BellRing,
   CalendarClock,
   CheckCheck,
   FileText,
@@ -19,6 +20,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { notificationHref } from "@/features/notifications/lib/href";
+import { enablePushNotifications } from "@/features/notifications/lib/push";
 import { markNotificationRead } from "@/features/notifications/services";
 import { useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
@@ -63,9 +65,29 @@ export function NotificationsList({
   const { t, lang } = useI18n();
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
+    () =>
+      typeof window === "undefined" || !("Notification" in window)
+        ? "unsupported"
+        : Notification.permission,
+  );
+  const [enabling, setEnabling] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const shown = unreadOnly ? notifications.filter((n) => !n.isRead) : notifications;
+
+  const enableBrowserNotifications = async () => {
+    setEnabling(true);
+    try {
+      const granted = await enablePushNotifications();
+      setPermission(granted ? "granted" : Notification.permission);
+      toast[granted ? "success" : "error"](
+        granted ? t.notifications.pushEnabled : t.notifications.pushEnableFailed,
+      );
+    } finally {
+      setEnabling(false);
+    }
+  };
 
   const setRead = async (id: string, isRead: boolean) => {
     setPendingId(id);
@@ -85,20 +107,40 @@ export function NotificationsList({
     onChange?.();
   };
 
+  const pushBanner = permission === "default" && (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <BellRing className="size-4 shrink-0 text-primary" />
+        {t.notifications.pushPromptBody}
+      </p>
+      <Button
+        size="sm"
+        loading={enabling}
+        onClick={() => void enableBrowserNotifications()}
+      >
+        {t.notifications.pushPromptAction}
+      </Button>
+    </div>
+  );
+
   if (notifications.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border p-14 text-center">
-        <Bell className="mx-auto size-10 text-muted-foreground/40" />
-        <p className="mt-3 font-semibold">{t.notifications.empty}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t.notifications.emptyBody}
-        </p>
+      <div className="space-y-4">
+        {pushBanner}
+        <div className="rounded-2xl border border-dashed border-border p-14 text-center">
+          <Bell className="mx-auto size-10 text-muted-foreground/40" />
+          <p className="mt-3 font-semibold">{t.notifications.empty}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t.notifications.emptyBody}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {pushBanner}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           {(

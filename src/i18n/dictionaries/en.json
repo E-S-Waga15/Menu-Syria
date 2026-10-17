@@ -1277,7 +1277,11 @@
     "expiringSoon": "{name} subscription ends in {days} days",
     "expiredNotice": "{name} subscription has ended",
     "renewedNotice": "{name} subscription renewed",
-    "joinedNotice": "{name} joined through you"
+    "joinedNotice": "{name} joined through you",
+    "pushPromptBody": "Turn on browser notifications to catch these the moment they happen.",
+    "pushPromptAction": "Enable notifications",
+    "pushEnabled": "Browser notifications enabled",
+    "pushEnableFailed": "Couldn't enable notifications — check your browser's permission settings"
   },
   "legal": {
     "updatedOn": "Last updated",

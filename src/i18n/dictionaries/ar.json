@@ -1277,7 +1277,11 @@
     "expiringSoon": "اشتراك {name} ينتهي خلال {days} يوماً",
     "expiredNotice": "انتهى اشتراك {name}",
     "renewedNotice": "تم تجديد اشتراك {name}",
-    "joinedNotice": "انضم {name} عن طريقك"
+    "joinedNotice": "انضم {name} عن طريقك",
+    "pushPromptBody": "فعّل إشعارات المتصفح لتصلك هذه الإشعارات فور حدوثها.",
+    "pushPromptAction": "تفعيل الإشعارات",
+    "pushEnabled": "تم تفعيل إشعارات المتصفح",
+    "pushEnableFailed": "تعذّر تفعيل الإشعارات — تحقق من إعدادات الأذونات في المتصفح"
   },
   "legal": {
     "updatedOn": "آخر تحديث",

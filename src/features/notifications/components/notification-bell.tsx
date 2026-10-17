@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 
+import {
+  listenForForegroundPush,
+  syncPushNotificationsIfGranted,
+} from "@/features/notifications/lib/push";
 import { getNotifications } from "@/features/notifications/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -18,14 +23,34 @@ import { queryKeys } from "@/lib/api/query-keys";
  * unread count — the backend already scopes `GET /notifications` to the
  * signed-in user, so every role's shell renders the same `<NotificationBell>`
  * with no per-role data to thread in.
+ *
+ * It's also where the push side quietly piggybacks: mounted on every
+ * authenticated page, it's a natural place to (a) silently re-register this
+ * device's FCM token if notification permission was already granted in a
+ * past visit, and (b) refresh the unread count the moment a push arrives
+ * while a tab is focused (a focused tab never shows the OS notification
+ * itself, so without this the badge would lag until the next poll).
  */
 export function NotificationBell({ href }: { href: string }) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const { data: unreadNotifications = [] } = useQuery({
     queryKey: queryKeys.notifications.unread,
     queryFn: () => getNotifications(true),
     refetchInterval: 60_000,
   });
+
+  useEffect(() => {
+    void syncPushNotificationsIfGranted();
+    let unsubscribe = () => {};
+    void listenForForegroundPush(() => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unread });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+    return () => unsubscribe();
+  }, [queryClient]);
 
   const unread = unreadNotifications.length;
 

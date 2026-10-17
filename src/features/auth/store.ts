@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { disablePushNotifications } from "@/features/notifications/lib/push";
 import {
   clearRefreshCookie,
   clearSessionCookie,
@@ -53,6 +54,10 @@ export const useAuthStore = create<AuthState>()(
         if (refreshToken) writeRefreshCookie(refreshToken);
       },
       logout: () => {
+        // fired before the access token below is cleared: disablePushNotifications
+        // reads it synchronously (via apiFetch, before its first await), so
+        // calling this after would send the DELETE unauthenticated
+        void disablePushNotifications();
         set({ session: null, accessToken: null, refreshToken: null });
         clearSessionCookie();
         clearRefreshCookie();
