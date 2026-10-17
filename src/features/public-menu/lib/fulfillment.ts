@@ -5,8 +5,10 @@ import type { Business, FulfillmentMode } from "@/lib/types";
  * dine-in. Same `"cuisine" in business` narrowing used elsewhere (e.g.
  * `favorites-list.tsx`) to tell a `Restaurant` from a `Store`. */
 function defaultFulfillment(business: Business): FulfillmentMode[] {
+  // delivery sits in the middle button and is the default selection — the
+  // most-used option for most businesses, so it shouldn't need an extra tap
   return "cuisine" in business
-    ? ["dineIn", "pickup", "delivery"]
+    ? ["dineIn", "delivery", "pickup"]
     : ["pickup", "delivery"];
 }
 

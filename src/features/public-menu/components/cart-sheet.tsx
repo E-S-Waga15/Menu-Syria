@@ -677,6 +677,7 @@ export function CartSheet({
                 <Label htmlFor="cart-name">{copy.customerName}</Label>
                 <Input
                   id="cart-name"
+                  placeholder={copy.customerNamePlaceholder}
                   aria-invalid={!!errors.customerName}
                   className="h-10"
                   {...register("customerName")}
@@ -689,6 +690,7 @@ export function CartSheet({
                   id="cart-phone"
                   type="tel"
                   dir="ltr"
+                  placeholder={copy.phonePlaceholder}
                   aria-invalid={!!errors.phone}
                   className="h-10"
                   {...register("phone")}

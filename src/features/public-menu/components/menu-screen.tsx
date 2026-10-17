@@ -134,9 +134,9 @@ export function MenuScreen({
   const [fulfillment, setFulfillment] = useState<FulfillmentMode>(() =>
     tableParam && supportedModes.includes("dineIn")
       ? "dineIn"
-      : "cuisine" in business
-        ? "pickup"
-        : "delivery",
+      : supportedModes.includes("delivery")
+        ? "delivery"
+        : supportedModes[0],
   );
 
   // offers are fetched client-side: they change on the owner's schedule, not
