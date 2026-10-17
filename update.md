@@ -1,5 +1,13 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## ✅ Matched on the frontend: real notifications (`GET /notifications`, `PATCH /:id/read`)
+
+The in-app half of this is fully wired up — every dashboard (admin, agent, owner, customer) now reads its bell count and its notices page from `GET /notifications` / `GET /notifications?unread=true`, and toggling read/unread calls `PATCH /notifications/:id/read` for real. This replaces an old frontend-only stopgap that derived reminders purely from subscription expiry dates and never covered any admin/agent event at all.
+
+**One open question — `message` isn't localized:** the platform is bilingual (ar/en), but `message` arrives as a single pre-composed string (e.g. `"تم تجديد اشتراكك حتى 2026-11-17"`) with no language variant. The frontend shows it exactly as sent regardless of the viewer's chosen UI language, so an English-reading user still sees this one in Arabic. Could you either (a) accept an `Accept-Language` header or `?lang=` param and compose `message` in that language, or (b) send both `messageAr`/`messageEn`, or (c) send the raw values that went into the sentence (e.g. `{ planExpiresAt: "2026-11-17" }`) alongside `type` so the frontend can compose the line itself from its own dictionary? Any of the three works — just flagging that today's shape can't be localized on our side without guessing at the Arabic phrasing per type.
+
+**Not done yet — the actual push side:** `POST /push-tokens` and `DELETE /push-tokens` are implemented in `features/notifications/services.ts` (`registerPushToken`/`unregisterPushToken`) but not yet called from anywhere — that needs the Firebase Web SDK wired in (requesting the browser's notification permission, obtaining an FCM token, a `firebase-messaging-sw.js` service worker). The key you sent (`BIAJDArXE-4Mz9...`) looks like the **VAPID key** specifically (the one passed to `getToken(messaging, { vapidKey })`), not a full Firebase Web config — initializing the SDK also needs `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, and `appId` from the same Firebase project's Web app settings (Firebase console → Project settings → General → "Your apps" → the Web app's config object). Once those are in hand, the push side is a contained addition on top of what's already built.
+
 ## ✅ Matched on the frontend: the new renew/subscription-request/admin-subscriptions contract
 
 Everything from your last message is wired up:
