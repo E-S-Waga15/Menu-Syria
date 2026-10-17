@@ -79,6 +79,39 @@ export interface BusinessSubscription {
   plan?: { id: string; name: string; durationDays: number };
 }
 
+export type AdminSubscriptionKind = "platform" | "agent";
+export type AdminSubscriptionStatus = "active" | "expired" | "pending" | "cancelled";
+export type AgentPaymentStatus = "pending" | "paid" | "overdue";
+export type PlatformPaymentStatus = "pending" | "paid";
+
+/** One row of `GET /admin/subscriptions` — a real subscription record, not
+ * a business re-read like the older per-business-derived list. `agent*`
+ * fields are only ever filled when `kind` is "agent"; `paymentStatus`/
+ * `paidAt` only when it's "platform" — the other pair is always null. */
+export interface AdminSubscriptionRow {
+  id: string;
+  kind: AdminSubscriptionKind;
+  status: AdminSubscriptionStatus;
+  billingCycle: "monthly" | "yearly";
+  startDate: string;
+  endDate: string;
+  daysRemaining: number;
+  amountPaid: number;
+  currency: CurrencyCode;
+  business: { id: string; name: string; slug: string };
+  plan: { id: string; name: string; isFree: boolean };
+  agent: { id: string; name: string } | null;
+  agentPaymentStatus: AgentPaymentStatus | null;
+  agentPaidAt: string | null;
+  paymentStatus: PlatformPaymentStatus | null;
+  paidAt: string | null;
+}
+
+export interface AdminSubscriptionsPage {
+  items: AdminSubscriptionRow[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
 type GovernorateResponse = { id: string; governorateName: string };
 type DistrictResponse = {
   id: string;
@@ -432,15 +465,48 @@ export async function getBusinessSubscriptions(
   });
 }
 
-export async function changeBusinessPlan(
-  subscriptionId: string,
-  planId: string,
+/**
+ * Every admin-facing subscription record, with real payment/days-remaining
+ * data — replaces the older business-derived list. `kind`/`status` are
+ * server-side filters, not client-side slicing, since this is paginated.
+ */
+export async function getAdminSubscriptionsList(
+  query: {
+    kind?: AdminSubscriptionKind;
+    status?: AdminSubscriptionStatus;
+    page?: number;
+    limit?: number;
+  } = {},
   auth: AdminAuth = {},
-): Promise<BusinessSubscription> {
+): Promise<AdminSubscriptionsPage> {
+  if (IS_MOCK) {
+    return mockDelay({
+      items: [],
+      meta: { page: 1, limit: query.limit ?? ADMIN_LIST_FETCH_LIMIT, total: 0, totalPages: 1 },
+    });
+  }
+  const params = new URLSearchParams();
+  if (query.kind) params.set("kind", query.kind);
+  if (query.status) params.set("status", query.status);
+  params.set("page", String(query.page ?? 1));
+  params.set("limit", String(query.limit ?? 24));
+  return apiFetch(`/admin/subscriptions?${params.toString()}`, {
+    headers: authHeaders(auth),
+  });
+}
+
+/** Marks a platform (non-agent) subscription's payment as collected —
+ * agent-linked subscriptions keep tracking `agentPaymentStatus` the way
+ * they already did, this is only for the `kind: "platform"` half. */
+export async function markSubscriptionPaid(
+  subscriptionId: string,
+  paidAt: string,
+  auth: AdminAuth = {},
+): Promise<{ message?: string }> {
   return apiFetch(`/subscriptions/${subscriptionId}`, {
     method: "PATCH",
     headers: authHeaders(auth),
-    body: { planId },
+    body: { paymentStatus: "paid", paidAt },
   });
 }
 
@@ -468,15 +534,26 @@ export async function updateAdminAgentStatus(
   });
 }
 
-/** "تجديد الاشتراك" — extends a subscription another billing cycle on the
- * same plan, amount and dates computed server-side. */
+/**
+ * "تجديد الاشتراك" — only valid once the current period has actually ended
+ * (`active` with a past `endDate`, or already `expired`); the backend now
+ * rejects (400) a renewal on a subscription that's still running or was
+ * never activated, so this is no longer safe to fire blindly — the caller
+ * is expected to confirm first and surface a 400's message as-is.
+ */
 export async function renewSubscription(
   subscriptionId: string,
+  body: {
+    amountPaid?: number;
+    startDate?: string;
+    billingCycle?: "monthly" | "yearly";
+  } = {},
   auth: AdminAuth = {},
 ): Promise<{ message?: string }> {
   return apiFetch(`/subscriptions/${subscriptionId}/renew`, {
     method: "POST",
     headers: authHeaders(auth),
+    body,
   });
 }
 

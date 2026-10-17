@@ -1,10 +1,17 @@
 import { apiFetch, IS_MOCK, mockDelay } from "@/lib/api/client";
+import type {
+  SubscriptionDurationInput,
+  SubscriptionDurationType,
+} from "@/features/admin/services";
 
 /**
- * Subscription requests are the hand-to-hand billing workflow: a business (or
- * an agent on a business's behalf) asks to register/renew, and an admin
- * approves only once the cash has actually been collected.
+ * Subscription requests are how a plan change/upgrade happens now — never an
+ * instant write. A business (or an agent on its behalf) asks for a plan;
+ * nothing changes until an admin approves it with an exact duration, at
+ * which point the subscription's dates and amount owed are computed
+ * server-side, with no separate "confirm the cash arrived" step after that.
  */
+export type { SubscriptionDurationInput, SubscriptionDurationType };
 
 export interface SubscriptionRequest {
   id: string;
@@ -28,17 +35,6 @@ export interface Plan {
   durationDays: number;
 }
 
-export interface PendingSubscription {
-  id: string;
-  businessId: string;
-  planId: string;
-  status: string;
-  createdAt: string;
-  business?: { id: string; name: string; slug: string } | null;
-  plan?: { id: string; name: string; price: string | number; durationDays: number } | null;
-  agent?: { id: string; name: string } | null;
-}
-
 export async function getSubscriptionPlans(): Promise<Plan[]> {
   if (IS_MOCK) return mockDelay([]);
   try {
@@ -50,9 +46,18 @@ export async function getSubscriptionPlans(): Promise<Plan[]> {
   }
 }
 
-/** Business renews itself / agent renews a referred business. */
+/** Business asks for a plan (new or an upgrade) / agent asks on a referred
+ * business's behalf. Only creates a pending request — nothing changes until
+ * an admin approves it with a duration (see `updateSubscriptionRequestStatus`). */
 export async function createSubscriptionRequest(
-  input: { businessId?: string; planId: string; notes?: string },
+  input: {
+    businessId?: string;
+    planId: string;
+    /** informational only — the admin's own duration choice at approval
+     * time is what actually gets billed, not this */
+    billingCycle?: "monthly" | "yearly";
+    notes?: string;
+  },
 ): Promise<SubscriptionRequest> {
   if (IS_MOCK) {
     return mockDelay({
@@ -83,9 +88,16 @@ export async function getSubscriptionRequests(
   });
 }
 
+/**
+ * Rejecting needs only the status. Approving needs an exact duration —
+ * `startDate` is always the approval moment, never admin-specified, and the
+ * amount owed (and any agent commission) is computed server-side from the
+ * chosen plan/duration, exactly, with no rounding.
+ */
 export async function updateSubscriptionRequestStatus(
   id: string,
   status: "approved" | "rejected",
+  approval?: { planId?: string } & SubscriptionDurationInput,
   auth: { accessToken?: string | null } = {},
 ): Promise<SubscriptionRequest> {
   return apiFetch<SubscriptionRequest>(`/subscription-requests/${id}/status`, {
@@ -93,32 +105,6 @@ export async function updateSubscriptionRequestStatus(
     headers: auth.accessToken
       ? { Authorization: `Bearer ${auth.accessToken}` }
       : {},
-    body: { status },
-  });
-}
-
-export async function getPendingSubscriptions(
-  auth: { accessToken?: string | null } = {},
-): Promise<PendingSubscription[]> {
-  if (IS_MOCK) return mockDelay([]);
-  return apiFetch<PendingSubscription[]>("/subscriptions/pending", {
-    headers: auth.accessToken
-      ? { Authorization: `Bearer ${auth.accessToken}` }
-      : {},
-  });
-}
-
-/** Admin confirms the cash was collected and activates the subscription. */
-export async function activateSubscription(
-  id: string,
-  body: { amountPaid?: number; startDate?: string } = {},
-  auth: { accessToken?: string | null } = {},
-): Promise<PendingSubscription> {
-  return apiFetch<PendingSubscription>(`/subscriptions/${id}/activate`, {
-    method: "POST",
-    headers: auth.accessToken
-      ? { Authorization: `Bearer ${auth.accessToken}` }
-      : {},
-    body,
+    body: { status, ...(approval ?? {}) },
   });
 }

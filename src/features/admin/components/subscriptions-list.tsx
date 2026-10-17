@@ -1,255 +1,243 @@
 "use client";
 
-import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
-import { CalendarClock, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { CalendarClock, CheckCircle2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
-import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
+import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/shared/pagination";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminSelect } from "@/features/admin/components/admin-select";
-import { daysUntil } from "@/features/notifications/services";
+import {
+  getAdminSubscriptionsList,
+  markSubscriptionPaid,
+  type AdminSubscriptionRow,
+  type AdminSubscriptionStatus,
+  type AdminSubscriptionsPage,
+} from "@/features/admin/services";
+import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
-import type { Business } from "@/lib/types";
+import { ApiError } from "@/lib/api/client";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const ALL = "all";
-
-interface SubscriptionRow {
-  business: Business;
-  kind: "restaurant" | "store";
-}
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 /**
- * Every paying business in one place, soonest to expire first.
- *
- * The console opens this to answer which accounts are about to lapse, so that
- * count sits above the list rather than being something you scroll to find.
+ * Every real subscription record — not a business re-read — split into the
+ * two halves the backend itself tracks separately: sold through an agent
+ * (their own commission/payment status) versus platform-direct (our own
+ * payment status). Each half is its own paginated, server-filtered query.
  */
-export function AdminSubscriptionsList({ rows }: { rows: SubscriptionRow[] }) {
+export function AdminSubscriptionsList({
+  initialAgent,
+  initialPlatform,
+}: {
+  initialAgent: AdminSubscriptionsPage;
+  initialPlatform: AdminSubscriptionsPage;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div className="space-y-10">
+      <AdminPageHeader title={t.admin.subscriptions} />
+      <SubscriptionSection
+        kind="agent"
+        title={t.admin.subscriptionsViaAgent}
+        initialData={initialAgent}
+      />
+      <SubscriptionSection
+        kind="platform"
+        title={t.admin.subscriptionsGeneral}
+        initialData={initialPlatform}
+      />
+    </div>
+  );
+}
+
+function SubscriptionSection({
+  kind,
+  title,
+  initialData,
+}: {
+  kind: "agent" | "platform";
+  title: string;
+  initialData: AdminSubscriptionsPage;
+}) {
   const { t, lang } = useI18n();
-
-  const [query, setQuery] = useState("");
-  const [kind, setKind] = useState(ALL);
-  const [status, setStatus] = useState(ALL);
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<AdminSubscriptionStatus | typeof ALL>("active");
   const [page, setPage] = useState(1);
-  const [pageGeneral, setPageGeneral] = useState(1);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
-  const hasFilters = query.trim() !== "" || kind !== ALL || status !== ALL;
+  const queryKey = ["admin", "subscriptions", kind, status, page];
+  const isInitial = status === "active" && page === 1;
+  const { data } = useQuery({
+    queryKey,
+    queryFn: () =>
+      getAdminSubscriptionsList({
+        kind,
+        status: status === ALL ? undefined : status,
+        page,
+      }),
+    initialData: isInitial ? initialData : undefined,
+  });
 
-  const clear = () => {
-    setQuery("");
-    setKind(ALL);
-    setStatus(ALL);
-  };
-
-  const dated = useMemo(
-    () =>
-      rows
-        .map((row) => ({ ...row, days: daysUntil(row.business.planExpiresAt) }))
-        .sort((a, b) => a.days - b.days),
-    [rows],
-  );
-
-  const expiringSoon = dated.filter((r) => r.days >= 0 && r.days <= 30).length;
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return dated.filter((row) => {
-      if (kind !== ALL && row.kind !== kind) return false;
-      if (status === "expired" && row.days >= 0) return false;
-      if (status === "active" && row.days < 0) return false;
-      if (
-        q &&
-        !row.business.name.ar.toLowerCase().includes(q) &&
-        !row.business.name.en.toLowerCase().includes(q)
-      )
-        return false;
-      return true;
-    });
-  }, [dated, query, kind, status]);
-
-  const viaAgent = useMemo(
-    () => filtered.filter((row) => row.business.agent),
-    [filtered],
-  );
-  const general = useMemo(
-    () => filtered.filter((row) => !row.business.agent),
-    [filtered],
-  );
-
-  const totalPagesAgent = Math.max(1, Math.ceil(viaAgent.length / ADMIN_PAGE_SIZE));
-  const pageAgentRows = viaAgent.slice(
-    (page - 1) * ADMIN_PAGE_SIZE,
-    page * ADMIN_PAGE_SIZE,
-  );
-  const totalPagesGeneral = Math.max(1, Math.ceil(general.length / ADMIN_PAGE_SIZE));
-  const pageGeneralRows = general.slice(
-    (pageGeneral - 1) * ADMIN_PAGE_SIZE,
-    pageGeneral * ADMIN_PAGE_SIZE,
-  );
-  // reset to page 1 when a filter narrows the result set — compared during
-  // render (not an effect), the same re-seed-on-change pattern used
-  // elsewhere for this exact kind of derived reset
-  const filterKey = `${query}|${kind}|${status}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-    setPageGeneral(1);
-  }
+  const rows = data?.items ?? [];
+  const totalPages = data?.meta.totalPages ?? 1;
 
   const dateFormat = new Intl.DateTimeFormat(
     lang === "ar" ? "ar-SY" : "en-GB",
     { day: "numeric", month: "short", year: "numeric" },
   );
 
-  // the mock carries no start date for every business — inferred a year back
-  // from the expiry when the real field is absent, same fallback used on the
-  // business detail page
-  const startOf = (business: Business) => {
-    if (business.planStartedAt) return new Date(business.planStartedAt);
-    const start = new Date(business.planExpiresAt);
-    start.setFullYear(start.getFullYear() - 1);
-    return start;
-  };
-
-  const renderRow = (row: (typeof filtered)[number]) => {
-    const expired = row.days < 0;
-    const Icon = row.kind === "restaurant" ? UtensilsCrossed : ShoppingBag;
-
-    return (
-      <li
-        key={row.business.id}
-        className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
-      >
-        <Image
-          src={row.business.logoUrl}
-          alt=""
-          width={48}
-          height={48}
-          className="size-12 shrink-0 rounded-xl object-cover"
-        />
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">
-            {row.business.name[lang]}
-          </p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Icon className="size-3.5 shrink-0" />
-            {row.kind === "restaurant" ? t.admin.restaurants : t.admin.stores}
-            {" · "}
-            {row.business.planName || t.dashboard.defaultPlanName}
-          </p>
-        </div>
-
-        <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-          {dateFormat.format(startOf(row.business))}
-          {" – "}
-          {dateFormat.format(new Date(row.business.planExpiresAt))}
-        </span>
-
-        <Badge
-          className={cn(
-            "shrink-0",
-            expired
-              ? "bg-destructive/10 text-destructive"
-              : "bg-success/10 text-success",
-          )}
-        >
-          {expired
-            ? fmt(t.agent.daysOverdue, { days: Math.abs(row.days) })
-            : fmt(t.agent.daysLeft, { days: row.days })}
-        </Badge>
-      </li>
-    );
+  const markPaid = async (row: AdminSubscriptionRow) => {
+    setMarkingPaidId(row.id);
+    try {
+      const result = await markSubscriptionPaid(row.id, todayIso());
+      toast.success(result?.message ?? t.admin.subscriptionMarkedPaid);
+      await queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions", kind] });
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setMarkingPaidId(null);
+    }
   };
 
   return (
-    <div className="space-y-5">
-      <AdminPageHeader title={t.admin.subscriptions} count={rows.length} />
-
-      {expiringSoon > 0 && (
-        <p className="flex items-center gap-2.5 rounded-2xl border border-border/60 border-s-2 border-s-zest bg-zest-soft/30 px-4 py-3 text-sm font-semibold text-zest-soft-foreground">
-          <CalendarClock className="size-4 shrink-0" />
-          {fmt(t.admin.expiringCount, { count: expiringSoon })}
-        </p>
-      )}
-
-      <AdminFilterBar
-        query={query}
-        onQueryChange={setQuery}
-        placeholder={t.admin.searchBusinesses}
-        hasFilters={hasFilters}
-        onClear={clear}
-      >
-        <AdminSelect
-          value={kind}
-          onChange={setKind}
-          label={t.admin.filterByStatus}
-          items={{
-            [ALL]: t.admin.allStatuses,
-            restaurant: t.admin.restaurants,
-            store: t.admin.stores,
-          }}
-        />
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-heading text-sm font-bold text-muted-foreground">
+          {fmt(title, { count: data?.meta.total ?? 0 })}
+        </h2>
         <AdminSelect
           value={status}
-          onChange={setStatus}
+          onChange={(v) => {
+            setStatus(v as AdminSubscriptionStatus | typeof ALL);
+            setPage(1);
+          }}
           label={t.admin.allStatuses}
           items={{
             [ALL]: t.admin.allStatuses,
             active: t.admin.statusActive,
             expired: t.admin.statusExpired,
+            pending: t.admin.requestStatusPending,
+            cancelled: t.admin.subscriptionCancelled,
           }}
         />
-      </AdminFilterBar>
+      </div>
 
-      {filtered.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border p-14 text-center text-sm text-muted-foreground">
+      {rows.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {t.admin.noResults}
         </p>
       ) : (
-        <>
-          <section className="space-y-2.5">
-            <h2 className="font-heading text-sm font-bold text-muted-foreground">
-              {fmt(t.admin.subscriptionsViaAgent, { count: viaAgent.length })}
-            </h2>
-            {viaAgent.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {t.admin.noResults}
-              </p>
-            ) : (
-              <ul className="space-y-2.5">{pageAgentRows.map(renderRow)}</ul>
-            )}
-            <Pagination
-              page={page}
-              totalPages={totalPagesAgent}
-              onPageChange={setPage}
-            />
-          </section>
+        <ul className="space-y-2.5">
+          {rows.map((row) => {
+            const expired = row.status === "expired";
+            return (
+              <li
+                key={row.id}
+                className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">
+                    {row.business.name}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    {row.plan.name}
+                    {row.plan.isFree && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {t.admin.freePlan}
+                      </Badge>
+                    )}
+                    {" · "}
+                    {row.billingCycle === "monthly"
+                      ? t.admin.durationMonthly
+                      : t.admin.durationYearly}
+                    {kind === "agent" && row.agent && (
+                      <>
+                        {" · "}
+                        {row.agent.name}
+                      </>
+                    )}
+                  </p>
+                </div>
 
-          <section className="space-y-2.5">
-            <h2 className="font-heading text-sm font-bold text-muted-foreground">
-              {fmt(t.admin.subscriptionsGeneral, { count: general.length })}
-            </h2>
-            {general.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                {t.admin.noResults}
-              </p>
-            ) : (
-              <ul className="space-y-2.5">{pageGeneralRows.map(renderRow)}</ul>
-            )}
-            <Pagination
-              page={pageGeneral}
-              totalPages={totalPagesGeneral}
-              onPageChange={setPageGeneral}
-            />
-          </section>
-        </>
+                <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+                  {dateFormat.format(new Date(row.startDate))}
+                  {" – "}
+                  {dateFormat.format(new Date(row.endDate))}
+                </span>
+
+                <span className="shrink-0 text-xs font-semibold" dir="ltr">
+                  {formatPrice(row.amountPaid, row.currency, lang)}
+                </span>
+
+                <Badge
+                  className={cn(
+                    "shrink-0",
+                    expired
+                      ? "bg-destructive/10 text-destructive"
+                      : row.status === "pending"
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-success/10 text-success",
+                  )}
+                >
+                  {expired
+                    ? t.admin.statusExpired
+                    : row.status === "pending"
+                      ? t.admin.requestStatusPending
+                      : row.status === "cancelled"
+                        ? t.admin.subscriptionCancelled
+                        : fmt(t.agent.daysLeft, { days: row.daysRemaining })}
+                </Badge>
+
+                {kind === "agent" ? (
+                  row.agentPaymentStatus && (
+                    <Badge
+                      className={cn(
+                        "shrink-0",
+                        row.agentPaymentStatus === "paid"
+                          ? "bg-success/10 text-success"
+                          : row.agentPaymentStatus === "overdue"
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-zest-soft/40 text-zest-soft-foreground",
+                      )}
+                    >
+                      {row.agentPaymentStatus === "paid"
+                        ? t.admin.paymentPaid
+                        : row.agentPaymentStatus === "overdue"
+                          ? t.admin.paymentOverdue
+                          : t.admin.paymentPending}
+                    </Badge>
+                  )
+                ) : row.paymentStatus === "paid" ? (
+                  <Badge className="shrink-0 bg-success/10 text-success">
+                    <CheckCircle2 className="me-1 size-3.5" />
+                    {t.admin.paymentPaid}
+                  </Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void markPaid(row)}
+                    loading={markingPaidId === row.id}
+                  >
+                    <CalendarClock className="size-3.5" />
+                    {t.admin.markAsPaid}
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </div>
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+    </section>
   );
 }

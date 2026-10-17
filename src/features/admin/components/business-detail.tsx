@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   CalendarClock,
@@ -30,25 +30,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { SafeImage } from "@/components/shared/safe-image";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { SubscriptionApprovalDialog } from "@/features/admin/components/subscription-approval-dialog";
 import {
-  changeBusinessPlan,
   deleteAdminBusiness,
-  getAdminPlans,
   getBusinessSubscriptions,
   renewSubscription,
   updateAdminBusinessStatus,
 } from "@/features/admin/services";
 import { daysUntil } from "@/features/notifications/services";
+import {
+  createSubscriptionRequest,
+  updateSubscriptionRequestStatus,
+} from "@/features/subscription-requests/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
@@ -75,19 +71,19 @@ export function AdminBusinessDetail({
 }) {
   const { t, lang } = useI18n();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [enabled, setEnabled] = useState(business.status === "active");
   const [savingStatus, setSavingStatus] = useState(false);
   const [confirmToggle, setConfirmToggle] = useState(false);
-  const [savingPlan, setSavingPlan] = useState(false);
+  const [confirmingRenew, setConfirmingRenew] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [changingPlan, setChangingPlan] = useState(false);
+  const [savingPlanChange, setSavingPlanChange] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const { data: plans = [] } = useQuery({
-    queryKey: ["admin", "plans"],
-    queryFn: () => getAdminPlans(),
-  });
+  const subscriptionsQueryKey = ["admin", "subscriptions", business.id];
   const { data: subscriptions = [] } = useQuery({
-    queryKey: ["admin", "subscriptions", business.id],
+    queryKey: subscriptionsQueryKey,
     queryFn: () => getBusinessSubscriptions(business.id),
   });
   const currentSubscription = subscriptions[0];
@@ -126,12 +122,14 @@ export function AdminBusinessDetail({
     }
   };
 
-  const renew = async () => {
+  const confirmRenew = async () => {
     if (!currentSubscription) return;
     setRenewing(true);
     try {
       const result = await renewSubscription(currentSubscription.id);
       toast.success(result?.message ?? t.admin.renewDone);
+      await queryClient.invalidateQueries({ queryKey: subscriptionsQueryKey });
+      setConfirmingRenew(false);
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
@@ -139,16 +137,32 @@ export function AdminBusinessDetail({
     }
   };
 
-  const changePlan = async (planId: string) => {
-    if (!currentSubscription || planId === currentSubscription.planId) return;
-    setSavingPlan(true);
+  const confirmChangePlan = async (input: {
+    planId: string;
+    durationType: "monthly" | "custom" | "yearly";
+    durationMonths?: number;
+    endDate?: string;
+  }) => {
+    setSavingPlanChange(true);
     try {
-      const result = await changeBusinessPlan(currentSubscription.id, planId);
-      toast.success((result as { message?: string })?.message ?? t.admin.planChanged);
+      const request = await createSubscriptionRequest({
+        businessId: business.id,
+        planId: input.planId,
+      });
+      const result = await updateSubscriptionRequestStatus(
+        request.id,
+        "approved",
+        input,
+      );
+      toast.success(
+        (result as { message?: string })?.message ?? t.admin.planChanged,
+      );
+      await queryClient.invalidateQueries({ queryKey: subscriptionsQueryKey });
+      setChangingPlan(false);
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
-      setSavingPlan(false);
+      setSavingPlanChange(false);
     }
   };
 
@@ -267,29 +281,7 @@ export function AdminBusinessDetail({
               {t.agent.currentPlan}
             </dt>
             <dd className="mt-1.5 text-sm font-semibold">
-              <Select
-                value={currentSubscription?.planId || null}
-                onValueChange={(value) => {
-                  if (value) void changePlan(value);
-                }}
-                items={Object.fromEntries(
-                  plans.map((plan) => [plan.id, plan.name[lang]]),
-                )}
-                disabled={
-                  savingPlan || plans.length === 0 || !currentSubscription
-                }
-              >
-                <SelectTrigger className="h-9! w-fit min-w-44">
-                  <SelectValue placeholder={t.admin.selectPlan} />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name[lang]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {currentSubscription?.plan?.name ?? business.planName ?? t.dashboard.defaultPlanName}
             </dd>
           </div>
         </dl>
@@ -310,22 +302,27 @@ export function AdminBusinessDetail({
         <div className="mt-5 flex flex-col gap-2 sm:flex-row">
           <Button
             className="h-11 flex-1"
-            onClick={() => void renew()}
-            disabled={renewing || !currentSubscription}
+            onClick={() => setConfirmingRenew(true)}
+            disabled={!expired || !currentSubscription}
           >
-            {renewing ? <Spinner size="xs" tone="current" /> : <RefreshCw className="size-4" />}
+            <RefreshCw className="size-4" />
             {t.admin.renewSubscription}
           </Button>
           <Button
             variant="outline"
             className="h-11 flex-1 border-[1.5px]"
-            onClick={() => currentSubscription && changePlan(currentSubscription.planId)}
-            disabled={savingPlan || !currentSubscription}
+            onClick={() => setChangingPlan(true)}
+            disabled={!currentSubscription}
           >
-            {savingPlan ? <Spinner size="xs" tone="current" /> : <Wallet className="size-4" />}
-            {t.admin.changePlan}
+            <Wallet className="size-4" />
+            {t.admin.upgradePlan}
           </Button>
         </div>
+        {!expired && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t.admin.renewNotAllowedHint}
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
@@ -422,6 +419,48 @@ export function AdminBusinessDetail({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={confirmingRenew}
+        onOpenChange={(open) => !open && !renewing && setConfirmingRenew(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {fmt(t.admin.confirmRenewTitle, { name: business.name[lang] })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.admin.confirmRenewBody, { name: business.name[lang] })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={renewing}
+              onClick={() => setConfirmingRenew(false)}
+            >
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              loading={renewing}
+              onClick={() => void confirmRenew()}
+            >
+              {t.admin.renewSubscription}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <SubscriptionApprovalDialog
+        open={changingPlan}
+        onOpenChange={setChangingPlan}
+        subjectName={business.name[lang]}
+        dialogTitle={fmt(t.admin.upgradePlanDialogTitle, { name: business.name[lang] })}
+        confirmTitle={t.admin.confirmUpgradePlanTitle}
+        confirmBody={t.admin.confirmUpgradePlanBody}
+        initialPlanId={currentSubscription?.planId}
+        loading={savingPlanChange}
+        onConfirm={(input) => void confirmChangePlan(input)}
+      />
     </div>
   );
 }

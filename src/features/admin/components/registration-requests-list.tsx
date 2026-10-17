@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Building2,
   Calendar,
@@ -29,33 +29,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { SubscriptionApprovalDialog } from "@/features/admin/components/subscription-approval-dialog";
 import {
-  getAdminPlans,
   updateRegistrationRequestStatus,
   type RegistrationRequest,
-  type SubscriptionDurationType,
 } from "@/features/admin/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
-import type { Plan } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TYPE_ICON: Record<RegistrationRequest["type"], typeof Store> = {
@@ -64,30 +46,6 @@ const TYPE_ICON: Record<RegistrationRequest["type"], typeof Store> = {
   agent: User,
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const maxEndDateIso = () => {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().slice(0, 10);
-};
-
-/** preview-only — the real end date is always computed server-side from the
- * approval moment, this just shows the admin what to expect before confirming */
-function previewEndDate(
-  durationType: SubscriptionDurationType,
-  durationMonths: number,
-  endDate: string,
-): Date | null {
-  if (durationType === "custom") {
-    const d = new Date(endDate);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const d = new Date();
-  if (durationType === "yearly") d.setFullYear(d.getFullYear() + 1);
-  else d.setMonth(d.getMonth() + durationMonths);
-  return d;
-}
-
 export function RegistrationRequestsList({
   initialRequests,
 }: {
@@ -95,7 +53,6 @@ export function RegistrationRequestsList({
 }) {
   const { t, lang } = useI18n();
   const [requests, setRequests] = useState(initialRequests);
-  const [plans, setPlans] = useState<Plan[]>([]);
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(requests.length / ADMIN_PAGE_SIZE));
   const pageRequests = requests.slice(
@@ -103,55 +60,26 @@ export function RegistrationRequestsList({
     page * ADMIN_PAGE_SIZE,
   );
 
-  useEffect(() => {
-    void getAdminPlans().then(setPlans);
-  }, []);
-
-  // approve dialog — plan + how long the subscription runs
   const [approving, setApproving] = useState<RegistrationRequest | null>(null);
-  const [planId, setPlanId] = useState("");
-  const [durationType, setDurationType] =
-    useState<SubscriptionDurationType>("monthly");
-  const [durationMonths, setDurationMonths] = useState(1);
-  const [endDate, setEndDate] = useState(todayIso());
   const [savingApprove, setSavingApprove] = useState(false);
 
-  // reject confirm
   const [rejecting, setRejecting] = useState<RegistrationRequest | null>(null);
   const [savingReject, setSavingReject] = useState(false);
 
-  const selectedPlan = plans.find((p) => p.id === planId);
-  const planItems = Object.fromEntries(
-    plans.map((p) => [
-      p.id,
-      `${p.name[lang]} — ${formatPrice(p.priceMonthly, p.currency, lang)}${t.admin.pricePerMonth}`,
-    ]),
-  );
-  const endDatePreview = previewEndDate(durationType, durationMonths, endDate);
-
-  const openApprove = (request: RegistrationRequest) => {
-    setApproving(request);
-    setPlanId(request.planId ?? plans[0]?.id ?? "");
-    setDurationType("monthly");
-    setDurationMonths(1);
-    setEndDate(todayIso());
-  };
-
-  const confirmApprove = async () => {
-    if (!approving || !planId) return;
+  const confirmApprove = async (input: {
+    planId: string;
+    durationType: "monthly" | "custom" | "yearly";
+    durationMonths?: number;
+    endDate?: string;
+  }) => {
+    if (!approving) return;
     setSavingApprove(true);
     try {
-      const duration: Parameters<typeof updateRegistrationRequestStatus>[3] =
-        durationType === "monthly"
-          ? { durationType, durationMonths }
-          : durationType === "custom"
-            ? { durationType, endDate }
-            : { durationType: "yearly" };
       const updated = await updateRegistrationRequestStatus(
         approving.id,
         "approved",
-        planId,
-        duration,
+        input.planId,
+        input,
       );
       setRequests((current) =>
         current.map((item) => (item.id === approving.id ? updated : item)),
@@ -299,7 +227,7 @@ export function RegistrationRequestsList({
                   </Button>
                   {canReview && (
                     <>
-                      <Button size="sm" onClick={() => openApprove(request)}>
+                      <Button size="sm" onClick={() => setApproving(request)}>
                         <Check className="size-4" /> {t.admin.approveRequest}
                       </Button>
                       <Button
@@ -323,158 +251,17 @@ export function RegistrationRequestsList({
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
-      {/* approve: pick the plan and how long the subscription runs —
-          starts the moment this is confirmed, never more than a year */}
-      <Dialog
-        open={!!approving}
-        onOpenChange={(open) => !open && !savingApprove && setApproving(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t.admin.approveRequest}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t.admin.selectPlan}</Label>
-              <Select
-                value={planId || null}
-                onValueChange={(v) => v && setPlanId(v)}
-                items={planItems}
-              >
-                <SelectTrigger className="h-10 w-full">
-                  <SelectValue placeholder={t.admin.selectPlan} />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name[lang]} —{" "}
-                      {formatPrice(plan.priceMonthly, plan.currency, lang)}
-                      {t.admin.pricePerMonth}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedPlan && (
-                <p className="text-xs text-muted-foreground">
-                  {formatPrice(selectedPlan.priceYearly, selectedPlan.currency, lang)}
-                  {" "}
-                  {t.admin.pricePerYear}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t.admin.subscriptionDurationLabel}</Label>
-              <Select
-                value={durationType}
-                onValueChange={(v) =>
-                  v && setDurationType(v as SubscriptionDurationType)
-                }
-                items={{
-                  monthly: t.admin.durationMonthly,
-                  custom: t.admin.durationCustom,
-                  yearly: t.admin.durationYearly,
-                }}
-              >
-                <SelectTrigger className="h-10 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">
-                    {t.admin.durationMonthly}
-                  </SelectItem>
-                  <SelectItem value="custom">{t.admin.durationCustom}</SelectItem>
-                  <SelectItem value="yearly">{t.admin.durationYearly}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {durationType === "monthly" && (
-              <div className="space-y-2">
-                <Label htmlFor="duration-months">
-                  {t.admin.durationMonthsLabel}
-                </Label>
-                <Input
-                  id="duration-months"
-                  type="number"
-                  inputMode="numeric"
-                  dir="ltr"
-                  min={1}
-                  max={12}
-                  value={durationMonths}
-                  onChange={(e) =>
-                    setDurationMonths(
-                      Math.min(12, Math.max(1, Number(e.target.value) || 1)),
-                    )
-                  }
-                  className="h-10 w-28"
-                />
-              </div>
-            )}
-
-            {durationType === "custom" && (
-              <div className="space-y-2">
-                <Label htmlFor="duration-end-date">
-                  {t.admin.durationEndDateLabel}
-                </Label>
-                <Input
-                  id="duration-end-date"
-                  type="date"
-                  dir="ltr"
-                  min={todayIso()}
-                  max={maxEndDateIso()}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="h-10 w-full"
-                />
-              </div>
-            )}
-
-            {durationType === "yearly" && (
-              <p className="text-sm text-muted-foreground">
-                {t.admin.durationYearlyHint}
-              </p>
-            )}
-
-            {endDatePreview && (
-              <div className="rounded-xl bg-primary/5 px-3.5 py-2.5 text-sm">
-                <span className="text-muted-foreground">
-                  {t.admin.subscriptionEndsOn}{" "}
-                </span>
-                <span className="font-semibold text-primary">
-                  {new Intl.DateTimeFormat(lang === "ar" ? "ar-SY" : "en-GB", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  }).format(endDatePreview)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-5 flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              disabled={savingApprove}
-              onClick={() => setApproving(null)}
-            >
-              {t.common.cancel}
-            </Button>
-            <Button
-              type="button"
-              className="flex-1"
-              disabled={!planId}
-              loading={savingApprove}
-              onClick={() => void confirmApprove()}
-            >
-              {t.admin.approveRequest}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SubscriptionApprovalDialog
+        open={approving !== null}
+        onOpenChange={(open) => !open && setApproving(null)}
+        subjectName={approving?.applicantName ?? ""}
+        dialogTitle={t.admin.approveRequest}
+        confirmTitle={t.admin.confirmApproveRequestTitle}
+        confirmBody={t.admin.confirmApproveRequestBody}
+        initialPlanId={approving?.planId}
+        loading={savingApprove}
+        onConfirm={(input) => void confirmApprove(input)}
+      />
 
       <AlertDialog
         open={!!rejecting}

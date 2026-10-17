@@ -1,5 +1,17 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## ✅ Matched on the frontend: the new renew/subscription-request/admin-subscriptions contract
+
+Everything from your last message is wired up:
+
+- **Renew**: the admin console no longer fires `POST /subscriptions/:id/renew` straight from a single button click. The renew button is now disabled unless the subscription's own `planExpiresAt` has actually passed, and even then it sits behind an explicit confirm dialog spelling out which business is being renewed — exactly the mistake from the أبو زيد incident above shouldn't be repeatable from here. A 400 from the new validation (still-active, or never-activated) surfaces as-is in a toast.
+- **Plan change**: the admin's old direct "change plan" dropdown (an instant `PATCH /subscriptions/:id`) is gone. Changing a business's plan now goes through `POST /subscription-requests` immediately followed by `PATCH /subscription-requests/:id/status` with the chosen plan + duration, behind the same two-step dialog (pick plan/duration → explicit confirm) used for approving a registration request.
+- **Subscription requests** (`/admin/subscription-requests`): approving now opens the same plan+duration dialog instead of a bare "confirm payment" button, and rejecting now sits behind a confirm dialog too, matching registration requests. The old `GET /subscriptions/pending` + `POST /subscriptions/:id/activate` two-phase flow (a separate "confirm cash collected" step after approval) has been removed from the frontend entirely, since approving a subscription request now activates it directly per your message — let us know if that pending/activate pair is still live on your side for some other flow, since nothing on our side calls it anymore.
+- **Admin subscriptions page**: rebuilt against `GET /admin/subscriptions?kind=&status=&page=&limit=`, split into "via agent" / "general" sections (one query per section), each with its own status filter and real server-side pagination reading `meta.totalPages`. Platform-kind rows get a "mark as paid" button calling `PATCH /subscriptions/:id` with `{ paymentStatus: "paid", paidAt }`; agent-kind rows just display `agentPaymentStatus` (no mutator built for that side, per your note that it's unchanged).
+- `Plan.isFree` is read and shown as a small badge next to the plan name wherever a plan appears in these lists.
+
+One open question: we don't yet show `amountPaid`/the agent's computed commission back to the admin at the moment they confirm a plan change or request approval (the confirm dialog says the amount is computed on confirmation, not before) — if `PATCH /subscription-requests/:id/status`'s response includes the resulting subscription (with `amountPaid`), we can surface that in the success toast instead of a generic message.
+
 ## 🚨 Urgent: wrong accidental renewal needs to be reversed — restaurant "أبو زيد", agent "بشر"
 
 **What happened:** an admin accidentally clicked "تجديد الاشتراك" (renew subscription) on restaurant **أبو زيد**'s admin detail page. This calls `POST /subscriptions/:id/renew` for real — it created a genuine new subscription period and, since this business is linked to agent **بشر**, it now owes/credits the agent a commission for a renewal that should never have happened.

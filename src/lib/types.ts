@@ -664,4 +664,7 @@ export interface Plan {
   /** how many businesses are on it right now */
   subscriberCount: number;
   isPopular?: boolean;
+  /** derived server-side from `priceMonthly === 0` — not a separate toggle
+   * an admin sets by hand */
+  isFree?: boolean;
 }
