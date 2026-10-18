@@ -360,6 +360,8 @@
     "hoursNotSet": "لم تُضف ساعات العمل بعد",
     "closedDay": "مغلق",
     "today": "اليوم",
+    "amLabel": "ص",
+    "pmLabel": "م",
     "branches": "الفروع",
     "mainBranch": "الفرع الرئيسي",
     "branchPhone": "هاتف الفرع",

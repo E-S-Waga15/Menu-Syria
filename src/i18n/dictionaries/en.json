@@ -360,6 +360,8 @@
     "hoursNotSet": "Opening hours have not been added yet",
     "closedDay": "Closed",
     "today": "Today",
+    "amLabel": "AM",
+    "pmLabel": "PM",
     "branches": "Branches",
     "mainBranch": "Main branch",
     "branchPhone": "Branch phone",

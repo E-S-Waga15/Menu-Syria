@@ -71,7 +71,7 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      images: business.coverImages[0] ? [business.coverImages[0]] : undefined,
+      images: business.logoUrl ? [business.logoUrl] : undefined,
     },
   };
 }

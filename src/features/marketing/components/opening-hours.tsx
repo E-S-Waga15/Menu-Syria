@@ -4,6 +4,21 @@ import type { Dictionary } from "@/i18n/get-dictionary";
 import type { DayHours } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/** "14:30" (24h) → "2:30 م" — each half of the range renders as its own
+ * flex item (not one bidi text run) so the open time always lands on the
+ * reading-start side and the close time on the reading-end side, in either
+ * direction, rather than leaning on the bidi algorithm to order a string
+ * that mixes Latin digits with an Arabic AM/PM letter correctly. */
+function formatTime12(value: string, t: Dictionary): string {
+  const [hourStr, minuteStr] = value.split(":");
+  const hour24 = Number(hourStr);
+  const minute = Number(minuteStr);
+  if (Number.isNaN(hour24) || Number.isNaN(minute)) return value;
+  const period = hour24 >= 12 ? t.restaurant.pmLabel : t.restaurant.amLabel;
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+}
+
 /**
  * Opening hours, with an honest empty state.
  *
@@ -57,10 +72,14 @@ export function OpeningHours({
             </span>
             {day ? (
               <span
-                className={cn("tabular-nums", isToday && "text-primary")}
-                dir="ltr"
+                className={cn(
+                  "flex items-center gap-1.5 tabular-nums",
+                  isToday && "text-primary",
+                )}
               >
-                {day.opens} — {day.closes}
+                <span>{formatTime12(day.opens, t)}</span>
+                <span className="text-muted-foreground">-</span>
+                <span>{formatTime12(day.closes, t)}</span>
               </span>
             ) : (
               <span className="text-muted-foreground">

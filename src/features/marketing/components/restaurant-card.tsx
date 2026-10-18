@@ -25,7 +25,7 @@ export function RestaurantCard({
   const [failed, setFailed] = useState(false);
   const cover = failed
     ? undefined
-    : (restaurant.coverImages[0] ?? restaurant.logoUrl);
+    : (restaurant.logoUrl || restaurant.coverImages[0]);
 
   return (
     <article className="group relative transform-gpu overflow-hidden rounded-2xl border border-border/60 bg-card transition-[translate,scale,border-color] duration-300 ease-smooth hover:-translate-y-1 hover:border-primary/35">
