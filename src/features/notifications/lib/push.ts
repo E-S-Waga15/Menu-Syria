@@ -19,8 +19,19 @@ const PUSH_TOKEN_STORAGE_KEY = "menu-syria-push-token";
 
 async function canUsePush(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  if (!("Notification" in window) || !("serviceWorker" in navigator)) return false;
-  return isSupported();
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+    console.warn("[push] Notification/serviceWorker API not available in this browser");
+    return false;
+  }
+  const supported = await isSupported();
+  if (!supported) {
+    console.warn(
+      "[push] Firebase Messaging reports this browser/context as unsupported " +
+        "(common cause: not served over HTTPS — localhost is exempt, but a plain " +
+        "http:// LAN address is not)",
+    );
+  }
+  return supported;
 }
 
 /**
@@ -29,17 +40,37 @@ async function canUsePush(): Promise<boolean> {
  * registers the FCM service worker, obtains a token and sends it to the
  * backend. Safe to call on every page load; it only does real work the
  * first time or after the token has actually changed.
+ *
+ * Every early return logs why via `console.warn`/`console.error` first —
+ * this fails silently to the end user (just a generic toast), so the
+ * browser console is the only way to tell which of several unrelated things
+ * (missing env config, denied permission, a network error registering the
+ * token with the backend, …) actually happened.
  */
 export async function enablePushNotifications(): Promise<boolean> {
   if (!(await canUsePush())) return false;
   const app = getFirebaseApp();
-  if (!app) return false;
+  if (!app) {
+    console.warn(
+      "[push] Firebase isn't configured — NEXT_PUBLIC_FIREBASE_API_KEY is " +
+        "missing at runtime. If this is a deployed environment, the env vars " +
+        "were likely added after the last build: Vercel bakes NEXT_PUBLIC_* " +
+        "values in at build time, so a redeploy is needed for them to take effect.",
+    );
+    return false;
+  }
 
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
-  if (!vapidKey) return false;
+  if (!vapidKey) {
+    console.warn("[push] NEXT_PUBLIC_FIREBASE_VAPID_KEY is missing at runtime");
+    return false;
+  }
 
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") return false;
+  if (permission !== "granted") {
+    console.warn(`[push] notification permission was "${permission}", not "granted"`);
+    return false;
+  }
 
   try {
     const registration = await navigator.serviceWorker.register(
@@ -50,7 +81,10 @@ export async function enablePushNotifications(): Promise<boolean> {
       vapidKey,
       serviceWorkerRegistration: registration,
     });
-    if (!token) return false;
+    if (!token) {
+      console.warn("[push] getToken() resolved with no token");
+      return false;
+    }
 
     const previous = localStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
     if (previous !== token) {
@@ -58,7 +92,8 @@ export async function enablePushNotifications(): Promise<boolean> {
       localStorage.setItem(PUSH_TOKEN_STORAGE_KEY, token);
     }
     return true;
-  } catch {
+  } catch (error) {
+    console.error("[push] enablePushNotifications failed", error);
     return false;
   }
 }
