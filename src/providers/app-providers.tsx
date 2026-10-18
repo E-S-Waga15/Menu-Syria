@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 
 import { ToastStack } from "@/components/shared/toast-stack";
+import { PushNotificationsPromptModal } from "@/features/notifications/components/push-prompt-modal";
 import { NavigationLoadingProvider } from "@/providers/navigation-loading";
 
 export function AppProviders({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
         <ToastStack />
+        <PushNotificationsPromptModal />
       </QueryClientProvider>
     </ThemeProvider>
   );

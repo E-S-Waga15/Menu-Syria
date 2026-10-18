@@ -1281,7 +1281,10 @@
     "pushPromptBody": "Turn on browser notifications to catch these the moment they happen.",
     "pushPromptAction": "Enable notifications",
     "pushEnabled": "Browser notifications enabled",
-    "pushEnableFailed": "Couldn't enable notifications — check your browser's permission settings"
+    "pushEnableFailed": "Couldn't enable notifications — check your browser's permission settings",
+    "pushModalTitle": "Stay on top of what matters",
+    "pushModalBody": "Turn on browser notifications and we'll let you know the moment something needs your attention — no need to keep checking back.",
+    "pushModalDismiss": "Not now"
   },
   "legal": {
     "updatedOn": "Last updated",
