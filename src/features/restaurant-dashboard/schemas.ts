@@ -66,5 +66,8 @@ export type BranchFormValues = z.infer<ReturnType<typeof branchFormSchema>>;
 export const itemOptionsSchema = () =>
   z.object({
     groups: z.array(optionGroupSchema),
+    // edited here too, not just at creation — it's really the open option's
+    // own setting (see OpenOptionCard), but lives on the item itself
+    quantityLocked: z.boolean(),
   });
 export type ItemOptionsValues = z.infer<ReturnType<typeof itemOptionsSchema>>;

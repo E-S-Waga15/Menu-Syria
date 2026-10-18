@@ -309,8 +309,9 @@ export function MenuManager() {
         open={optionsItem !== null}
         onOpenChange={(open) => !open && setOptionsItem(null)}
         isStore={isStore}
-        onSave={async (optionGroups) => {
-          if (optionsItem) await itemMutations.edit(optionsItem.id, { optionGroups });
+        onSave={async ({ optionGroups, quantityLocked }) => {
+          if (optionsItem)
+            await itemMutations.edit(optionsItem.id, { optionGroups, quantityLocked });
         }}
       />
 

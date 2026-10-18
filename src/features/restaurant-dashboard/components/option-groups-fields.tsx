@@ -10,8 +10,10 @@ import { useI18n } from "@/i18n/client";
 import type { OptionSelectionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** the shape every consumer's form must hold a `groups` field of — a dish
- * dialog and the dedicated options modal alike */
+/** the shape every consumer's form must hold — a dish dialog and the
+ * dedicated options modal alike. `quantityLocked` lives at this top level
+ * (an item field, not a group) even though it's only ever edited from
+ * inside the open-option card below, since that's what it's actually for. */
 export interface OptionGroupsFormValues {
   groups: {
     id: string;
@@ -19,12 +21,16 @@ export interface OptionGroupsFormValues {
     required: boolean;
     options: { id: string; priceDelta: number }[];
   }[];
+  quantityLocked: boolean;
 }
 
 /**
  * One group's row: name, single/multiple toggle, required checkbox, and its
  * own options. Pulled out so it can own its own nested `useFieldArray` for
  * `options` — hooks can't be called inside the parent's `.map`.
+ *
+ * Never rendered for a "customAmount" group — that type has its own
+ * dedicated card (`OpenOptionCard` below) instead of living in this list.
  */
 function GroupEditor({
   control,
@@ -52,7 +58,6 @@ function GroupEditor({
   // multiple-choice (add-ons) is always priced as what it adds — never a
   // per-group toggle, so a customer never sees the two logics mixed
   const isAbsolute = selectionType === "single";
-  const isCustomAmount = selectionType === "customAmount";
 
   return (
     <div className="space-y-3 rounded-xl border border-border/60 p-3">
@@ -87,9 +92,7 @@ function GroupEditor({
           name={`groups.${groupIndex}.selectionType`}
           render={({ field }) => (
             <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
-              {(
-                ["single", "multiple", "customAmount"] as OptionSelectionType[]
-              ).map((type) => (
+              {(["single", "multiple"] as OptionSelectionType[]).map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -103,9 +106,7 @@ function GroupEditor({
                 >
                   {type === "single"
                     ? t.dashboard.selectionSingle
-                    : type === "multiple"
-                      ? t.dashboard.selectionMultiple
-                      : t.dashboard.selectionCustomAmount}
+                    : t.dashboard.selectionMultiple}
                 </button>
               ))}
             </div>
@@ -127,14 +128,9 @@ function GroupEditor({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {isCustomAmount
-          ? t.dashboard.customAmountGroupHint
-          : isAbsolute
-            ? t.dashboard.priceModeHint
-            : t.dashboard.priceModeAddHint}
+        {isAbsolute ? t.dashboard.priceModeHint : t.dashboard.priceModeAddHint}
       </p>
 
-      {!isCustomAmount && (
       <div className="space-y-2">
         {options.fields.map((field, optionIndex) => (
           <Controller
@@ -208,17 +204,133 @@ function GroupEditor({
           {t.dashboard.addOption}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** the default label a freshly-enabled open option gets — the owner can
+ * rename it, same as every other group's own free-text name */
+const DEFAULT_OPEN_OPTION_ID = "القيمة";
+
+/**
+ * "خيار مفتوح" — a standalone card above the regular option-group list, not
+ * one more type mixed into it: at most one `customAmount` group per item,
+ * toggled on/off as a whole rather than added/removed like the others.
+ *
+ * Enabling it creates that one group; disabling removes it. While it's on,
+ * two settings live inside the same card: whether picking a value is
+ * required, and whether this item still multiplies by the cart's quantity
+ * stepper or always sells as a flat 1x (`quantityLocked`) — both are real
+ * choices an owner makes per item, not implied by the group's existence
+ * alone (an owner selling "3 shawarma worth 350 each" wants the stepper to
+ * keep multiplying; one selling "however much shawarma you want for your
+ * own price" wants it locked at one).
+ */
+function OpenOptionCard({
+  control,
+  groups,
+}: {
+  control: Control<OptionGroupsFormValues>;
+  groups: ReturnType<typeof useFieldArray<OptionGroupsFormValues, "groups">>;
+}) {
+  const { t } = useI18n();
+  const watchedGroups = useWatch({ control, name: "groups" });
+  const groupIndex = watchedGroups.findIndex(
+    (g) => g.selectionType === "customAmount",
+  );
+  const enabled = groupIndex !== -1;
+
+  const toggle = (next: boolean) => {
+    if (next) {
+      groups.append({
+        id: DEFAULT_OPEN_OPTION_ID,
+        selectionType: "customAmount",
+        required: false,
+        options: [],
+      });
+    } else if (groupIndex !== -1) {
+      groups.remove(groupIndex);
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
+      <label className="flex items-start gap-2.5">
+        <Checkbox
+          className="mt-0.5"
+          checked={enabled}
+          onCheckedChange={(v) => toggle(v === true)}
+        />
+        <span>
+          <span className="text-sm font-semibold">
+            {t.dashboard.openOptionTitle}
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            {t.dashboard.openOptionHint}
+          </span>
+        </span>
+      </label>
+
+      {enabled && (
+        <div className="space-y-3 border-t border-primary/15 pt-3">
+          <Controller
+            control={control}
+            name={`groups.${groupIndex}.id`}
+            render={({ field }) => (
+              <Input
+                value={field.value}
+                onChange={field.onChange}
+                placeholder={t.dashboard.optionGroupNamePlaceholder}
+                className="h-9 bg-background"
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name={`groups.${groupIndex}.required`}
+            render={({ field }) => (
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(v) => field.onChange(v === true)}
+                />
+                {t.dashboard.optionRequired}
+              </label>
+            )}
+          />
+          <Controller
+            control={control}
+            name="quantityLocked"
+            render={({ field }) => (
+              <label className="flex items-start gap-2.5">
+                <Checkbox
+                  className="mt-0.5"
+                  checked={field.value}
+                  onCheckedChange={(v) => field.onChange(v === true)}
+                />
+                <span>
+                  <span className="text-xs font-semibold">
+                    {t.dashboard.openOptionCancelQuantity}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t.dashboard.openOptionCancelQuantityHint}
+                  </span>
+                </span>
+              </label>
+            )}
+          />
+        </div>
       )}
     </div>
   );
 }
 
 /**
- * The option-groups editor's full body — the group list plus the
- * size/color/custom preset buttons — shared by the dedicated options modal
- * (editing an existing item) and the add-item dialog (building an item's
- * options as part of creating it). The host form's values type just needs a
- * `groups` field shaped like `OptionGroupsFormValues["groups"]`.
+ * The option-groups editor's full body — the open-option card, then the
+ * regular group list plus the size/color/custom preset buttons — shared by
+ * the dedicated options modal (editing an existing item) and the add-item
+ * dialog (building an item's options as part of creating it). The host
+ * form's values type just needs to match `OptionGroupsFormValues`.
  */
 export function OptionGroupsFields({
   control,
@@ -252,16 +364,20 @@ export function OptionGroupsFields({
 
   return (
     <div className="space-y-3">
-      {groups.fields.map((field, index) => (
-        <GroupEditor
-          key={field.id}
-          control={control}
-          groupIndex={index}
-          onRemove={() => groups.remove(index)}
-          basePrice={basePrice}
-          currencySuffix={currencySuffix}
-        />
-      ))}
+      <OpenOptionCard control={control} groups={groups} />
+
+      {groups.fields.map((field, index) =>
+        field.selectionType === "customAmount" ? null : (
+          <GroupEditor
+            key={field.id}
+            control={control}
+            groupIndex={index}
+            onRemove={() => groups.remove(index)}
+            basePrice={basePrice}
+            currencySuffix={currencySuffix}
+          />
+        ),
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => addGroup("size")}>

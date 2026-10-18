@@ -94,7 +94,10 @@ export function ItemOptionsModal({
   item: MenuItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (optionGroups: CatalogOptionGroup[]) => Promise<void> | void;
+  onSave: (fields: {
+    optionGroups: CatalogOptionGroup[];
+    quantityLocked: boolean;
+  }) => Promise<void> | void;
   /** the "color" preset only makes sense for a store's products */
   isStore?: boolean;
 }) {
@@ -103,13 +106,16 @@ export function ItemOptionsModal({
   const { control, handleSubmit, reset, formState: { isSubmitting } } =
     useForm<ItemOptionsValues>({
       resolver: zodResolver(itemOptionsSchema()),
-      defaultValues: { groups: [] },
+      defaultValues: { groups: [], quantityLocked: false },
     });
 
   // reset whenever a different item opens, so a previous edit never leaks
   useEffect(() => {
     if (!open) return;
-    reset({ groups: toFormGroups(item?.optionGroups) });
+    reset({
+      groups: toFormGroups(item?.optionGroups),
+      quantityLocked: item?.quantityLocked ?? false,
+    });
   }, [open, item, reset]);
 
   const basePrice = item?.price ?? 0;
@@ -137,7 +143,7 @@ export function ItemOptionsModal({
     }
 
     try {
-      await onSave(groups);
+      await onSave({ optionGroups: groups, quantityLocked: values.quantityLocked });
       onOpenChange(false);
     } catch {
       // the mutation's own onError already toasted — keep the dialog open

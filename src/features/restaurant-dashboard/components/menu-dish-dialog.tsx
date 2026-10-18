@@ -10,7 +10,6 @@ import { FieldError } from "@/components/shared/field-error";
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { UploadProgressRing } from "@/components/shared/upload-progress-ring";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -221,7 +220,11 @@ export function MenuDishDialog({
       categoryId,
       images: gallery.map((g) => g.url!),
       optionGroups,
-      quantityLocked: values.quantityLocked,
+      // only sent when creating — editing an existing item's quantityLocked
+      // goes through ItemOptionsModal instead, alongside its options (this
+      // dialog's own quantityLocked field is only ever touched there, via
+      // the open-option card, which only renders in create mode below)
+      quantityLocked: editing ? undefined : values.quantityLocked,
     });
   };
 
@@ -325,29 +328,6 @@ export function MenuDishDialog({
                       </SelectContent>
                     </Select>
                   )}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Controller
-                control={control}
-                name="quantityLocked"
-                render={({ field }) => (
-                  <label className="flex items-start gap-2.5 text-sm">
-                    <Checkbox
-                      className="mt-0.5"
-                      checked={field.value}
-                      onCheckedChange={(v) => field.onChange(v === true)}
-                    />
-                    <span>
-                      <span className="font-semibold">
-                        {t.dashboard.quantityLocked}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {t.dashboard.quantityLockedHint}
-                      </span>
-                    </span>
-                  </label>
-                )}
               />
             </div>
             <div className="space-y-1.5">
