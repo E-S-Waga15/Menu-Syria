@@ -316,11 +316,10 @@ export function DishModal({
                     <input
                       type="number"
                       inputMode="decimal"
-                      dir="ltr"
                       min={1}
                       value={customAmountText[group.id] ?? ""}
                       onChange={(e) => setCustomAmount(group, e.target.value)}
-                      placeholder={String(item.price)}
+                      placeholder="0"
                       className="h-11 w-full rounded-xl border border-border bg-background ps-3.5 pe-16 text-sm font-semibold outline-none transition-colors focus:border-[var(--menu-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <span className="pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
