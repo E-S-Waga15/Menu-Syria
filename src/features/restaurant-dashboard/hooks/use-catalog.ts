@@ -178,6 +178,7 @@ export interface NewItemInput {
   currency: "SYP" | "USD";
   images: string[];
   optionGroups?: MenuItem["optionGroups"];
+  quantityLocked?: boolean;
 }
 /** Item (dish/product) create, edit, availability, reorder and delete. */
 export function useItemMutations(businessId: string) {
@@ -205,6 +206,7 @@ export function useItemMutations(businessId: string) {
     imageUrl: input.images[0] ?? "",
     images: input.images.length ? input.images : undefined,
     optionGroups: input.optionGroups,
+    quantityLocked: input.quantityLocked,
     isAvailable: true,
     sortOrder: input.sortOrder,
   });

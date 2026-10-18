@@ -423,7 +423,11 @@ export function CartSheet({
           itemId: line.item.id,
           quantity: line.quantity,
           options: line.options.length
-            ? line.options.map((o) => ({ id: o.id }))
+            ? line.options.map((o) =>
+                o.selectionType === "customAmount"
+                  ? { id: o.id, amount: line.item.price + o.priceDelta }
+                  : { id: o.id },
+              )
             : undefined,
         })),
       });
@@ -477,6 +481,13 @@ export function CartSheet({
                 const multiOptions = line.options.filter(
                   (o) => o.selectionType === "multiple",
                 );
+                // a customAmount group has no predefined option — the
+                // customer's typed final price is recovered from the base
+                // price + its priceDelta, same way a "single" option's own
+                // final price is shown everywhere else
+                const customAmountOption = line.options.find(
+                  (o) => o.selectionType === "customAmount",
+                );
                 return (
                   <li key={line.key} className="py-3">
                   <div className="flex items-center gap-3">
@@ -514,6 +525,16 @@ export function CartSheet({
                               — {singleOption.id}
                             </span>
                           )}
+                          {customAmountOption && (
+                            <span className="font-normal text-muted-foreground">
+                              {" "}
+                              — {copy.customAmountLabel}{" "}
+                              {formatPrice(
+                                line.item.price + customAmountOption.priceDelta,
+                                t.common.currency,
+                              )}
+                            </span>
+                          )}
                         </p>
                         <p className="mt-0.5 text-sm font-bold text-[var(--menu-primary)]">
                           {formatPrice(
@@ -523,27 +544,33 @@ export function CartSheet({
                         </p>
                       </div>
                     </button>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label="-"
-                        onClick={() => setQuantity(line.key, line.quantity - 1)}
-                      >
-                        <Minus className="size-3.5" />
-                      </Button>
-                      <span className="w-7 text-center text-sm font-bold">
-                        {line.quantity}
+                    {line.item.quantityLocked ? (
+                      <span className="shrink-0 text-sm font-bold text-muted-foreground">
+                        1×
                       </span>
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        aria-label="+"
-                        onClick={() => setQuantity(line.key, line.quantity + 1)}
-                      >
-                        <Plus className="size-3.5" />
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          aria-label="-"
+                          onClick={() => setQuantity(line.key, line.quantity - 1)}
+                        >
+                          <Minus className="size-3.5" />
+                        </Button>
+                        <span className="w-7 text-center text-sm font-bold">
+                          {line.quantity}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          aria-label="+"
+                          onClick={() => setQuantity(line.key, line.quantity + 1)}
+                        >
+                          <Plus className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon-sm"

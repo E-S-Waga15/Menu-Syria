@@ -162,8 +162,11 @@ export interface ExternalOrderInput {
   items: {
     itemId: string;
     quantity: number;
-    /** the options the customer picked, by id within their group */
-    options?: { id: string }[];
+    /** the options the customer picked, by id within their group — a
+     * "customAmount" group's pick also carries the customer-typed final
+     * price as `amount`, since there's no predefined option for the
+     * backend to look a price up by id for (see update.md) */
+    options?: { id: string; amount?: number }[];
   }[];
 }
 

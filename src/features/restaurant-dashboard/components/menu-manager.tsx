@@ -379,6 +379,7 @@ export function MenuManager() {
             price: dish.price ?? 0,
             currency: dish.currency,
             images: dish.images ?? [],
+            quantityLocked: dish.quantityLocked,
           };
           // the mutation's own onSuccess toasts once the server actually
           // agrees — toasting here unconditionally used to tell the owner

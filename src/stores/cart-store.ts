@@ -59,6 +59,17 @@ export const useCartStore = create<CartState>()(
           // Switching restaurants starts a fresh cart
           const lines =
             state.restaurantId === restaurantId ? state.lines : [];
+          // a quantity-locked item (see CatalogItem.quantityLocked) never
+          // merges into an existing line — each add is its own 1x order,
+          // since a stacked quantity would be meaningless (or, worse,
+          // silently wrong) for something like a customer-typed amount
+          if (item.quantityLocked) {
+            const key = `${lineKey(item.id, options)}::${crypto.randomUUID()}`;
+            return {
+              restaurantId,
+              lines: [...lines, { key, item, options, quantity: 1 }],
+            };
+          }
           const key = lineKey(item.id, options);
           const existing = lines.find((l) => l.key === key);
           return {

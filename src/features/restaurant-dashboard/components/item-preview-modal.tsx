@@ -37,7 +37,7 @@ export function ItemPreviewModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { lang, dir } = useI18n();
+  const { t, lang, dir } = useI18n();
 
   if (!item) return null;
 
@@ -99,6 +99,11 @@ export function ItemPreviewModal({
                 {group.id}
                 {group.required && <span className="text-primary">*</span>}
               </h3>
+              {group.selectionType === "customAmount" ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t.dashboard.customAmountGroupHint}
+                </p>
+              ) : (
               <ul className="mt-2 flex flex-wrap gap-2">
                 {group.options.map((option) => (
                   <li
@@ -114,6 +119,7 @@ export function ItemPreviewModal({
                   </li>
                 ))}
               </ul>
+              )}
             </div>
           ))}
         </div>

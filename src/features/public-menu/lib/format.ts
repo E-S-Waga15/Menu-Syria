@@ -33,19 +33,25 @@ const fulfillmentLabel: Record<FulfillmentMode, keyof StorefrontCopy> = {
   delivery: "fulfillmentDelivery",
 };
 
+export function currencyLabel(
+  currency: CurrencyCode | string,
+  lang: "ar" | "en" = "ar",
+): string {
+  return currency === "USD"
+    ? lang === "ar"
+      ? "دولار"
+      : "$"
+    : lang === "ar"
+      ? "ل.س"
+      : "SYP";
+}
+
 export function formatPrice(
   price: number | null | undefined,
   currency: CurrencyCode | string,
   lang: "ar" | "en" = "ar",
 ): string {
-  const label =
-    currency === "USD"
-      ? lang === "ar"
-        ? "دولار"
-        : "$"
-      : lang === "ar"
-        ? "ل.س"
-        : "SYP";
+  const label = currencyLabel(currency, lang);
   // shown exactly as the backend sends it — no rounding anywhere in this
   // platform; a decimal (e.g. an exact commission split) stays a decimal.
   // Every call site is responsible for wrapping this in `dir="ltr"` (an
@@ -105,6 +111,25 @@ export function buildWhatsAppOrderUrl({
       const multiOptions = line.options.filter(
         (o) => o.selectionType === "multiple",
       );
+      // a "customAmount" pick (the customer typed their own final price —
+      // e.g. a kilo of shawarma normally 1000, ordered worth 700 instead)
+      // reads as its own clause: `1× Shawarma "worth" 700 SYP`, not the
+      // usual trailing "— total", since the amount already is the total
+      const customAmountOption = line.options.find(
+        (o) => o.selectionType === "customAmount",
+      );
+      if (customAmountOption) {
+        const amount = line.item.price + customAmountOption.priceDelta;
+        const name = [
+          line.item.name[lang],
+          ...multiOptions.map((o) => `${copy.withOption} ${o.id}`),
+        ].join(" ");
+        return `• ${line.quantity}× ${name} "${copy.customAmountLabel}" ${formatPrice(
+          amount,
+          line.item.currency ?? currency,
+          lang,
+        )}`;
+      }
       const name = [
         line.item.name[lang],
         singleOption?.id,

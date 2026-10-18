@@ -92,6 +92,9 @@ function normalizeItem(raw: Raw, businessId: string): WithMessage<MenuItem> {
   const optionGroups =
     (attributes.optionGroups as CatalogOptionGroup[] | undefined) ??
     (raw.optionGroups as CatalogOptionGroup[] | undefined);
+  const quantityLocked =
+    (attributes.quantityLocked as boolean | undefined) ??
+    (raw.quantityLocked as boolean | undefined);
 
   return {
     id: String(raw.id),
@@ -104,6 +107,7 @@ function normalizeItem(raw: Raw, businessId: string): WithMessage<MenuItem> {
     imageUrl: gallery[0] ?? String(raw.imageUrl ?? ""),
     images: gallery.length ? gallery : undefined,
     optionGroups: optionGroups?.length ? optionGroups : undefined,
+    quantityLocked: quantityLocked || undefined,
     isAvailable: raw.isAvailable !== false,
     sortOrder: toNumber(raw.sortOrder),
     viewCount: raw.viewCount != null ? toNumber(raw.viewCount) : undefined,
@@ -311,6 +315,7 @@ export interface ItemWriteInput {
   currency: CurrencyCode;
   images: string[];
   optionGroups?: CatalogOptionGroup[];
+  quantityLocked?: boolean;
   isAvailable?: boolean;
   sortOrder?: number;
 }
@@ -318,9 +323,10 @@ export interface ItemWriteInput {
 /**
  * The item payload the API expects.
  *
- * `optionGroups` rides inside `attributes` — the entity's documented home for
- * category-specific fields — rather than as columns of its own, which is what
- * lets a restaurant's sizes and a store's variants share one storage slot.
+ * `optionGroups`/`quantityLocked` ride inside `attributes` — the entity's
+ * documented home for category-specific fields — rather than as columns of
+ * their own, which is what lets a restaurant's sizes and a store's variants
+ * share one storage slot.
  */
 function toItemBody(input: Partial<ItemWriteInput> & Record<string, unknown>) {
   const body: Record<string, unknown> = {};
@@ -336,8 +342,13 @@ function toItemBody(input: Partial<ItemWriteInput> & Record<string, unknown>) {
   ] as const) {
     if (input[key] !== undefined) body[key] = input[key];
   }
-  if (input.optionGroups !== undefined) {
-    body.attributes = { optionGroups: input.optionGroups };
+  if (input.optionGroups !== undefined || input.quantityLocked !== undefined) {
+    body.attributes = {
+      ...(input.optionGroups !== undefined && { optionGroups: input.optionGroups }),
+      ...(input.quantityLocked !== undefined && {
+        quantityLocked: input.quantityLocked,
+      }),
+    };
   }
   return body;
 }
@@ -354,6 +365,7 @@ function mockItem(input: Partial<ItemWriteInput> & { id?: string }): MenuItem {
     imageUrl: input.images?.[0] ?? "",
     images: input.images,
     optionGroups: input.optionGroups,
+    quantityLocked: input.quantityLocked,
     isAvailable: true,
     sortOrder: 0,
   };

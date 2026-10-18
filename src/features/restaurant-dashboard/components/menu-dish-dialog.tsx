@@ -10,6 +10,7 @@ import { FieldError } from "@/components/shared/field-error";
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { UploadProgressRing } from "@/components/shared/upload-progress-ring";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -84,6 +85,7 @@ export function MenuDishDialog({
     /** only ever sent when creating — an existing item's options are edited
      * on their own, from the item card's kebab menu */
     optionGroups?: CatalogOptionGroup[];
+    quantityLocked?: boolean;
   }) => Promise<void> | void;
 }) {
   const { t, lang } = useI18n();
@@ -96,7 +98,14 @@ export function MenuDishDialog({
     formState: { errors, isSubmitting },
   } = useForm<DishFormValues>({
     resolver: zodResolver(dishFormSchema(t.validation)),
-    defaultValues: { name: "", desc: "", price: "", currency: "SYP", groups: [] },
+    defaultValues: {
+      name: "",
+      desc: "",
+      price: "",
+      currency: "SYP",
+      quantityLocked: false,
+      groups: [],
+    },
     mode: "onTouched",
   });
 
@@ -129,6 +138,7 @@ export function MenuDishDialog({
       desc: editing?.description[lang] ?? "",
       price: editing ? String(editing.price) : "",
       currency: editing?.currency ?? "SYP",
+      quantityLocked: editing?.quantityLocked ?? false,
       // only ever edited here when adding — editing an existing item never
       // shows this section, so there is nothing of its own to seed
       groups: [],
@@ -211,6 +221,7 @@ export function MenuDishDialog({
       categoryId,
       images: gallery.map((g) => g.url!),
       optionGroups,
+      quantityLocked: values.quantityLocked,
     });
   };
 
@@ -314,6 +325,29 @@ export function MenuDishDialog({
                       </SelectContent>
                     </Select>
                   )}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Controller
+                control={control}
+                name="quantityLocked"
+                render={({ field }) => (
+                  <label className="flex items-start gap-2.5 text-sm">
+                    <Checkbox
+                      className="mt-0.5"
+                      checked={field.value}
+                      onCheckedChange={(v) => field.onChange(v === true)}
+                    />
+                    <span>
+                      <span className="font-semibold">
+                        {t.dashboard.quantityLocked}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {t.dashboard.quantityLockedHint}
+                      </span>
+                    </span>
+                  </label>
+                )}
               />
             </div>
             <div className="space-y-1.5">

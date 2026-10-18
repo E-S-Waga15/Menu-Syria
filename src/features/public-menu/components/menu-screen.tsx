@@ -15,7 +15,6 @@ import { getLiveOffers } from "@/features/offers/services";
 import { CategoryMenu } from "@/features/public-menu/components/category-menu";
 import { DishCard } from "@/features/public-menu/components/dish-card";
 import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment";
-import { trackItemCartAdd } from "@/features/public-menu/services";
 import type { StorefrontCopy } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -91,7 +90,6 @@ export function MenuScreen({
   tableParam?: string;
 }) {
   const { t, lang } = useI18n();
-  const addItem = useCartStore((s) => s.addItem);
   const clearCart = useCartStore((s) => s.clear);
   const cartCount = useCartStore(selectCartCount);
   // the backend computes this from the real published schedule itself —
@@ -224,11 +222,6 @@ export function MenuScreen({
       list.sort((a, b) => a.sortOrder - b.sortOrder);
     return map;
   }, [filteredItems]);
-
-  const handleAdd = (item: CatalogItem) => {
-    trackItemCartAdd(item.id);
-    addItem(business.id, item);
-  };
 
   // plain text is just the name and this (menu) page's own link — the
   // richer preview (type, description) comes from this page's own OG
@@ -441,7 +434,7 @@ export function MenuScreen({
                   key={item.id}
                   item={item}
                   copy={copy}
-                  onAdd={handleAdd}
+                  onAdd={setOpenedDish}
                   onOpen={setOpenedDish}
                 />
               ))}
@@ -486,7 +479,7 @@ export function MenuScreen({
                       key={item.id}
                       item={item}
                       copy={copy}
-                      onAdd={handleAdd}
+                      onAdd={setOpenedDish}
                       onOpen={setOpenedDish}
                     />
                   ))}

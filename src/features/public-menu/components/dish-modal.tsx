@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  currencyLabel,
   formatPrice,
   type StorefrontCopy,
 } from "@/features/public-menu/lib/format";
@@ -63,6 +64,11 @@ export function DishModal({
 
   const [selected, setSelected] = useState<CartOption[]>([]);
   const [quantity, setQuantity] = useState(1);
+  /** raw text per customAmount group, keyed by group id — kept separately
+   * from `selected` so an invalid/empty entry can still be shown as typed
+   * instead of silently reverting; only a valid positive number ever makes
+   * it into `selected` */
+  const [customAmountText, setCustomAmountText] = useState<Record<string, string>>({});
   const [api, setApi] = useState<CarouselApi>();
   const [slide, setSlide] = useState(0);
 
@@ -77,6 +83,7 @@ export function DishModal({
     setSelected([]);
     setQuantity(1);
     setSlide(0);
+    setCustomAmountText({});
     // this branch runs exactly once per distinct item opened — the same
     // "once per open" the backend asks for, with no separate effect needed
     trackItemView(item.id);
@@ -120,6 +127,30 @@ export function DishModal({
         : [...prev, { ...option, selectionType: "multiple" }];
     });
 
+  /** the group itself IS the pick for a "customAmount" group — there's no
+   * predefined option to toggle, so its `CartOption.id` is just the group's
+   * own id, letting the required-group check below and every downstream
+   * display (`item.price + priceDelta` recovers the typed amount) treat it
+   * exactly like a "single" pick with no catalog-defined option behind it. */
+  const setCustomAmount = (group: CatalogOptionGroup, text: string) => {
+    setCustomAmountText((prev) => ({ ...prev, [group.id]: text }));
+    const amount = Number(text);
+    setSelected((prev) => {
+      const withoutGroup = prev.filter((o) => o.id !== group.id);
+      if (!text.trim() || !Number.isFinite(amount) || amount <= 0) {
+        return withoutGroup;
+      }
+      return [
+        ...withoutGroup,
+        {
+          id: group.id,
+          priceDelta: amount - item.price,
+          selectionType: "customAmount",
+        },
+      ];
+    });
+  };
+
   const badgeLabel =
     item.badge === "popular"
       ? copy.popular
@@ -130,13 +161,17 @@ export function DishModal({
           : null;
 
   const addToCart = () => {
-    const missingGroup = (item.optionGroups ?? []).find(
-      (group) =>
-        group.required &&
-        !group.options.some((option) =>
-          selected.some((o) => o.id === option.id),
-        ),
-    );
+    const missingGroup = (item.optionGroups ?? []).find((group) => {
+      if (!group.required) return false;
+      if (group.selectionType === "customAmount") {
+        return !selected.some(
+          (o) => o.selectionType === "customAmount" && o.id === group.id,
+        );
+      }
+      return !group.options.some((option) =>
+        selected.some((o) => o.id === option.id),
+      );
+    });
     if (missingGroup) {
       toast.error(
         fmt(t.common.selectRequiredOption, { group: missingGroup.id }),
@@ -144,7 +179,7 @@ export function DishModal({
       return;
     }
     trackItemCartAdd(item.id);
-    addItem(businessId, item, selected, quantity);
+    addItem(businessId, item, selected, item.quantityLocked ? 1 : quantity);
     onClose();
   };
 
@@ -275,6 +310,28 @@ export function DishModal({
                   <span className="text-[var(--menu-primary)]">*</span>
                 )}
               </h3>
+              {group.selectionType === "customAmount" ? (
+                <div className="mt-2.5">
+                  <div className="relative">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      dir="ltr"
+                      min={1}
+                      value={customAmountText[group.id] ?? ""}
+                      onChange={(e) => setCustomAmount(group, e.target.value)}
+                      placeholder={String(item.price)}
+                      className="h-11 w-full rounded-xl border border-border bg-background ps-3.5 pe-16 text-sm font-semibold outline-none transition-colors focus:border-[var(--menu-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <span className="pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                      {currencyLabel(item.currency ?? "SYP", lang)}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {copy.customAmountHint}
+                  </p>
+                </div>
+              ) : (
               <ul className="mt-2.5 space-y-2">
                 {group.options.map((option) => {
                   const isChecked = selected.some((o) => o.id === option.id);
@@ -334,6 +391,7 @@ export function DishModal({
                   );
                 })}
               </ul>
+              )}
             </div>
           ))}
         </div>
@@ -344,32 +402,34 @@ export function DishModal({
           className="sticky bottom-0 flex items-center gap-3 border-t border-border/60 bg-popover px-5 py-4"
           dir={dir}
         >
-          <div
-            className="flex items-center gap-1 rounded-full bg-surface-container p-1"
-            aria-label={copy.quantity}
-          >
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="rounded-full"
-              aria-label="-"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+          {!item.quantityLocked && (
+            <div
+              className="flex items-center gap-1 rounded-full bg-surface-container p-1"
+              aria-label={copy.quantity}
             >
-              <Minus className="size-3.5" />
-            </Button>
-            <span className="w-6 text-center text-sm font-bold">
-              {quantity}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="rounded-full"
-              aria-label="+"
-              onClick={() => setQuantity((q) => q + 1)}
-            >
-              <Plus className="size-3.5" />
-            </Button>
-          </div>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-full"
+                aria-label="-"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              >
+                <Minus className="size-3.5" />
+              </Button>
+              <span className="w-6 text-center text-sm font-bold">
+                {quantity}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-full"
+                aria-label="+"
+                onClick={() => setQuantity((q) => q + 1)}
+              >
+                <Plus className="size-3.5" />
+              </Button>
+            </div>
+          )}
 
           <button
             type="button"
@@ -378,7 +438,13 @@ export function DishModal({
             className="flex h-12 flex-1 transform-gpu items-center justify-between gap-2 rounded-full bg-[var(--menu-primary)] px-5 text-sm font-bold text-white transition-[scale] duration-200 ease-smooth hover:scale-[1.01] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
           >
             <span>{copy.addToCart}</span>
-            <span>{formatPrice(unitPrice * quantity, item.currency ?? "SYP", lang)}</span>
+            <span>
+              {formatPrice(
+                unitPrice * (item.quantityLocked ? 1 : quantity),
+                item.currency ?? "SYP",
+                lang,
+              )}
+            </span>
           </button>
         </div>
       </DialogContent>

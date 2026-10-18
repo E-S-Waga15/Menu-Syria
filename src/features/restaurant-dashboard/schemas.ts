@@ -12,7 +12,7 @@ import { syrianPhone, type ValidationMessages } from "@/lib/validation";
  */
 const optionGroupSchema = z.object({
   id: z.string(),
-  selectionType: z.enum(["single", "multiple"]),
+  selectionType: z.enum(["single", "multiple", "customAmount"]),
   required: z.boolean(),
   options: z.array(
     z.object({
@@ -31,6 +31,10 @@ export const dishFormSchema = (v: ValidationMessages) =>
       .min(1, v.priceRequired)
       .regex(/^\d+$/, v.numbersOnly),
     currency: z.enum(["SYP", "USD"]),
+    // hides the +/- quantity stepper everywhere this item appears, and
+    // locks every add to its own separate 1x line — see
+    // CatalogItem.quantityLocked
+    quantityLocked: z.boolean(),
     // only shown/submitted when adding a brand-new item — editing an
     // existing one manages its options separately, from the item card's
     // own kebab menu (see MenuDishDialog)

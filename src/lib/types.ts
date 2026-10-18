@@ -239,7 +239,16 @@ export interface StoreCategory {
 export type DishBadge = "popular" | "new" | "chefSpecial";
 export type CurrencyCode = "SYP" | "USD";
 
-export type OptionSelectionType = "single" | "multiple";
+/**
+ * "customAmount" is a different kind of group entirely — there's nothing to
+ * pick from a list. It's one input: the customer types the final amount they
+ * want to pay for the item (e.g. a kilo of loose shawarma normally priced
+ * 1000, but sold for whatever weight the customer actually wants — 700,
+ * 1200, ...). It still prices exactly like "single" (the typed amount
+ * replaces the base price rather than adding to it), it just has no
+ * predefined `options` for the group to carry — see `CatalogOptionGroup`.
+ */
+export type OptionSelectionType = "single" | "multiple" | "customAmount";
 
 /**
  * The backend stores only `id` and `priceDelta` per option — no separate
@@ -267,7 +276,9 @@ export interface CatalogOption {
  * as independent add-ons (e.g. extra toppings, several at once).
  */
 /** Same as `CatalogOption`: `id` is free text the owner chose (e.g. "المقاس",
- * "extras") and is the group's own label — there is no separate name field. */
+ * "extras") and is the group's own label — there is no separate name field.
+ * A "customAmount" group's `options` is always empty — there's nothing to
+ * predefine, the customer's typed amount becomes the pick at order time. */
 export interface CatalogOptionGroup {
   id: string;
   selectionType: OptionSelectionType;
@@ -296,6 +307,13 @@ export interface CatalogItem {
   isAvailable: boolean;
   badge?: DishBadge;
   sortOrder: number;
+  /** hides the +/- quantity stepper everywhere this item appears and locks
+   * every add to a fresh, always-separate 1x line — for an item whose real
+   * "quantity" is already expressed through a "customAmount" option (so a
+   * quantity multiplier on top would double-count it), or any item the
+   * owner otherwise wants sold strictly one at a time. Independent of
+   * whether the item actually has a "customAmount" group. */
+  quantityLocked?: boolean;
   /** times this item's detail view was opened by a customer — shown
    * directly on the dashboard menu list, not only inside the per-item
    * stats modal. Optional until the backend adds it to `GET /me/menu`

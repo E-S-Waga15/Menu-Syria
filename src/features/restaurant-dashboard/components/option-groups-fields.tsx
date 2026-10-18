@@ -52,6 +52,7 @@ function GroupEditor({
   // multiple-choice (add-ons) is always priced as what it adds — never a
   // per-group toggle, so a customer never sees the two logics mixed
   const isAbsolute = selectionType === "single";
+  const isCustomAmount = selectionType === "customAmount";
 
   return (
     <div className="space-y-3 rounded-xl border border-border/60 p-3">
@@ -86,7 +87,9 @@ function GroupEditor({
           name={`groups.${groupIndex}.selectionType`}
           render={({ field }) => (
             <div className="flex gap-1 rounded-lg border border-border/60 p-0.5">
-              {(["single", "multiple"] as OptionSelectionType[]).map((type) => (
+              {(
+                ["single", "multiple", "customAmount"] as OptionSelectionType[]
+              ).map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -100,7 +103,9 @@ function GroupEditor({
                 >
                   {type === "single"
                     ? t.dashboard.selectionSingle
-                    : t.dashboard.selectionMultiple}
+                    : type === "multiple"
+                      ? t.dashboard.selectionMultiple
+                      : t.dashboard.selectionCustomAmount}
                 </button>
               ))}
             </div>
@@ -122,9 +127,14 @@ function GroupEditor({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {isAbsolute ? t.dashboard.priceModeHint : t.dashboard.priceModeAddHint}
+        {isCustomAmount
+          ? t.dashboard.customAmountGroupHint
+          : isAbsolute
+            ? t.dashboard.priceModeHint
+            : t.dashboard.priceModeAddHint}
       </p>
 
+      {!isCustomAmount && (
       <div className="space-y-2">
         {options.fields.map((field, optionIndex) => (
           <Controller
@@ -198,6 +208,7 @@ function GroupEditor({
           {t.dashboard.addOption}
         </Button>
       </div>
+      )}
     </div>
   );
 }

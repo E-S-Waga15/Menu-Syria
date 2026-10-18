@@ -36,9 +36,15 @@ export function toOptionGroups(
     .filter((g) => g.id.trim() !== "")
     .map((g) => ({
       ...g,
-      options: g.options.filter((o) => o.id.trim() !== ""),
+      // a "customAmount" group has nothing to predefine — the customer
+      // types the amount at order time — so it never has options to begin
+      // with; every other group still needs at least one to be worth saving
+      options:
+        g.selectionType === "customAmount"
+          ? []
+          : g.options.filter((o) => o.id.trim() !== ""),
     }))
-    .filter((g) => g.options.length > 0);
+    .filter((g) => g.selectionType === "customAmount" || g.options.length > 0);
 }
 
 function toFormGroups(
