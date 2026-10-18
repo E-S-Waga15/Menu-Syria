@@ -1,5 +1,20 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🚨 Urgent: CORS is blocking every request from the production domain — admin login (and everything else) is down
+
+**What's happening:** every request from `https://menu-syria.vercel.app` to `https://menusyria.softup.agency` is being blocked by the browser before it even reaches you, because the preflight response has no `Access-Control-Allow-Origin` header for this origin. Confirmed directly from the browser console trying to log into the admin console:
+
+```
+Access to fetch at 'https://menusyria.softup.agency/auth/login' from origin 'https://menu-syria.vercel.app'
+has been blocked by CORS policy: Response to preflight request doesn't pass access control check:
+No 'Access-Control-Allow-Origin' header is present on the requested resource.
+POST https://menusyria.softup.agency/auth/login net::ERR_FAILED
+```
+
+This isn't specific to `/auth/login` or to admin — it's whatever origin allowlist the API's CORS middleware has, and `https://menu-syria.vercel.app` either isn't on it or fell off it. The frontend shows a generic "something went wrong" toast instead of "wrong password" precisely because the request never reaches the backend to be rejected properly — the browser blocks it first.
+
+**Needed:** add `https://menu-syria.vercel.app` to the API's CORS allowed-origins config, with credentials/headers allowed the same way as whatever other origin currently works (if `menusyria.softup.agency` itself or a staging frontend origin is already allowlisted, mirror the same settings for this one). If there's a custom production domain planned on top of the `.vercel.app` one, that'll need adding too once it exists. This is blocking everything — not just login, every authenticated screen on the deployed site is affected the same way.
+
 ## ✅ Matched on the frontend: real notifications (`GET /notifications`, `PATCH /:id/read`)
 
 The in-app half of this is fully wired up — every dashboard (admin, agent, owner, customer) now reads its bell count and its notices page from `GET /notifications` / `GET /notifications?unread=true`, and toggling read/unread calls `PATCH /notifications/:id/read` for real. This replaces an old frontend-only stopgap that derived reminders purely from subscription expiry dates and never covered any admin/agent event at all.
