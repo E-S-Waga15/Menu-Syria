@@ -33,6 +33,14 @@ export interface BusinessOpenStatus {
   /** the next "HH:mm" the business opens, when currently closed and a
    * future opening time is known from the published schedule */
   opensAt: string | null;
+  /** how many days from now that next opening falls — 0 = later today,
+   * 1 = tomorrow, 2–6 = that many days out. `null` alongside a null
+   * `opensAt` (no published hours ahead to find). */
+  opensInDays: number | null;
+  /** 0–6 (Sun–Sat), the weekday the next opening falls on — pairs with
+   * `opensInDays` for a day-name lookup (e.g. `t.restaurant.dayNames`)
+   * when the next opening isn't today or tomorrow. */
+  opensDayIndex: number | null;
 }
 
 /**
@@ -47,7 +55,8 @@ export function getBusinessOpenStatus(
   hours: (DayHours | null)[] | undefined,
   now: Date = new Date(),
 ): BusinessOpenStatus {
-  if (!hours || hours.length === 0) return { isOpen: true, opensAt: null };
+  if (!hours || hours.length === 0)
+    return { isOpen: true, opensAt: null, opensInDays: null, opensDayIndex: null };
 
   const { dayIndex, minutes } = damascusNow(now);
   const today = hours[dayIndex];
@@ -59,16 +68,18 @@ export function getBusinessOpenStatus(
       closes > opens
         ? minutes >= opens && minutes < closes
         : minutes >= opens || minutes < closes;
-    if (isOpenNow) return { isOpen: true, opensAt: null };
+    if (isOpenNow)
+      return { isOpen: true, opensAt: null, opensInDays: null, opensDayIndex: null };
   }
 
   // closed right now — walk forward (starting today) to the next day with
   // published hours, and report when it opens
   for (let offset = 0; offset < 7; offset++) {
-    const day = hours[(dayIndex + offset) % 7];
+    const idx = (dayIndex + offset) % 7;
+    const day = hours[idx];
     if (!day) continue;
     if (offset === 0 && toMinutes(day.opens) <= minutes) continue; // today's window already passed
-    return { isOpen: false, opensAt: day.opens };
+    return { isOpen: false, opensAt: day.opens, opensInDays: offset, opensDayIndex: idx };
   }
-  return { isOpen: false, opensAt: null };
+  return { isOpen: false, opensAt: null, opensInDays: null, opensDayIndex: null };
 }

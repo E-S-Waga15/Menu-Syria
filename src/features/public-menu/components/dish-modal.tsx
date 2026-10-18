@@ -15,6 +15,15 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -22,15 +31,18 @@ import {
 } from "@/components/ui/dialog";
 import {
   currencyLabel,
+  describeClosedUntil,
   formatPrice,
   type StorefrontCopy,
 } from "@/features/public-menu/lib/format";
 import { trackItemCartAdd, trackItemView } from "@/features/public-menu/services";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/fmt";
+import { getBusinessOpenStatus } from "@/lib/business-hours";
 import { toast } from "@/lib/toast";
 import type {
   RestaurantTheme,
+  Business,
   CatalogItem,
   CatalogOption,
   CatalogOptionGroup,
@@ -41,12 +53,17 @@ import { useCartStore, type CartOption } from "@/stores/cart-store";
 export function DishModal({
   item,
   businessId,
+  business,
   theme,
   copy,
   onClose,
 }: {
   item: CatalogItem | null;
   businessId: string;
+  /** just enough of the business to warn about ordering while closed — the
+   * backend's own `isOpen` for the boolean, the published schedule (if any)
+   * to say when it reopens, and `slug` for the "view opening hours" link */
+  business: Pick<Business, "slug" | "isOpen" | "openingHours">;
   /**
    * The storefront palette, passed explicitly. DialogContent portals to
    * document.body, outside the element where menu-screen declares
@@ -71,6 +88,7 @@ export function DishModal({
   const [customAmountText, setCustomAmountText] = useState<Record<string, string>>({});
   const [api, setApi] = useState<CarouselApi>();
   const [slide, setSlide] = useState(0);
+  const [showClosedModal, setShowClosedModal] = useState(false);
 
   // Reset selections whenever a different dish opens (during render, no
   // effect). Nothing starts pre-picked, required or not — a customer must
@@ -102,6 +120,8 @@ export function DishModal({
   }, [api]);
 
   if (!item) return null;
+
+  const businessOpenStatus = getBusinessOpenStatus(business.openingHours);
 
   const images = (item.images?.length ? item.images : [item.imageUrl]).filter(
     (src) => src !== "",
@@ -161,6 +181,10 @@ export function DishModal({
           : null;
 
   const addToCart = () => {
+    if (!business.isOpen) {
+      setShowClosedModal(true);
+      return;
+    }
     const missingGroup = (item.optionGroups ?? []).find((group) => {
       if (!group.required) return false;
       if (group.selectionType === "customAmount") {
@@ -184,6 +208,7 @@ export function DishModal({
   };
 
   return (
+    <>
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         // scrollbar-none hides the bar but keeps overflow-y-auto, so the panel
@@ -448,5 +473,28 @@ export function DishModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showClosedModal} onOpenChange={setShowClosedModal}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.restaurant.closedNow}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {describeClosedUntil(businessOpenStatus, copy, t)}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <a
+            href={`/${business.slug}#opening-hours`}
+            className="text-sm font-bold text-primary underline underline-offset-2"
+          >
+            {copy.viewOpeningHoursLink}
+          </a>
+          <AlertDialogAction onClick={() => setShowClosedModal(false)}>
+            {t.common.close}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

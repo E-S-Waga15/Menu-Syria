@@ -1,6 +1,7 @@
 import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/client";
 import type { Locale } from "@/i18n/config";
+import type { BusinessOpenStatus } from "@/lib/business-hours";
 import { lineUnitPrice, type CartLine } from "@/stores/cart-store";
 import type { Business, CurrencyCode, FulfillmentMode } from "@/lib/types";
 
@@ -25,6 +26,31 @@ export function formatPickupTime(value: string, copy: StorefrontCopy): string {
   const period = hour24 >= 12 ? copy.pickupPeriodPM : copy.pickupPeriodAM;
   const hour12 = hour24 % 12 || 12;
   return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+}
+
+/**
+ * Turns a closed business's `BusinessOpenStatus` into one ready sentence —
+ * "opens today at 4 PM" / "opens tomorrow at 9 AM" / "closed today — opens
+ * Wednesday at 9 AM" — picking the wording by how many days out the next
+ * published opening falls, so a customer never reads a bare time with no
+ * idea whether that's later today or three days from now.
+ */
+export function describeClosedUntil(
+  status: BusinessOpenStatus,
+  copy: StorefrontCopy,
+  t: Dictionary,
+): string {
+  if (status.opensAt === null) return copy.closedCannotOrderGeneric;
+  const time = formatPickupTime(status.opensAt, copy);
+  if (status.opensInDays === 0) return fmt(copy.closedOpensToday, { time });
+  if (status.opensInDays === 1) return fmt(copy.closedOpensTomorrow, { time });
+  if (status.opensDayIndex !== null) {
+    return fmt(copy.closedOpensOnDay, {
+      day: t.restaurant.dayNames[status.opensDayIndex],
+      time,
+    });
+  }
+  return copy.closedCannotOrderGeneric;
 }
 
 const fulfillmentLabel: Record<FulfillmentMode, keyof StorefrontCopy> = {

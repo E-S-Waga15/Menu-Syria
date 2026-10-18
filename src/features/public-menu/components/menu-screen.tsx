@@ -516,6 +516,7 @@ export function MenuScreen({
         <DishModal
           item={openedDish}
           businessId={business.id}
+          business={business}
           theme={business.theme}
           copy={copy}
           onClose={() => setOpenedDish(null)}

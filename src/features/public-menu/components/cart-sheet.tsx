@@ -50,6 +50,7 @@ import { useAuthStore } from "@/features/auth/store";
 import { placeExternalOrder } from "@/features/public-menu/services";
 import {
   buildWhatsAppOrderUrl,
+  describeClosedUntil,
   formatPickupTime,
   formatPrice,
   type StorefrontCopy,
@@ -61,7 +62,6 @@ import {
   type CartDetailsValues,
 } from "@/features/public-menu/schemas";
 import { useI18n } from "@/i18n/client";
-import { fmt } from "@/i18n/fmt";
 import type { Business, CatalogItem, FulfillmentMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -250,7 +250,7 @@ export function CartSheet({
   // trust it directly for the boolean; the backend doesn't compute a next-
   // opens-at time, so that part is still derived here from the schedule
   const businessIsOpen = business.isOpen;
-  const { opensAt: businessOpensAt } = getBusinessOpenStatus(business.openingHours);
+  const businessOpenStatus = getBusinessOpenStatus(business.openingHours);
   const branches = business.branches ?? [];
   // null = main branch, kept as the default selection — never sent to the
   // backend as a literal "main" value, see placeOrder's `branchId ?? undefined`
@@ -943,11 +943,7 @@ export function CartSheet({
                 <div className="rounded-2xl bg-muted p-4 text-center">
                   <p className="text-sm font-bold">{t.restaurant.closedNow}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {businessOpensAt
-                      ? fmt(copy.closedCannotOrder, {
-                          time: formatPickupTime(businessOpensAt, copy),
-                        })
-                      : copy.closedCannotOrderGeneric}
+                    {describeClosedUntil(businessOpenStatus, copy, t)}
                   </p>
                   <a
                     href={`/${business.slug}#opening-hours`}
