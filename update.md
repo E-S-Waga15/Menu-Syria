@@ -1,5 +1,15 @@
 # Backend changes needed — agent linkage, subscription details, item statistics, plan pricing
 
+## 🚨 Urgent: `DELETE /businesses/:id` is 500ing on a real business — "عبود", "اسماعيل"
+
+Trying to delete this business from the admin console fails with a 500 from the backend (confirmed from the browser console, not a frontend error):
+
+```
+DELETE https://menusyria.softup.agency/businesses/4623411e-b10d-4a41-8e8c-efefad1f441d 500 (Internal Server Error)
+```
+
+The frontend's request is correct and matches the `DELETE /businesses/:id` contract you confirmed shipped (cascades orders, items, categories, offers, tables, staff, branches, photos/links/phones, subscriptions…) — this one specific business's delete is failing on the backend side, most likely something in that cascade hitting a row it isn't expecting (an FK it didn't account for, a null it isn't guarding, etc.). Business id: `4623411e-b10d-4a41-8e8c-efefad1f441d`. Please check the server logs for that request and let us know once it's fixed so we can confirm the delete succeeds.
+
 ## 🚨 Urgent: CORS is blocking every request from the production domain — admin login (and everything else) is down
 
 **What's happening:** every request from `https://menu-syria.vercel.app` to `https://menusyria.softup.agency` is being blocked by the browser before it even reaches you, because the preflight response has no `Access-Control-Allow-Origin` header for this origin. Confirmed directly from the browser console trying to log into the admin console:
