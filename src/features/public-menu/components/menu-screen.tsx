@@ -225,12 +225,16 @@ export function MenuScreen({
 
   // plain text is just the name and this (menu) page's own link — the
   // richer preview (type, description) comes from this page's own OG
-  // meta tags, which WhatsApp/etc. unfurl from the link automatically
+  // meta tags, which WhatsApp/etc. unfurl from the link automatically.
+  // The name and the link are joined into one `text` field (with the
+  // receiving app's own line break) rather than split across `text`/`url` —
+  // most share targets (WhatsApp included) just concatenate those two on
+  // the same line, with no break between them, if left separate.
   const shareMenu = async () => {
     const pageUrl = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ text: business.name[lang], url: pageUrl });
+        await navigator.share({ text: `${business.name[lang]}\n${pageUrl}` });
         return;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError")

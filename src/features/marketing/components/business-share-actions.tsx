@@ -99,7 +99,10 @@ export function BusinessShareActions({
 
   const sharePage = async () => {
     const pageUrl = window.location.href;
-    const data = { title: caption, text: headline, url: pageUrl };
+    // joined into one `text` field (with the break built in) rather than
+    // split across `text`/`url` — most share targets (WhatsApp included)
+    // just concatenate those two on the same line if left separate
+    const data = { title: caption, text: `${headline}\n${pageUrl}` };
 
     if (navigator.share) {
       try {
