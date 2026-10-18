@@ -13,6 +13,7 @@ import {
 import { getNotifications } from "@/features/notifications/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { toast } from "@/lib/toast";
 
 /**
  * Header bell with an unread count.
@@ -43,9 +44,10 @@ export function NotificationBell({ href }: { href: string }) {
   useEffect(() => {
     void syncPushNotificationsIfGranted();
     let unsubscribe = () => {};
-    void listenForForegroundPush(() => {
+    void listenForForegroundPush((title, body) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unread });
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+      if (title || body) toast.info([title, body].filter(Boolean).join(" — "));
     }).then((unsub) => {
       unsubscribe = unsub;
     });

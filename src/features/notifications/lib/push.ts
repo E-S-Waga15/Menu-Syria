@@ -123,9 +123,16 @@ export async function disablePushNotifications(): Promise<void> {
   }
 }
 
-/** A push that arrives while a tab has focus doesn't trigger the browser's
- * native notification UI — the caller decides how to surface it (a toast,
- * a refetch of the unread count, ...). */
+/**
+ * A push that arrives while a tab has focus never reaches the service
+ * worker's `onBackgroundMessage` — that only fires while every tab is
+ * unfocused or closed — so without this, a push sent while someone is
+ * actively on the site produced no OS notification at all (only the
+ * in-app unread count updating, easy to miss if they aren't looking at the
+ * tab). This explicitly shows one itself via the page-context `Notification`
+ * constructor whenever permission is already granted, on top of whatever
+ * the caller does with the title/body (refetching the list, a toast, ...).
+ */
 export async function listenForForegroundPush(
   onReceive: (title: string, body: string) => void,
 ): Promise<() => void> {
@@ -135,9 +142,18 @@ export async function listenForForegroundPush(
 
   const messaging = getMessaging(app);
   return onMessage(messaging, (payload) => {
-    onReceive(
-      payload.notification?.title ?? "",
-      payload.notification?.body ?? "",
-    );
+    const title = payload.notification?.title ?? payload.data?.title ?? "";
+    const body = payload.notification?.body ?? payload.data?.body ?? "";
+
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        new Notification(title || "منيو سوريا", { body, icon: "/notification-icon.png" });
+      } catch {
+        // some browsers (notably iOS Safari) don't support the page-context
+        // Notification constructor at all — onReceive below still covers it
+      }
+    }
+
+    onReceive(title, body);
   });
 }
