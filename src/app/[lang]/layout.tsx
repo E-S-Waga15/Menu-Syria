@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cairo, Epilogue, Geist_Mono, Manrope } from "next/font/google";
 import { notFound } from "next/navigation";
 
+import { Analytics } from "@vercel/analytics/next";
 import { DirectionProvider } from "@base-ui/react/direction-provider";
 
 import { I18nProvider } from "@/i18n/client";
@@ -124,6 +125,7 @@ export default async function RootLayout({
             <AppProviders>{children}</AppProviders>
           </I18nProvider>
         </DirectionProvider>
+        <Analytics />
       </body>
     </html>
   );
