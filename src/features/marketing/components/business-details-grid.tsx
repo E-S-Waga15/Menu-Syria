@@ -23,6 +23,7 @@ import {
   WhatsAppIcon,
 } from "@/components/shared/brand-icons";
 import { FavoriteButton } from "@/components/shared/favorite-button";
+import { FormattedText } from "@/components/shared/formatted-text";
 import { Badge } from "@/components/ui/badge";
 import { BusinessShareActions } from "@/features/marketing/components/business-share-actions";
 import { MapEmbed } from "@/features/marketing/components/map-embed";
@@ -348,9 +349,10 @@ export function BusinessDetailsGrid({
 
         <Panel title={aboutTitle}>
           {description ? (
-            <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-              {description}
-            </p>
+            <FormattedText
+              text={description}
+              className="space-y-2 text-sm leading-relaxed text-muted-foreground md:text-base"
+            />
           ) : (
             <p className="text-muted-foreground italic">
               {t.restaurant.noDescription}

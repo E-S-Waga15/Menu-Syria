@@ -370,11 +370,16 @@ function AccountInfoSection({
         <Label htmlFor="p-desc">{t.auth.descriptionLabel}</Label>
         <Textarea
           id="p-desc"
-          rows={3}
+          rows={4}
           disabled={!editing}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+        {editing && (
+          <p className="text-xs text-muted-foreground">
+            {t.dashboard.descriptionFormattingHint}
+          </p>
+        )}
       </div>
 
       <div className="mt-5 grid gap-5 md:grid-cols-2">

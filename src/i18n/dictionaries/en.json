@@ -856,6 +856,7 @@
     "mainImage": "Main",
     "removeImage": "Remove image",
     "imagesHint": "The first image is the one shown on the card",
+    "descriptionFormattingHint": "You can write **bold text** between two asterisks, and numbered (1. 2. 3.) or bulleted (- ) lists",
     "imageRequired": "Add at least one image before saving",
     "imageStillUploading": "The image is still uploading, wait for it to finish",
     "quickAccess": "Quick access",
