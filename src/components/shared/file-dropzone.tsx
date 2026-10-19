@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 
-import { Camera, CloudUpload, UserRound, X } from "lucide-react";
+import { Camera, CloudUpload, FolderOpen, UserRound, X } from "lucide-react";
 
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,22 @@ export function FileDropzone({
     setFileName(null);
     onFile?.(null);
     if (inputRef.current) inputRef.current.value = "";
+  };
+
+  // The browser only ever hands a paste event to whichever element (or its
+  // ancestor) currently has focus — not to whatever the mouse happens to be
+  // over — so the card itself and the explicit paste field below are both
+  // made focusable, and this one handler (bound once, on the card) catches
+  // a paste from either since the event bubbles up to it.
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const image = Array.from(e.clipboardData.items).find((item) =>
+      item.type.startsWith("image/"),
+    );
+    const file = image?.getAsFile();
+    if (file) {
+      e.preventDefault();
+      accept(file);
+    }
   };
 
   const input = (
@@ -122,9 +138,7 @@ export function FileDropzone({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
+    <div
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -135,8 +149,10 @@ export function FileDropzone({
         setDragging(false);
         accept(e.dataTransfer.files[0]);
       }}
+      onPaste={handlePaste}
+      tabIndex={0}
       className={cn(
-        "relative flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-5 text-center transition-[border-color,background-color] duration-200",
+        "relative flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-5 text-center transition-[border-color,background-color] duration-200 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         dragging
           ? "border-primary bg-berry-soft/30 scale-[1.01]"
           : "border-border hover:border-primary/50 hover:bg-surface-container-low",
@@ -147,17 +163,23 @@ export function FileDropzone({
 
       {preview ? (
         <>
-          <Image
-            src={preview}
-            alt=""
-            width={72}
-            height={72}
-            className="size-18 rounded-xl object-cover shadow-soft"
-            unoptimized
-          />
-          <p className="max-w-full truncate text-xs font-semibold">
-            {fileName ?? label}
-          </p>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="flex w-full cursor-pointer flex-col items-center gap-2"
+          >
+            <Image
+              src={preview}
+              alt=""
+              width={72}
+              height={72}
+              className="size-18 rounded-xl object-cover shadow-soft"
+              unoptimized
+            />
+            <p className="max-w-full truncate text-xs font-semibold">
+              {fileName ?? label}
+            </p>
+          </button>
           {fileName && (
             <span
               role="button"
@@ -175,11 +197,25 @@ export function FileDropzone({
             <CloudUpload className="size-5" />
           </span>
           <p className="text-sm font-semibold">{label}</p>
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-foreground transition-colors duration-200 hover:bg-surface-container"
+          >
+            <FolderOpen className="size-3.5" />
+            {t.common.browseDevice}
+          </button>
+          <div
+            tabIndex={0}
+            className="w-full max-w-56 rounded-lg border border-dashed border-border/70 bg-surface-container-low/60 px-3 py-2 text-xs text-muted-foreground transition-colors duration-200 focus-visible:border-primary/50 focus-visible:outline-none"
+          >
+            {t.common.orPasteImage}
+          </div>
           <p className="text-xs text-muted-foreground">
             {hint ?? t.auth.dropzoneHint}
           </p>
         </>
       )}
-    </button>
+    </div>
   );
 }

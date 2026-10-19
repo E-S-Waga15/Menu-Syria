@@ -31,6 +31,8 @@
     "currency": "SYP",
     "optional": "Optional",
     "required": "Required",
+    "browseDevice": "Upload from device",
+    "orPasteImage": "Or paste an image here (Ctrl+V)",
     "selectRequiredOption": "Please pick \"{group}\" before adding to cart",
     "comingSoon": "Coming soon",
     "notFoundTitle": "Page not found",

@@ -31,6 +31,8 @@
     "currency": "ل.س",
     "optional": "اختياري",
     "required": "مطلوب",
+    "browseDevice": "رفع من الجهاز",
+    "orPasteImage": "أو الصق صورة هنا (Ctrl+V)",
     "selectRequiredOption": "الرجاء اختيار \"{group}\" قبل الإضافة للسلة",
     "comingSoon": "قريباً",
     "notFoundTitle": "الصفحة غير موجودة",
