@@ -52,6 +52,7 @@ export function CategoryCard({
       <div className="flex items-start gap-3">
         {category.imageUrl ? (
           <SafeImage
+            unoptimized
             src={category.imageUrl}
             alt=""
             width={56}

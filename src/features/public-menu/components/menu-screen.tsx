@@ -409,7 +409,7 @@ export function MenuScreen({
                     >
                       {category.imageUrl && (
                         <Image
-                          quality={90}
+                          unoptimized
                           src={category.imageUrl}
                           alt=""
                           width={28}
@@ -490,7 +490,7 @@ export function MenuScreen({
                 <h2 className="flex items-center gap-2.5 font-heading text-xl font-bold">
                   {category.imageUrl && (
                     <Image
-                      quality={90}
+                      unoptimized
                       src={category.imageUrl}
                       alt=""
                       width={32}

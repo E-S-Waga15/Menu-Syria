@@ -55,6 +55,7 @@ export function ItemPreviewModal({
         {images.length > 0 ? (
           <div className="relative aspect-[4/3] w-full">
             <SafeImage
+              unoptimized
               src={images[0]!}
               alt=""
               fill

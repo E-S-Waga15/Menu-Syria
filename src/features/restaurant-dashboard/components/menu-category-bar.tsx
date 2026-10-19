@@ -108,7 +108,7 @@ export function MenuCategoryBar({
             >
               {pill.imageUrl && (
                 <Image
-                  quality={90}
+                  unoptimized
                   src={pill.imageUrl}
                   alt=""
                   width={24}
