@@ -209,8 +209,11 @@ function GroupEditor({
 }
 
 /** the default label a freshly-enabled open option gets — the owner can
- * rename it, same as every other group's own free-text name */
-const DEFAULT_OPEN_OPTION_ID = "القيمة";
+ * rename it, same as every other group's own free-text name. Exported so
+ * `toOptionGroups` can fall back to it too: an item saved by an older
+ * build could have this blank, and a blank label would otherwise make the
+ * whole group look unworthy of saving and silently drop it. */
+export const DEFAULT_OPEN_OPTION_ID = "القيمة";
 
 /**
  * "خيار مفتوح" — a standalone card above the regular option-group list, not

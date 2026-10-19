@@ -13,7 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { OptionGroupsFields } from "@/features/restaurant-dashboard/components/option-groups-fields";
+import {
+  DEFAULT_OPEN_OPTION_ID,
+  OptionGroupsFields,
+} from "@/features/restaurant-dashboard/components/option-groups-fields";
 import {
   itemOptionsSchema,
   type ItemOptionsValues,
@@ -27,11 +30,22 @@ import type { CatalogOptionGroup, MenuItem } from "@/lib/types";
  * row to save. A group that ends up with no options left after that is
  * dropped too: the backend rejects an empty `options` array outright
  * (`ItemsService.assertOptionGroups`).
+ *
+ * The open option (`customAmount`) is the one exception to "blank id means
+ * drop it": its id field is really just a free-text label the owner can
+ * leave alone, and an item saved before that label existed can already have
+ * it blank — without this fallback, re-saving that item silently removes
+ * its open option instead of just keeping the default label.
  */
 export function toOptionGroups(
   groups: ItemOptionsValues["groups"],
 ): CatalogOptionGroup[] {
   return groups
+    .map((g) =>
+      g.selectionType === "customAmount" && g.id.trim() === ""
+        ? { ...g, id: DEFAULT_OPEN_OPTION_ID }
+        : g,
+    )
     .filter((g) => g.id.trim() !== "")
     .map((g) => ({
       ...g,

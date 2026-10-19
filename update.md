@@ -1,5 +1,17 @@
 # Backend changes — status
 
+## 🆕 New ask: a single-choice option priced below the item's base price still 400s on `PATCH /items/:id`
+
+**You told us** (and gave a working production example: item at 1500, option at 750 → line computes as 750) that `ItemsService.assertOptionGroups` no longer rejects a negative `priceDelta`. We removed our own client-side guard that used to block this on your word. It's still failing in production right now, though:
+
+- `PATCH https://menusyria.softup.agency/items/60a95282-391e-4c00-80f1-957cfb1b28bc` → `400`
+- Response body's message (shown to the owner as-is): `"بيانات خيار المنتج غير صحيحة"`
+- The item: "وجبة عربي" on `menu-syria.vercel.app`, editing its options — a single-choice group named "قياس", required, one option named "ممتن" priced 40 (ل.س). If that item's base price is anywhere above 40, this is exactly the "option cheaper than base" case you said was fixed.
+
+Since there's no client-side block anymore, the owner just sees this generic 400 with no way to tell what's wrong. Please check whether the fix actually reached this environment, or whether there's a remaining edge case `assertOptionGroups` still rejects beyond the one example you tested.
+
+---
+
 Both asks below are confirmed done and live. Kept for reference only.
 
 ## ✅ Done: an optional `imageUrl` on menu/catalog categories
