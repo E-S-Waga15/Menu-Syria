@@ -126,16 +126,28 @@ export function DishModal({
   const images = (item.images?.length ? item.images : [item.imageUrl]).filter(
     (src) => src !== "",
   );
+  // A required single-choice group replaces the base price outright once
+  // picked — so until it's picked, showing the base price is showing a
+  // number that was never actually an option (it's not required-and-free,
+  // it's required-and-not-chosen-yet). 0 reads as "pick one to see the
+  // price" instead of implying the base price is what's on offer. A
+  // non-required single-choice group has no such problem — skipping it is
+  // a real, priced choice (the base price), so that stays unchanged.
+  const hasUnmetRequiredSingleChoice = (item.optionGroups ?? []).some(
+    (group) =>
+      group.selectionType === "single" &&
+      group.required &&
+      !group.options.some((option) =>
+        selected.some((o) => o.id === option.id),
+      ),
+  );
   // shares the exact same price rule the cart totals use (a "single" pick
   // replaces the base price, everything else stacks on top of it) — kept
   // in one place (`lineUnitPrice`) so this preview can never drift from
   // what actually gets charged
-  const unitPrice = lineUnitPrice({
-    key: "",
-    item,
-    options: selected,
-    quantity: 1,
-  });
+  const unitPrice = hasUnmetRequiredSingleChoice
+    ? 0
+    : lineUnitPrice({ key: "", item, options: selected, quantity: 1 });
 
   const toggleOption = (group: CatalogOptionGroup, option: CatalogOption) =>
     setSelected((prev) => {
