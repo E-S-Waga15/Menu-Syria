@@ -251,10 +251,11 @@ export function useItemMutations(businessId: string) {
         ),
       })),
     // this mutation also carries the availability toggle and drag-reorder's
-    // writes, neither of which is a "save" worth announcing — only the
-    // dialog's own save sends a name
+    // writes, neither of which is a "save" worth announcing — only an
+    // explicit dialog save (the item's own fields, or its option groups)
+    // sends one of these
     onSuccess: (data, variables) => {
-      if (variables.name !== undefined)
+      if (variables.name !== undefined || variables.optionGroups !== undefined)
         toast.success(data.message ?? t.dashboard.itemSaved);
     },
     onError,

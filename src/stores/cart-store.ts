@@ -27,8 +27,22 @@ const lineKey = (itemId: string, options: CatalogOption[]) =>
     .sort()
     .join(",")}`;
 
-export const lineUnitPrice = (line: CartLine) =>
-  line.item.price + line.options.reduce((sum, o) => sum + o.priceDelta, 0);
+/**
+ * A "single" pick (size) replaces the item's price outright with its own
+ * `priceDelta` — not added on top, since that field already is the whole
+ * price for that size, not a delta from the base. Everything else
+ * (multiple-choice add-ons, and a customAmount pick's own
+ * `amount - item.price` encoding) keeps stacking additively on whatever
+ * price that leaves — only "single" replaces.
+ */
+export const lineUnitPrice = (line: CartLine) => {
+  const singleOption = line.options.find((o) => o.selectionType === "single");
+  const base = singleOption ? singleOption.priceDelta : line.item.price;
+  const additive = line.options
+    .filter((o) => o.selectionType !== "single")
+    .reduce((sum, o) => sum + o.priceDelta, 0);
+  return base + additive;
+};
 
 interface CartState {
   /** Carts are kept per business (restaurant or store) so a second QR never mixes orders */
