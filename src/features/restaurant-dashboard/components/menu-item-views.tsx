@@ -114,7 +114,6 @@ function ItemEntryBody(props: MenuItemViewProps) {
         )}
         {item.imageUrl ? (
           <SafeImage
-            unoptimized
             src={item.imageUrl}
             alt=""
             width={56}

@@ -181,7 +181,7 @@ export function AnalyticsView() {
                 </span>
                 {item.imageUrl ? (
                   <Image
-                    unoptimized
+                    quality={90}
                     src={item.imageUrl}
                     alt=""
                     width={44}

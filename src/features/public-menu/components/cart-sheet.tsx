@@ -505,7 +505,7 @@ export function CartSheet({
                     >
                       {line.item.imageUrl ? (
                         <Image
-                          unoptimized
+                          quality={90}
                           src={line.item.imageUrl}
                           alt=""
                           width={56}

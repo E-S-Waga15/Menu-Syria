@@ -243,7 +243,7 @@ export function DishModal({
                 <CarouselItem key={src} className="relative ps-0">
                   <div className="relative aspect-[4/3] w-full">
                     <Image
-                      unoptimized
+                      quality={90}
                       src={src}
                       alt={item.name[lang]}
                       fill
