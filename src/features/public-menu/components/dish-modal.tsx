@@ -132,8 +132,10 @@ export function DishModal({
   // it's required-and-not-chosen-yet). 0 reads as "pick one to see the
   // price" instead of implying the base price is what's on offer. A
   // non-required single-choice group has no such problem — skipping it is
-  // a real, priced choice (the base price), so that stays unchanged.
-  const hasUnmetRequiredSingleChoice = (item.optionGroups ?? []).some(
+  // a real, priced choice (the base price), so that stays unchanged. Kept
+  // as the group itself (not just a boolean) so both the price and a
+  // multiple-choice tap below can name it in a toast.
+  const unmetRequiredSingleGroup = (item.optionGroups ?? []).find(
     (group) =>
       group.selectionType === "single" &&
       group.required &&
@@ -145,11 +147,24 @@ export function DishModal({
   // replaces the base price, everything else stacks on top of it) — kept
   // in one place (`lineUnitPrice`) so this preview can never drift from
   // what actually gets charged
-  const unitPrice = hasUnmetRequiredSingleChoice
+  const unitPrice = unmetRequiredSingleGroup
     ? 0
     : lineUnitPrice({ key: "", item, options: selected, quantity: 1 });
 
-  const toggleOption = (group: CatalogOptionGroup, option: CatalogOption) =>
+  const toggleOption = (group: CatalogOptionGroup, option: CatalogOption) => {
+    // a multiple-choice pick stacks its price on top of whatever the
+    // required single-choice pick resolves to — with nothing picked there
+    // yet, there's nothing to stack on top of, so make the owner's actual
+    // order (pick the required one first) explicit instead of letting the
+    // price silently come out wrong
+    if (group.selectionType !== "single" && unmetRequiredSingleGroup) {
+      toast.error(
+        fmt(t.common.selectRequiredOption, {
+          group: unmetRequiredSingleGroup.id,
+        }),
+      );
+      return;
+    }
     setSelected((prev) => {
       const withoutGroup = prev.filter(
         (o) => !group.options.some((go) => go.id === o.id),
@@ -166,6 +181,7 @@ export function DishModal({
         ? prev.filter((o) => o.id !== option.id)
         : [...prev, { ...option, selectionType: "multiple" }];
     });
+  };
 
   /** the group itself IS the pick for a "customAmount" group — there's no
    * predefined option to toggle, so its `CartOption.id` is just the group's
