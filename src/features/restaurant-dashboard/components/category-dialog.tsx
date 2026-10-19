@@ -119,20 +119,24 @@ export function CategoryDialog({
               <FieldError message={errors.name?.message} />
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
+            <div className="space-y-1.5">
+              <Label>
+                {t.dashboard.categoryImage}
+                <span className="ms-1 text-muted-foreground">
+                  ({t.common.optional})
+                </span>
+              </Label>
+              <div className="relative">
                 <FileDropzone
                   // remounts whenever the picked image actually changes —
                   // FileDropzone only ever reads `previewUrl` once, on mount
                   key={`${editing?.id ?? "new"}-${imageUrl ?? "none"}`}
-                  variant="avatar"
                   label={t.dashboard.categoryImage}
                   previewUrl={imageUrl}
-                  className="size-20"
                   onFile={pickImage}
                 />
                 {uploading && (
-                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-background/70">
+                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-background/70">
                     <LoadingSpinner className="min-h-0" />
                   </span>
                 )}
@@ -141,16 +145,12 @@ export function CategoryDialog({
                     type="button"
                     aria-label={t.dashboard.removeImage}
                     onClick={() => setImageUrl(undefined)}
-                    className="absolute -top-1 -end-1 flex size-6 items-center justify-center rounded-full bg-card text-muted-foreground ring-2 ring-background hover:bg-destructive/10 hover:text-destructive"
+                    className="absolute top-2 end-2 flex size-7 items-center justify-center rounded-full bg-card text-muted-foreground ring-2 ring-background hover:bg-destructive/10 hover:text-destructive"
                   >
                     <X className="size-3.5" />
                   </button>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
-                {t.dashboard.categoryImage}
-                <span className="ms-1">({t.common.optional})</span>
-              </p>
             </div>
           </div>
           <DialogFooter className="px-4 pb-4">

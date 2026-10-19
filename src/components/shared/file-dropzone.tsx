@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 
-import { Camera, CloudUpload, FolderOpen, UserRound, X } from "lucide-react";
+import { Camera, CloudUpload, UserRound, X } from "lucide-react";
 
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
@@ -137,32 +137,22 @@ export function FileDropzone({
     );
   }
 
+  // Two stacked zones rather than one dual-purpose surface: the top one is a
+  // plain button (click opens the file browser, nothing else), the bottom
+  // one is the drag/drop + paste target (its own border-top marks it as a
+  // separate field) — so the card never has to guess which gesture a tap
+  // in the middle of it meant.
   return (
     <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragging(false);
-        accept(e.dataTransfer.files[0]);
-      }}
-      onPaste={handlePaste}
-      tabIndex={0}
       className={cn(
-        "relative flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-5 text-center transition-[border-color,background-color] duration-200 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-        dragging
-          ? "border-primary bg-berry-soft/30 scale-[1.01]"
-          : "border-border hover:border-primary/50 hover:bg-surface-container-low",
+        "w-full overflow-hidden rounded-2xl border-2 border-dashed border-border",
         className,
       )}
     >
       {input}
 
       {preview ? (
-        <>
+        <div className="relative flex min-h-32 flex-col items-center justify-center gap-2 p-5 text-center">
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -190,30 +180,45 @@ export function FileDropzone({
               <X className="size-3.5" />
             </span>
           )}
-        </>
+        </div>
       ) : (
         <>
-          <span className="flex size-11 items-center justify-center rounded-full bg-berry-soft text-berry-soft-foreground">
-            <CloudUpload className="size-5" />
-          </span>
-          <p className="text-sm font-semibold">{label}</p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-foreground transition-colors duration-200 hover:bg-surface-container"
+            className="flex min-h-20 w-full flex-col items-center justify-center gap-1.5 px-5 py-4 transition-colors duration-200 hover:bg-surface-container-low"
           >
-            <FolderOpen className="size-3.5" />
-            {t.common.browseDevice}
+            <span className="flex size-11 items-center justify-center rounded-full bg-berry-soft text-berry-soft-foreground">
+              <CloudUpload className="size-5" />
+            </span>
+            <p className="text-sm font-semibold">{label}</p>
           </button>
+
           <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              accept(e.dataTransfer.files[0]);
+            }}
+            onPaste={handlePaste}
             tabIndex={0}
-            className="w-full max-w-56 rounded-lg border border-dashed border-border/70 bg-surface-container-low/60 px-3 py-2 text-xs text-muted-foreground transition-colors duration-200 focus-visible:border-primary/50 focus-visible:outline-none"
+            className={cn(
+              "flex min-h-14 w-full flex-col items-center justify-center gap-0.5 border-t-2 border-dashed px-5 py-3 text-center transition-colors duration-200 focus-visible:outline-none",
+              dragging
+                ? "border-primary bg-berry-soft/30"
+                : "border-border bg-surface-container-low/50",
+            )}
           >
-            {t.common.orPasteImage}
+            <p className="text-xs font-semibold text-muted-foreground">
+              {t.common.orPasteImage}
+            </p>
+            {hint && <p className="text-[11px] text-muted-foreground/70">{hint}</p>}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {hint ?? t.auth.dropzoneHint}
-          </p>
         </>
       )}
     </div>

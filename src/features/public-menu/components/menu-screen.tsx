@@ -410,9 +410,9 @@ export function MenuScreen({
                         <Image
                           src={category.imageUrl}
                           alt=""
-                          width={22}
-                          height={22}
-                          className="size-[22px] shrink-0 rounded-full object-cover"
+                          width={28}
+                          height={28}
+                          className="size-7 shrink-0 rounded-full object-cover"
                         />
                       )}
                       {category.name[lang]}
