@@ -267,6 +267,7 @@ function Avatar({
 }) {
   return session.avatarUrl ? (
     <Image
+      quality={90}
       src={session.avatarUrl}
       alt=""
       width={size}

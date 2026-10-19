@@ -18,8 +18,7 @@ import {
   itemOptionsSchema,
   type ItemOptionsValues,
 } from "@/features/restaurant-dashboard/schemas";
-import { fmt, useI18n } from "@/i18n/client";
-import { toast } from "@/lib/toast";
+import { useI18n } from "@/i18n/client";
 import type { CatalogOptionGroup, MenuItem } from "@/lib/types";
 
 /**
@@ -56,26 +55,6 @@ function toFormGroups(
     required: g.required,
     options: g.options.map((o) => ({ id: o.id, priceDelta: o.priceDelta })),
   }));
-}
-
-/**
- * The backend rejects any option whose priceDelta comes out negative
- * (menu_syria_backend's ItemsService.assertOptionGroups) — which a
- * single-choice group's own "type the final price" entry produces the
- * moment an option costs less than the item's base price (e.g. a "Small"
- * cheaper than the base). Checked here, with the real cause named, instead
- * of letting the save fail with the backend's generic
- * "بيانات خيار المنتج غير صحيحة" and no clue which field is wrong.
- * Returns the offending option's name, or null when every group is valid.
- */
-export function findOptionPriceBelowBase(
-  groups: CatalogOptionGroup[],
-): string | null {
-  for (const group of groups) {
-    const cheaper = group.options.find((o) => o.priceDelta < 0);
-    if (cheaper) return cheaper.id;
-  }
-  return null;
 }
 
 /**
@@ -130,17 +109,6 @@ export function ItemOptionsModal({
 
   const submit = async (values: ItemOptionsValues) => {
     const groups = toOptionGroups(values.groups);
-
-    const cheaperOption = findOptionPriceBelowBase(groups);
-    if (cheaperOption) {
-      toast.error(
-        fmt(t.dashboard.optionPriceBelowBase, {
-          option: cheaperOption,
-          base: basePrice,
-        }),
-      );
-      return;
-    }
 
     try {
       await onSave({ optionGroups: groups, quantityLocked: values.quantityLocked });

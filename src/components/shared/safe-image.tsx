@@ -15,6 +15,7 @@ export function SafeImage({
   alt,
   className,
   fallbackClassName,
+  quality = 90,
   ...props
 }: ImageProps & { fallbackClassName?: string }) {
   if (!validImageSrc(src)) {
@@ -30,5 +31,7 @@ export function SafeImage({
     );
   }
 
-  return <Image src={src} alt={alt} className={className} {...props} />;
+  return (
+    <Image src={src} alt={alt} className={className} quality={quality} {...props} />
+  );
 }

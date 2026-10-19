@@ -27,10 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  findOptionPriceBelowBase,
-  toOptionGroups,
-} from "@/features/restaurant-dashboard/components/item-options-modal";
+import { toOptionGroups } from "@/features/restaurant-dashboard/components/item-options-modal";
 import {
   OptionGroupsFields,
   type OptionGroupsFormValues,
@@ -39,7 +36,7 @@ import {
   dishFormSchema,
   type DishFormValues,
 } from "@/features/restaurant-dashboard/schemas";
-import { fmt, useI18n } from "@/i18n/client";
+import { useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { uploadImageWithProgress } from "@/lib/api/upload";
 import { toast } from "@/lib/toast";
@@ -198,18 +195,7 @@ export function MenuDishDialog({
     // only built/sent when creating — see the `optionGroups` prop note above
     let optionGroups: CatalogOptionGroup[] | undefined;
     if (!editing) {
-      const groups = toOptionGroups(values.groups);
-      const cheaperOption = findOptionPriceBelowBase(groups);
-      if (cheaperOption) {
-        toast.error(
-          fmt(t.dashboard.optionPriceBelowBase, {
-            option: cheaperOption,
-            base: basePrice,
-          }),
-        );
-        return;
-      }
-      optionGroups = groups;
+      optionGroups = toOptionGroups(values.groups);
     }
 
     return onSave({

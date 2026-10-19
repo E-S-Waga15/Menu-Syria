@@ -273,6 +273,7 @@ export function BusinessDetailsGrid({
           <div className="flex flex-wrap items-start gap-4 ps-5 md:ps-10">
             <div className="relative z-10 -mt-8">
               <Image
+                quality={90}
                 src={restaurant.logoUrl}
                 alt=""
                 width={96}

@@ -86,6 +86,7 @@ export function RestaurantGallery({ images }: { images: string[] }) {
           <CarouselItem key={src} className="relative ps-0">
             <div className="relative h-[32vh] w-full md:h-[56vh]">
               <Image
+                quality={90}
                 src={src}
                 alt=""
                 fill

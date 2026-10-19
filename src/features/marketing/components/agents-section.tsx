@@ -81,6 +81,7 @@ export function AgentsSection({
               >
                 {agent.photoUrl ? (
                   <Image
+                    quality={90}
                     src={agent.photoUrl}
                     alt=""
                     width={64}

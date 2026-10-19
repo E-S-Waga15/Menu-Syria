@@ -28,6 +28,7 @@ function MarqueeRow({
         >
           {restaurant.logoUrl ? (
             <Image
+              quality={90}
               src={restaurant.logoUrl}
               alt=""
               width={44}

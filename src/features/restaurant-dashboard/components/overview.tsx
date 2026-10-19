@@ -218,6 +218,7 @@ export function DashboardOverview() {
         <section className="overflow-hidden rounded-2xl border border-border/60 bg-card">
           <div className="relative h-44">
             <Image
+              quality={90}
               src={analytics.bestSeller.imageUrl}
               alt=""
               fill

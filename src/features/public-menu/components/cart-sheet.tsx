@@ -505,6 +505,7 @@ export function CartSheet({
                     >
                       {line.item.imageUrl ? (
                         <Image
+                          quality={90}
                           src={line.item.imageUrl}
                           alt=""
                           width={56}
@@ -836,6 +837,7 @@ export function CartSheet({
                     <div className="flex shrink-0 flex-col items-center gap-2">
                       <div className="relative size-24 overflow-hidden rounded-xl border border-border/60 bg-white p-1.5">
                         <Image
+                          quality={90}
                           src={business.paymentQrCode}
                           alt=""
                           fill

@@ -273,6 +273,7 @@ export function MenuScreen({
             <div className="flex items-center gap-2.5 pt-2.5 sm:gap-3.5 sm:pt-3">
               {business.logoUrl ? (
                 <Image
+                  quality={90}
                   src={business.logoUrl}
                   alt=""
                   width={72}
@@ -408,6 +409,7 @@ export function MenuScreen({
                     >
                       {category.imageUrl && (
                         <Image
+                          quality={90}
                           src={category.imageUrl}
                           alt=""
                           width={28}
@@ -488,6 +490,7 @@ export function MenuScreen({
                 <h2 className="flex items-center gap-2.5 font-heading text-xl font-bold">
                   {category.imageUrl && (
                     <Image
+                      quality={90}
                       src={category.imageUrl}
                       alt=""
                       width={32}

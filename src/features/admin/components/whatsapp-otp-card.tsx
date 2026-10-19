@@ -381,6 +381,7 @@ function PairingDialog({
                   white ground because QR readers need the quiet zone light */}
               <span className="relative block size-56 overflow-hidden rounded-xl border border-border/60 bg-white">
                 <Image
+                  quality={90}
                   src={qr}
                   alt=""
                   fill

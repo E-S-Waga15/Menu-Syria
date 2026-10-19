@@ -103,6 +103,7 @@ export function CategoryMenu({
                     <span className="flex min-w-0 flex-1 items-center gap-2.5 truncate">
                       {section.imageUrl && (
                         <Image
+                          quality={90}
                           src={section.imageUrl}
                           alt=""
                           width={24}
