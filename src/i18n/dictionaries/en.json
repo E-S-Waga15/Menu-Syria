@@ -710,6 +710,8 @@
     "optionName": "Option name",
     "optionNamePlaceholder": "e.g. Small, Large",
     "optionPriceDelta": "Price difference",
+    "groupNameRequired": "Please name every option group before saving (e.g. Size)",
+    "optionNameRequiredInGroup": "Please name every option in \"{group}\" before saving",
     "presetSize": "Size",
     "presetColor": "Color",
     "presetCustom": "Custom",

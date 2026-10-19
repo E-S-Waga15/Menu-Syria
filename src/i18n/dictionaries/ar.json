@@ -710,6 +710,8 @@
     "optionName": "اسم الخيار",
     "optionNamePlaceholder": "مثال: صغير، كبير",
     "optionPriceDelta": "فرق السعر",
+    "groupNameRequired": "الرجاء كتابة اسم كل مجموعة خيارات قبل الحفظ (مثلاً: قياس)",
+    "optionNameRequiredInGroup": "الرجاء كتابة اسم كل خيار ضمن \"{group}\" قبل الحفظ",
     "presetSize": "قياس",
     "presetColor": "لون",
     "presetCustom": "مخصص",

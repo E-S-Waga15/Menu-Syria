@@ -21,8 +21,35 @@ import {
   itemOptionsSchema,
   type ItemOptionsValues,
 } from "@/features/restaurant-dashboard/schemas";
-import { useI18n } from "@/i18n/client";
+import { fmt, useI18n } from "@/i18n/client";
+import { toast } from "@/lib/toast";
 import type { CatalogOptionGroup, MenuItem } from "@/lib/types";
+
+/**
+ * Checked on submit, before `toOptionGroups` ever runs — that function
+ * quietly drops a blank group/option name instead of erroring, which is
+ * the right call for leftover empty rows the owner never meant to fill in,
+ * but the wrong one for a group or option the owner is actively building
+ * and just hasn't named yet: losing it silently on save is worse than
+ * making them fill it in. Returns the first problem found, or null when
+ * every name that should exist does. The open option is exempt — its name
+ * field already falls back to a default instead of needing one.
+ */
+export function findMissingOptionName(
+  groups: ItemOptionsValues["groups"],
+  t: { groupNameRequired: string; optionNameRequiredInGroup: string },
+): string | null {
+  for (const group of groups) {
+    if (group.selectionType === "customAmount") continue;
+    if (group.id.trim() === "") return t.groupNameRequired;
+    for (const option of group.options) {
+      if (option.id.trim() === "") {
+        return fmt(t.optionNameRequiredInGroup, { group: group.id });
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * Drops any group or option the owner left blank before it ever reaches the
@@ -121,6 +148,12 @@ export function ItemOptionsModal({
         : "SYP";
 
   const submit = async (values: ItemOptionsValues) => {
+    const missingName = findMissingOptionName(values.groups, t.dashboard);
+    if (missingName) {
+      toast.error(missingName);
+      return;
+    }
+
     const groups = toOptionGroups(values.groups);
 
     try {

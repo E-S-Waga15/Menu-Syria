@@ -405,11 +405,14 @@ export function DishModal({
                         </span>
                         <span className="flex-1 text-start">{option.id}</span>
                         {/* shown exactly as the owner priced it — no
-                            arithmetic with the item's base price, for a
-                            single-choice group or any other */}
+                            arithmetic with the item's base price. The "+"
+                            only makes sense for multiple-choice (it stacks
+                            on top of something) — a single-choice pick
+                            replaces the price outright, so it's just the
+                            number, no sign implying addition */}
                         {option.priceDelta !== 0 && (
                           <span className="shrink-0 text-xs font-bold text-[var(--menu-primary)]">
-                            {option.priceDelta > 0 && "+"}
+                            {!isSingle && option.priceDelta > 0 && "+"}
                             {formatPrice(option.priceDelta, item.currency ?? "SYP", lang)}
                           </span>
                         )}

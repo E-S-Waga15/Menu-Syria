@@ -27,7 +27,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toOptionGroups } from "@/features/restaurant-dashboard/components/item-options-modal";
+import {
+  findMissingOptionName,
+  toOptionGroups,
+} from "@/features/restaurant-dashboard/components/item-options-modal";
 import {
   OptionGroupsFields,
   type OptionGroupsFormValues,
@@ -191,6 +194,11 @@ export function MenuDishDialog({
     // only built/sent when creating — see the `optionGroups` prop note above
     let optionGroups: CatalogOptionGroup[] | undefined;
     if (!editing) {
+      const missingName = findMissingOptionName(values.groups, t.dashboard);
+      if (missingName) {
+        toast.error(missingName);
+        return;
+      }
       optionGroups = toOptionGroups(values.groups);
     }
 
