@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 import { Check, LayoutList } from "lucide-react";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 interface Section {
   id: string;
   name: { ar: string; en: string };
+  imageUrl?: string;
 }
 
 /**
@@ -98,8 +100,17 @@ export function CategoryMenu({
                         : "text-foreground/80 hover:bg-surface-container",
                     )}
                   >
-                    <span className="min-w-0 flex-1 truncate">
-                      {section.name[lang]}
+                    <span className="flex min-w-0 flex-1 items-center gap-2.5 truncate">
+                      {section.imageUrl && (
+                        <Image
+                          src={section.imageUrl}
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="size-6 shrink-0 rounded-full object-cover"
+                        />
+                      )}
+                      <span className="truncate">{section.name[lang]}</span>
                     </span>
                     {isActive && (
                       <Check

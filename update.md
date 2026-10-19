@@ -1,4 +1,35 @@
-# Backend changes needed — customer-typed-amount option type
+# Backend changes needed — customer-typed-amount option type, category photos
+
+## 🆕 New ask: an optional `imageUrl` on menu/catalog categories
+
+**Why:** categories (the sections a menu/catalog is split into — "المقبلات", "الحلويات", …) can now carry their own photo, shown next to the category's name wherever it appears (the dashboard's category pills and its own new management page, the storefront's category pill bar, each section's own heading, and the "jump to section" picker). Entirely optional — a category with none renders exactly as it did before this shipped, plain text with no image slot reserved.
+
+### Read — `GET /me/menu`'s `categories` array, and the public `GET /public/businesses/:slug/menu` equivalent
+
+```jsonc
+{
+  "id": "...",
+  "name": { "ar": "المقبلات", "en": "Appetizers" },
+  "sortOrder": 1,
+  "imageUrl": "https://.../categories/abc.png"   // new, optional — absent/null means no photo
+}
+```
+
+### Write — `POST /categories`, `PATCH /categories/:id`
+
+```jsonc
+// POST /categories
+{ "businessId": "...", "name": "المقبلات", "sortOrder": 1, "imageUrl": "https://.../categories/abc.png" }
+
+// PATCH /categories/:id — omit the field to leave it untouched, or send "" to clear it back to no photo
+{ "imageUrl": "" }
+```
+
+Same plain top-level column as `name`/`sortOrder` — categories aren't stored inside an `attributes` JSON blob the way item option groups are, so this shouldn't need anything beyond a new nullable column and passing it through on read/write.
+
+**Upload folder:** the frontend already uploads the file first via `POST /uploads?folder=categories` before sending the resulting URL in the body above — `categories` is already listed as one of the accepted folder values on our side (`UPLOAD_FOLDERS` in `lib/api/upload.ts`), so this should already work if the uploads endpoint's folder allowlist matches what's documented; please confirm `categories` is genuinely accepted there and not silently falling back to `general` or erroring.
+
+## 🆕 New ask: a third option-group type — a customer-typed amount, plus a per-item "sold as one unit" flag
 
 ## 🆕 New ask: a third option-group type — a customer-typed amount, plus a per-item "sold as one unit" flag
 

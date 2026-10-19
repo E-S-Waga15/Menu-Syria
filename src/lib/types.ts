@@ -227,6 +227,9 @@ export interface MenuCategory {
   restaurantId: string;
   name: LocalizedText;
   sortOrder: number;
+  /** optional — a category with none shown as plain text everywhere it
+   * appears, same as before this field existed */
+  imageUrl?: string;
 }
 
 export interface StoreCategory {
@@ -234,6 +237,9 @@ export interface StoreCategory {
   storeId: string;
   name: LocalizedText;
   sortOrder: number;
+  /** optional — a category with none shown as plain text everywhere it
+   * appears, same as before this field existed */
+  imageUrl?: string;
 }
 
 export type DishBadge = "popular" | "new" | "chefSpecial";

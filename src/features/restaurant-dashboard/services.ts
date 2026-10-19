@@ -75,6 +75,7 @@ function normalizeCategory(raw: Raw, businessId: string): WithMessage<MenuCatego
     restaurantId: String(raw.businessId ?? raw.restaurantId ?? businessId),
     name: toLocalized(raw.name),
     sortOrder: toNumber(raw.sortOrder),
+    imageUrl: typeof raw.imageUrl === "string" && raw.imageUrl ? raw.imageUrl : undefined,
     message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }
@@ -258,6 +259,7 @@ export async function createCategory(input: {
   businessId: string;
   name: string;
   sortOrder: number;
+  imageUrl?: string;
 }): Promise<WithMessage<MenuCategory>> {
   if (IS_MOCK)
     return mockDelay({
@@ -265,6 +267,7 @@ export async function createCategory(input: {
       restaurantId: input.businessId,
       name: { ar: input.name, en: input.name },
       sortOrder: input.sortOrder,
+      imageUrl: input.imageUrl,
     });
   const raw = await apiFetch<Raw>("/categories", {
     method: "POST",
@@ -278,6 +281,9 @@ export async function updateCategory(input: {
   businessId: string;
   name?: string;
   sortOrder?: number;
+  /** "" clears it back to no image — same empty-string-clears convention
+   * used for a business logo/an agent's photo */
+  imageUrl?: string;
 }): Promise<WithMessage<MenuCategory>> {
   const { id, businessId, ...body } = input;
   if (IS_MOCK)
@@ -286,6 +292,7 @@ export async function updateCategory(input: {
       restaurantId: businessId,
       name: toLocalized(body.name),
       sortOrder: body.sortOrder ?? 0,
+      imageUrl: body.imageUrl || undefined,
     });
   const raw = await apiFetch<Raw>(`/categories/${id}`, {
     method: "PATCH",

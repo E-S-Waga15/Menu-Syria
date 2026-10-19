@@ -50,6 +50,8 @@ function normalizePublicCategory(
     restaurantId: String(raw.businessId ?? raw.restaurantId ?? restaurantId),
     name: raw.name as LocalizedText,
     sortOrder: Number(raw.sortOrder ?? 0),
+    imageUrl:
+      typeof raw.imageUrl === "string" && raw.imageUrl ? raw.imageUrl : undefined,
   };
 }
 

@@ -50,6 +50,7 @@ export interface StorefrontCategory {
   id: string;
   name: LocalizedText;
   sortOrder: number;
+  imageUrl?: string;
 }
 
 /**
@@ -398,12 +399,22 @@ export function MenuScreen({
                       type="button"
                       onClick={() => scrollToCategory(category.id)}
                       className={cn(
-                        "shrink-0 transform-gpu rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-[background-color,color,translate,scale] duration-300 ease-smooth sm:px-4.5 sm:py-2 sm:text-sm",
+                        "flex shrink-0 transform-gpu items-center gap-1.5 rounded-full py-1.5 pe-3.5 text-[13px] font-semibold transition-[background-color,color,translate,scale] duration-300 ease-smooth sm:py-2 sm:pe-4.5 sm:text-sm",
+                        category.imageUrl ? "ps-1.5 sm:ps-2" : "ps-3.5 sm:ps-4.5",
                         isActive
                           ? "bg-[var(--menu-primary)] text-white"
                           : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
                       )}
                     >
+                      {category.imageUrl && (
+                        <Image
+                          src={category.imageUrl}
+                          alt=""
+                          width={22}
+                          height={22}
+                          className="size-[22px] shrink-0 rounded-full object-cover"
+                        />
+                      )}
                       {category.name[lang]}
                     </button>
                   );
@@ -474,7 +485,16 @@ export function MenuScreen({
                 }}
                 className="scroll-mt-44 pt-8 first:pt-2"
               >
-                <h2 className="font-heading text-xl font-bold">
+                <h2 className="flex items-center gap-2.5 font-heading text-xl font-bold">
+                  {category.imageUrl && (
+                    <Image
+                      src={category.imageUrl}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="size-8 shrink-0 rounded-xl object-cover"
+                    />
+                  )}
                   {category.name[lang]}
                 </h2>
                 <div className="mt-4 grid grid-cols-2 gap-3.5 md:grid-cols-3 md:gap-5 lg:grid-cols-4">

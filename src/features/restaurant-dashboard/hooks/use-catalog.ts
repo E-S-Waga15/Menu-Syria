@@ -84,9 +84,13 @@ export function useCategoryMutations(businessId: string) {
   });
 
   const rename = useMutation({
-    mutationFn: (input: { id: string; name?: string; sortOrder?: number }) =>
-      updateCategory({ businessId, ...input }),
-    onMutate: ({ id, name, sortOrder }) =>
+    mutationFn: (input: {
+      id: string;
+      name?: string;
+      sortOrder?: number;
+      imageUrl?: string;
+    }) => updateCategory({ businessId, ...input }),
+    onMutate: ({ id, name, sortOrder, imageUrl }) =>
       cache.patch((current) => ({
         ...current,
         categories: current.categories.map((category) =>
@@ -95,12 +99,13 @@ export function useCategoryMutations(businessId: string) {
                 ...category,
                 name: name ? { ar: name, en: name } : category.name,
                 sortOrder: sortOrder ?? category.sortOrder,
+                imageUrl: imageUrl !== undefined ? imageUrl || undefined : category.imageUrl,
               }
             : category,
         ),
       })),
-    // reorder rides this same mutation with no `name` — it has no result
-    // worth announcing, unlike an actual rename
+    // reorder/image-only writes ride this same mutation with no `name` —
+    // neither has a result worth announcing, unlike an actual rename
     onSuccess: (data, { name }) => {
       if (name !== undefined)
         toast.success(data.message ?? t.dashboard.categorySaved);
@@ -160,6 +165,9 @@ export function useCategoryMutations(businessId: string) {
         sortOrder: (cache.read()?.categories.length ?? 0) + 1,
       }),
     rename: (id: string, name: string) => rename.mutateAsync({ id, name }),
+    /** "" clears the category's image back to none */
+    updateImage: (id: string, imageUrl: string) =>
+      rename.mutateAsync({ id, imageUrl }),
     /** Commits a full ordered list of category ids as the new 1-based order. */
     reorderAll: (orderedIds: string[]) =>
       reorderAll.mutateAsync(

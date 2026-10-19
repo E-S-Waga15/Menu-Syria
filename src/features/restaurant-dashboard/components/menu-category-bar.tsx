@@ -1,9 +1,12 @@
 "use client";
 
-import { Search } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
+import { Search, Settings2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CategoryManager } from "@/features/restaurant-dashboard/components/category-manager";
 import { useI18n } from "@/i18n/client";
 import type { MenuCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -19,6 +22,10 @@ export const ALL_CATEGORIES = "all";
  * name in hand you should never have to remember which section holds it. The
  * pills stay live while searching, so a query can still be scoped to one
  * section rather than always sweeping the whole catalogue.
+ *
+ * Category CRUD/reorder/photo editing all live on their own page now (too
+ * much to usefully fit in a popup over the item list) — this bar only reads
+ * `categories` to render the pills and links out to it.
  */
 export function MenuCategoryBar({
   categories,
@@ -28,10 +35,6 @@ export function MenuCategoryBar({
   onQueryChange,
   itemCountFor,
   totalCount,
-  onAddCategory,
-  onRenameCategory,
-  onDeleteCategory,
-  onReorderCategoryCommit,
 }: {
   categories: MenuCategory[];
   activeCategory: string;
@@ -40,21 +43,23 @@ export function MenuCategoryBar({
   onQueryChange: (value: string) => void;
   itemCountFor: (categoryId: string) => number;
   totalCount: number;
-  onAddCategory: (name: string) => Promise<unknown> | void;
-  onRenameCategory: (id: string, name: string) => Promise<unknown> | void;
-  onDeleteCategory: (id: string) => Promise<unknown> | void;
-  onReorderCategoryCommit: (orderedIds: string[]) => Promise<unknown> | void;
 }) {
   const { t, lang } = useI18n();
 
   const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const pills = [
-    { id: ALL_CATEGORIES, label: t.dashboard.allCategories, count: totalCount },
+    {
+      id: ALL_CATEGORIES,
+      label: t.dashboard.allCategories,
+      count: totalCount,
+      imageUrl: undefined as string | undefined,
+    },
     ...sorted.map((category) => ({
       id: category.id,
       label: category.name[lang],
       count: itemCountFor(category.id),
+      imageUrl: category.imageUrl,
     })),
   ];
 
@@ -64,15 +69,13 @@ export function MenuCategoryBar({
         <h2 className="font-heading text-lg font-bold">
           {t.dashboard.categories}
         </h2>
-        <CategoryManager
-          labelled
-          categories={categories}
-          itemCountFor={itemCountFor}
-          onAdd={onAddCategory}
-          onRename={onRenameCategory}
-          onDelete={onDeleteCategory}
-          onReorderCommit={onReorderCategoryCommit}
-        />
+        <Button
+          variant="outline"
+          render={<Link href={`/${lang}/dashboard/menu/categories`} />}
+        >
+          <Settings2 className="size-4" />
+          {t.dashboard.manageCategories}
+        </Button>
       </div>
 
       <div className="relative">
@@ -96,12 +99,22 @@ export function MenuCategoryBar({
               onClick={() => onCategoryChange(pill.id)}
               aria-pressed={isActive}
               className={cn(
-                "flex shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200",
+                "flex shrink-0 cursor-pointer items-center gap-2 rounded-full py-2 pe-4 ps-2 text-sm font-semibold transition-colors duration-200",
+                !pill.imageUrl && "ps-4",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "bg-surface-container text-foreground/70 hover:bg-surface-container-high",
               )}
             >
+              {pill.imageUrl && (
+                <Image
+                  src={pill.imageUrl}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="size-6 shrink-0 rounded-full object-cover"
+                />
+              )}
               {pill.label}
               <span
                 className={cn(

@@ -30,15 +30,11 @@ import {
   MenuItemRow,
 } from "@/features/restaurant-dashboard/components/menu-item-views";
 import { MenuItemsToolbar } from "@/features/restaurant-dashboard/components/menu-items-toolbar";
-import {
-  useCategoryMutations,
-  useItemMutations,
-} from "@/features/restaurant-dashboard/hooks/use-catalog";
+import { useItemMutations } from "@/features/restaurant-dashboard/hooks/use-catalog";
 import { useBusinessId } from "@/features/restaurant-dashboard/hooks/use-my-business";
 import { getMyMenu } from "@/features/restaurant-dashboard/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import { toast } from "@/lib/toast";
 import { useUiStore } from "@/stores/ui-store";
 import type { MenuItem } from "@/lib/types";
 
@@ -98,7 +94,6 @@ export function MenuManager() {
   const items = data?.items ?? [];
   const businessId = useBusinessId(items[0]?.restaurantId);
 
-  const categoryMutations = useCategoryMutations(businessId);
   const itemMutations = useItemMutations(businessId);
 
   if (!data) {
@@ -196,19 +191,6 @@ export function MenuManager() {
     setDialogOpen(true);
   };
 
-  // --- category CRUD ---
-  // The guard stays here rather than only on the server: the button is already
-  // disabled in the manager, and a 409 round-trip to say the same thing would
-  // be a slower way to tell the owner what they can already see.
-  const deleteCategory = async (id: string) => {
-    if (itemCountFor(id) > 0) {
-      toast.error(t.dashboard.cannotDeleteCategory);
-      return;
-    }
-    await categoryMutations.remove(id);
-    if (activeCategory === id) changeCategory(ALL_CATEGORIES);
-  };
-
   const viewProps = (item: MenuItem) => {
     const index = displayOrderIds.indexOf(item.id);
     return {
@@ -241,10 +223,6 @@ export function MenuManager() {
         onQueryChange={changeQuery}
         itemCountFor={itemCountFor}
         totalCount={items.length}
-        onAddCategory={categoryMutations.create}
-        onRenameCategory={categoryMutations.rename}
-        onDeleteCategory={deleteCategory}
-        onReorderCategoryCommit={categoryMutations.reorderAll}
       />
 
       <section className="space-y-4 border-t border-border/60 pt-6">
