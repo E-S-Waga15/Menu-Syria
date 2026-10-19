@@ -36,13 +36,11 @@ function GroupEditor({
   control,
   groupIndex,
   onRemove,
-  basePrice,
   currencySuffix,
 }: {
   control: Control<OptionGroupsFormValues>;
   groupIndex: number;
   onRemove: () => void;
-  basePrice: number;
   currencySuffix: string;
 }) {
   const { t } = useI18n();
@@ -50,14 +48,6 @@ function GroupEditor({
     control,
     name: `groups.${groupIndex}.options`,
   });
-  const selectionType = useWatch({
-    control,
-    name: `groups.${groupIndex}.selectionType`,
-  });
-  // single-choice (size) is always priced as each option's own final price;
-  // multiple-choice (add-ons) is always priced as what it adds — never a
-  // per-group toggle, so a customer never sees the two logics mixed
-  const isAbsolute = selectionType === "single";
 
   return (
     <div className="space-y-3 rounded-xl border border-border/60 p-3">
@@ -127,9 +117,7 @@ function GroupEditor({
         />
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        {isAbsolute ? t.dashboard.priceModeHint : t.dashboard.priceModeAddHint}
-      </p>
+      <p className="text-xs text-muted-foreground">{t.dashboard.priceModeHint}</p>
 
       <div className="space-y-2">
         {options.fields.map((field, optionIndex) => (
@@ -138,13 +126,13 @@ function GroupEditor({
             control={control}
             name={`groups.${groupIndex}.options.${optionIndex}`}
             render={({ field: optionField }) => {
-              // a single-choice group shows/edits the option's own final
-              // price; what's stored (`priceDelta`) stays the difference
-              // from the base price either way, since that's the only shape
-              // the order's price math reads
-              const displayValue = isAbsolute
-                ? basePrice + optionField.value.priceDelta
-                : optionField.value.priceDelta;
+              // the price box always shows and writes `priceDelta` exactly
+              // as stored — no arithmetic with the item's base price in
+              // either direction. That used to not be true for a
+              // single-choice group (it showed/took the option's own final
+              // price, converting to/from a delta), which quietly showed an
+              // owner a different number than what was actually saved.
+              const value = optionField.value.priceDelta;
               return (
                 <div className="flex items-center gap-2">
                   <Input
@@ -163,15 +151,14 @@ function GroupEditor({
                     dir="ltr"
                     // blank rather than a sitting "0" — the owner types the
                     // actual value instead of clearing a value never theirs
-                    value={displayValue === 0 ? "" : displayValue}
-                    onChange={(e) => {
-                      const entered =
-                        e.target.value === "" ? 0 : Number(e.target.value);
+                    value={value === 0 ? "" : value}
+                    onChange={(e) =>
                       optionField.onChange({
                         ...optionField.value,
-                        priceDelta: isAbsolute ? entered - basePrice : entered,
-                      });
-                    }}
+                        priceDelta:
+                          e.target.value === "" ? 0 : Number(e.target.value),
+                      })
+                    }
                     placeholder="0"
                     className="h-8 w-20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
@@ -337,12 +324,10 @@ function OpenOptionCard({
  */
 export function OptionGroupsFields({
   control,
-  basePrice,
   currencySuffix,
   isStore = false,
 }: {
   control: Control<OptionGroupsFormValues>;
-  basePrice: number;
   currencySuffix: string;
   /** the "color" preset only makes sense for a store's products */
   isStore?: boolean;
@@ -376,7 +361,6 @@ export function OptionGroupsFields({
             control={control}
             groupIndex={index}
             onRemove={() => groups.remove(index)}
-            basePrice={basePrice}
             currencySuffix={currencySuffix}
           />
         ),

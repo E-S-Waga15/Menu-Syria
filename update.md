@@ -1,14 +1,10 @@
 # Backend changes — status
 
-## 🆕 New ask: a single-choice option priced below the item's base price still 400s on `PATCH /items/:id`
+## ✅ Fixed on our side: the editor was computing a single-choice option's price instead of showing/sending `priceDelta` as-is
 
-**You told us** (and gave a working production example: item at 1500, option at 750 → line computes as 750) that `ItemsService.assertOptionGroups` no longer rejects a negative `priceDelta`. We removed our own client-side guard that used to block this on your word. It's still failing in production right now, though:
+Root cause of both the "800 instead of 50" display you confirmed via direct DB query (item "فروج" at 750, option "نص" with `priceDelta: 50`) and almost certainly the `PATCH /items/:id` 400 we flagged earlier on item `60a95282-391e-4c00-80f1-957cfb1b28bc`: the dashboard's option editor treated a single-choice group's price box as the option's absolute final price (`displayed = item.price + priceDelta`, and on save `priceDelta = typed - item.price`) instead of just reading/writing `priceDelta` directly. Re-saving an item through that editor could silently rewrite its `priceDelta` to something the owner never intended.
 
-- `PATCH https://menusyria.softup.agency/items/60a95282-391e-4c00-80f1-957cfb1b28bc` → `400`
-- Response body's message (shown to the owner as-is): `"بيانات خيار المنتج غير صحيحة"`
-- The item: "وجبة عربي" on `menu-syria.vercel.app`, editing its options — a single-choice group named "قياس", required, one option named "ممتن" priced 40 (ل.س). If that item's base price is anywhere above 40, this is exactly the "option cheaper than base" case you said was fixed.
-
-Since there's no client-side block anymore, the owner just sees this generic 400 with no way to tell what's wrong. Please check whether the fix actually reached this environment, or whether there's a remaining edge case `assertOptionGroups` still rejects beyond the one example you tested.
+Removed entirely, per your instructions — the price box (and the storefront's own option price label) now always shows and sends `priceDelta` exactly as stored, no arithmetic with the item's price in either direction, for every group type. Nothing left for the backend to change here; this was 100% a frontend bug.
 
 ---
 

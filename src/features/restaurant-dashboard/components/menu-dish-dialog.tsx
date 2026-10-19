@@ -105,11 +105,7 @@ export function MenuDishDialog({
     mode: "onTouched",
   });
 
-  const [watchedPrice, currencyValue] = useWatch({
-    control,
-    name: ["price", "currency"],
-  });
-  const basePrice = Number(watchedPrice) || 0;
+  const currencyValue = useWatch({ control, name: "currency" });
   const currencySuffix =
     lang === "ar"
       ? currencyValue === "USD"
@@ -383,7 +379,6 @@ export function MenuDishDialog({
                   // `groups` — RHF's Control type only cares about the
                   // fields this shared editor actually reads/writes
                   control={control as unknown as Control<OptionGroupsFormValues>}
-                  basePrice={basePrice}
                   currencySuffix={currencySuffix}
                   isStore={isStore}
                 />

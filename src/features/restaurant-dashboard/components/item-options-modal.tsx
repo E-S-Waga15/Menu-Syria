@@ -111,7 +111,6 @@ export function ItemOptionsModal({
     });
   }, [open, item, reset]);
 
-  const basePrice = item?.price ?? 0;
   const currencySuffix =
     lang === "ar"
       ? item?.currency === "USD"
@@ -145,7 +144,6 @@ export function ItemOptionsModal({
           <div className="px-4 pb-2">
             <OptionGroupsFields
               control={control}
-              basePrice={basePrice}
               currencySuffix={currencySuffix}
               isStore={isStore}
             />

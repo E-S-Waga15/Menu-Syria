@@ -129,10 +129,10 @@ export function buildWhatsAppOrderUrl({
     "",
     ...lines.map((line) => {
       // a single-choice pick (size) reads as part of the dish's own name —
-      // "Shawarma Large", not "Shawarma (Large)" — since its price already
-      // replaced the base price rather than adding to it; a multiple-choice
-      // pick (add-ons) stays a separate "with X with Y" clause, since those
-      // genuinely stack on whatever price came before them
+      // "Shawarma Large", not "Shawarma (Large)"; a multiple-choice pick
+      // (add-ons) stays a separate "with X with Y" clause. Both price the
+      // same way now — `priceDelta` adds to the base price either way —
+      // this is purely a naming/grouping difference, not a pricing one
       const singleOption = line.options.find((o) => o.selectionType === "single");
       const multiOptions = line.options.filter(
         (o) => o.selectionType === "multiple",
