@@ -4,15 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowDown,
-  ArrowUp,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus } from "lucide-react";
 
 import {
   AlertDialog,
@@ -25,26 +17,29 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { FileDropzone } from "@/components/shared/file-dropzone";
-import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { PendingChangesBar } from "@/components/shared/pending-changes-bar";
+import { CategoryCard } from "@/features/restaurant-dashboard/components/category-card";
+import { CategoryDialog } from "@/features/restaurant-dashboard/components/category-dialog";
 import { useCategoryMutations } from "@/features/restaurant-dashboard/hooks/use-catalog";
 import { useBusinessId } from "@/features/restaurant-dashboard/hooks/use-my-business";
 import { getMyMenu } from "@/features/restaurant-dashboard/services";
-import { useI18n } from "@/i18n/client";
-import { ApiError } from "@/lib/api/client";
-import { uploadImageWithProgress } from "@/lib/api/upload";
+import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
 import type { MenuCategory } from "@/lib/types";
 
 /**
  * Its own page rather than a dialog on top of the menu — reordering,
- * renaming, and now a per-category photo all need enough room that cramming
+ * renaming, and a per-category photo all need enough room that cramming
  * them into a popup over the item list stopped making sense. Reached from
- * the menu page's "manage categories" link; the menu page itself only ever
- * reads `categories` from the same cached `/me/menu` query this writes to.
+ * the menu page's "manage categories" link and from its own sidebar entry;
+ * the menu page itself only ever reads `categories` from the same cached
+ * `/me/menu` query this writes to.
+ *
+ * Cards match the product grid's own look (avatar, kebab, bordered footer)
+ * on purpose — a category and a product should read as the same kind of
+ * thing here, just with an item count where a product shows its view count.
  */
 export function CategoriesManager() {
   const { t, lang, dir } = useI18n();
@@ -62,13 +57,9 @@ export function CategoriesManager() {
   const itemCountFor = (categoryId: string) =>
     items.filter((i) => i.categoryId === categoryId).length;
 
-  const [newName, setNewName] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<MenuCategory | null>(null);
+  const [deleting, setDeleting] = useState<MenuCategory | null>(null);
   const [stagedOrder, setStagedOrder] = useState<string[] | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"save" | "discard" | null>(
@@ -97,76 +88,55 @@ export function CategoriesManager() {
     setStagedOrder(next);
   };
 
-  const submitAdd = async () => {
-    const name = newName.trim();
-    if (!name || isAdding) return;
-    setIsAdding(true);
+  const openAdd = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const openEdit = (category: MenuCategory) => {
+    setEditing(category);
+    setDialogOpen(true);
+  };
+
+  const save = async ({
+    name,
+    imageUrl,
+  }: {
+    name: string;
+    imageUrl?: string;
+  }) => {
     try {
-      await mutations.create(name);
-      setNewName("");
+      if (editing) {
+        await mutations.update(editing.id, name, imageUrl);
+      } else {
+        await mutations.create(name, imageUrl);
+      }
+      setDialogOpen(false);
     } catch {
-      // onError already toasted — keep the typed name so it can be retried
-    } finally {
-      setIsAdding(false);
+      // onError already toasted — keep the dialog open so the owner's
+      // edits are still there to fix and retry
     }
   };
 
-  const startRename = (category: MenuCategory) => {
-    setRenamingId(category.id);
-    setRenameValue(category.name[lang]);
-  };
-
-  const submitRename = async () => {
-    const name = renameValue.trim();
-    if (!renamingId || !name || isRenaming) {
-      if (!name) setRenamingId(null);
+  const requestDelete = (category: MenuCategory) => {
+    if (itemCountFor(category.id) > 0) {
+      toast.error(t.dashboard.cannotDeleteCategory);
       return;
     }
-    setIsRenaming(true);
-    try {
-      await mutations.rename(renamingId, name);
-      setRenamingId(null);
-    } catch {
-      // onError already toasted — keep the field open to fix and retry
-    } finally {
-      setIsRenaming(false);
-    }
+    setDeleting(category);
   };
 
-  const confirmDelete = async (id: string) => {
-    if (deletingId) return;
-    setDeletingId(id);
+  const confirmDeleteCategory = async () => {
+    if (!deleting) return;
     try {
-      await mutations.remove(id);
+      await mutations.remove(deleting.id);
+      setDeleting(null);
     } catch {
       // onError already toasted
-    } finally {
-      setDeletingId(null);
     }
-  };
-
-  const uploadImage = (category: MenuCategory, file: File) => {
-    setUploadingId(category.id);
-    uploadImageWithProgress(file, "categories")
-      .then(({ url }) => mutations.updateImage(category.id, url))
-      .catch((error: unknown) => {
-        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
-      })
-      .finally(() => setUploadingId(null));
-  };
-
-  const removeImage = (category: MenuCategory) => {
-    setUploadingId(category.id);
-    mutations
-      .updateImage(category.id, "")
-      .catch((error: unknown) => {
-        toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
-      })
-      .finally(() => setUploadingId(null));
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <Link
           href={`/${lang}/dashboard/menu`}
@@ -175,31 +145,25 @@ export function CategoriesManager() {
           <BackIcon className="size-4" />
           {t.dashboard.backToMenu}
         </Link>
-        <h1 className="mt-2 font-heading text-xl font-bold md:text-2xl">
-          {t.dashboard.manageCategories}
-          {categories.length > 0 && (
-            <span className="ms-2 rounded-full bg-surface-container px-2 py-0.5 text-xs font-semibold text-muted-foreground tabular-nums">
-              {categories.length}
-            </span>
-          )}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t.dashboard.manageCategoriesHint}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submitAdd()}
-          placeholder={t.dashboard.categoryName}
-          className="h-11 flex-1"
-        />
-        <Button loading={isAdding} onClick={submitAdd}>
-          <Plus className="size-4" />
-          {t.dashboard.addCategory}
-        </Button>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="font-heading text-xl font-bold md:text-2xl">
+              {t.dashboard.manageCategories}
+              {categories.length > 0 && (
+                <span className="ms-2 rounded-full bg-surface-container px-2 py-0.5 text-xs font-semibold text-muted-foreground tabular-nums">
+                  {categories.length}
+                </span>
+              )}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t.dashboard.manageCategoriesHint}
+            </p>
+          </div>
+          <Button onClick={openAdd} className="shrink-0">
+            <Plus className="size-4" />
+            {t.dashboard.addCategory}
+          </Button>
+        </div>
       </div>
 
       {sorted.length === 0 ? (
@@ -207,101 +171,21 @@ export function CategoriesManager() {
           {t.dashboard.noCategories}
         </p>
       ) : (
-        <ul className="space-y-2.5">
-          {sorted.map((category, index) => {
-            const count = itemCountFor(category.id);
-            const uploading = uploadingId === category.id;
-            return (
-              <li
-                key={category.id}
-                className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3"
-              >
-                <div className="relative shrink-0">
-                  <FileDropzone
-                    // remounts whenever the saved image actually changes
-                    // (including a removal) — FileDropzone only ever reads
-                    // `previewUrl` once, on mount, into its own state
-                    key={`${category.id}-${category.imageUrl ?? "none"}`}
-                    variant="avatar"
-                    label={t.dashboard.categoryImage}
-                    previewUrl={category.imageUrl}
-                    className="size-14"
-                    onFile={(file) => file && uploadImage(category, file)}
-                  />
-                  {uploading && (
-                    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-background/70">
-                      <LoadingSpinner className="min-h-0" />
-                    </span>
-                  )}
-                  {category.imageUrl && !uploading && (
-                    <button
-                      type="button"
-                      aria-label={t.dashboard.removeImage}
-                      onClick={() => removeImage(category)}
-                      className="absolute -top-1 -end-1 flex size-5 items-center justify-center rounded-full bg-card text-muted-foreground ring-2 ring-background hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  )}
-                </div>
-
-                {renamingId === category.id ? (
-                  <Input
-                    autoFocus
-                    disabled={isRenaming}
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && submitRename()}
-                    onBlur={submitRename}
-                    className="h-9 flex-1"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => startRename(category)}
-                    className="flex-1 truncate rounded-lg px-2 py-1 text-start text-sm font-semibold hover:bg-accent"
-                  >
-                    {category.name[lang]}
-                    <span className="ms-1.5 text-xs font-normal text-muted-foreground">
-                      ({count})
-                    </span>
-                  </button>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={index === 0}
-                  aria-label={t.dashboard.moveUp}
-                  onClick={() => moveLocal(category.id, "up")}
-                >
-                  <ArrowUp className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={index === sorted.length - 1}
-                  aria-label={t.dashboard.moveDown}
-                  onClick={() => moveLocal(category.id, "down")}
-                >
-                  <ArrowDown className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={count > 0 || deletingId === category.id}
-                  loading={deletingId === category.id}
-                  title={count > 0 ? t.dashboard.cannotDeleteCategory : undefined}
-                  aria-label={t.common.delete}
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => confirmDelete(category.id)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {sorted.map((category, index) => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              itemCount={itemCountFor(category.id)}
+              canMoveUp={index > 0}
+              canMoveDown={index < sorted.length - 1}
+              onMoveUp={() => moveLocal(category.id, "up")}
+              onMoveDown={() => moveLocal(category.id, "down")}
+              onEdit={() => openEdit(category)}
+              onDelete={() => requestDelete(category)}
+            />
+          ))}
+        </div>
       )}
 
       {isDirty && (
@@ -314,6 +198,41 @@ export function CategoriesManager() {
           pending={isSavingOrder}
         />
       )}
+
+      <CategoryDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        editing={editing}
+        onSave={save}
+      />
+
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.dashboard.deleteCategoryTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {fmt(t.dashboard.deleteCategoryBody, {
+                name: deleting?.name[lang] ?? "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleting(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={mutations.isPending}
+              onClick={confirmDeleteCategory}
+            >
+              {t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={confirmAction !== null}

@@ -10,6 +10,7 @@ import {
   Building2,
   ChartNoAxesCombined,
   LayoutDashboard,
+  LayoutGrid,
   LifeBuoy,
   QrCode,
   Tag,
@@ -65,6 +66,12 @@ export function RestaurantDashboardShell({
       href: `${base}/menu`,
       label: isStore ? t.dashboard.myProducts : t.dashboard.myMenu,
       icon: isStore ? ShoppingBag : UtensilsCrossed,
+      exact: true,
+    },
+    {
+      href: `${base}/menu/categories`,
+      label: t.dashboard.categories,
+      icon: LayoutGrid,
     },
     { href: `${base}/offers`, label: t.offers.title, icon: Tag },
     // Orders and dining-table management are hidden for now — not part of

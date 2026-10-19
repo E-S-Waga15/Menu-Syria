@@ -42,6 +42,12 @@ export const dishFormSchema = (v: ValidationMessages) =>
   });
 export type DishFormValues = z.infer<ReturnType<typeof dishFormSchema>>;
 
+export const categoryFormSchema = (v: ValidationMessages) =>
+  z.object({
+    name: z.string().trim().min(1, v.required),
+  });
+export type CategoryFormValues = z.infer<ReturnType<typeof categoryFormSchema>>;
+
 export const branchFormSchema = (v: ValidationMessages) =>
   z.object({
     name: z.string().trim().min(1, v.required),

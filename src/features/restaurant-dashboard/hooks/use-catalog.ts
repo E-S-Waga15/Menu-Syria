@@ -63,9 +63,12 @@ export function useCategoryMutations(businessId: string) {
   const onSettled = () => cache.refresh();
 
   const add = useMutation({
-    mutationFn: (input: { name: string; sortOrder: number }) =>
-      createCategory({ businessId, ...input }),
-    onMutate: ({ name, sortOrder }) =>
+    mutationFn: (input: {
+      name: string;
+      sortOrder: number;
+      imageUrl?: string;
+    }) => createCategory({ businessId, ...input }),
+    onMutate: ({ name, sortOrder, imageUrl }) =>
       cache.patch((current) => ({
         ...current,
         categories: [
@@ -75,6 +78,7 @@ export function useCategoryMutations(businessId: string) {
             restaurantId: businessId,
             name: { ar: name, en: name },
             sortOrder,
+            imageUrl,
           },
         ],
       })),
@@ -159,15 +163,19 @@ export function useCategoryMutations(businessId: string) {
 
   return {
     /** places a new category after the owner's current last one */
-    create: (name: string) =>
+    create: (name: string, imageUrl?: string) =>
       add.mutateAsync({
         name,
+        imageUrl,
         sortOrder: (cache.read()?.categories.length ?? 0) + 1,
       }),
     rename: (id: string, name: string) => rename.mutateAsync({ id, name }),
     /** "" clears the category's image back to none */
     updateImage: (id: string, imageUrl: string) =>
       rename.mutateAsync({ id, imageUrl }),
+    /** the add/edit modal's single save — name and image together */
+    update: (id: string, name: string, imageUrl?: string) =>
+      rename.mutateAsync({ id, name, imageUrl: imageUrl ?? "" }),
     /** Commits a full ordered list of category ids as the new 1-based order. */
     reorderAll: (orderedIds: string[]) =>
       reorderAll.mutateAsync(

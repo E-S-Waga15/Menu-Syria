@@ -1,6 +1,10 @@
-# Backend changes needed — customer-typed-amount option type, category photos
+# Backend changes — status
 
-## 🆕 New ask: an optional `imageUrl` on menu/catalog categories
+Both asks below are confirmed done and live. Kept for reference only.
+
+## ✅ Done: an optional `imageUrl` on menu/catalog categories
+
+Confirmed — this was already working everywhere except `GET /me/menu`, which was missing the field; fixed, tested locally, and committed (`66b4030`). Leaving the request below for reference.
 
 **Why:** categories (the sections a menu/catalog is split into — "المقبلات", "الحلويات", …) can now carry their own photo, shown next to the category's name wherever it appears (the dashboard's category pills and its own new management page, the storefront's category pill bar, each section's own heading, and the "jump to section" picker). Entirely optional — a category with none renders exactly as it did before this shipped, plain text with no image slot reserved.
 
@@ -29,9 +33,9 @@ Same plain top-level column as `name`/`sortOrder` — categories aren't stored i
 
 **Upload folder:** the frontend already uploads the file first via `POST /uploads?folder=categories` before sending the resulting URL in the body above — `categories` is already listed as one of the accepted folder values on our side (`UPLOAD_FOLDERS` in `lib/api/upload.ts`), so this should already work if the uploads endpoint's folder allowlist matches what's documented; please confirm `categories` is genuinely accepted there and not silently falling back to `general` or erroring.
 
-## 🆕 New ask: a third option-group type — a customer-typed amount, plus a per-item "sold as one unit" flag
+## ✅ Done: a third option-group type — a customer-typed amount, plus a per-item "sold as one unit" flag
 
-## 🆕 New ask: a third option-group type — a customer-typed amount, plus a per-item "sold as one unit" flag
+Confirmed working end to end in production after the VPS restart. Leaving the request below for reference.
 
 **Why:** some products are priced per a nominal unit but actually sold by whatever amount the customer wants — e.g. a kilo of loose shawarma listed at 1000, where a customer might order 700's worth or 1200's worth instead of the full kilo. There was no way to express "let the customer type the final price" as an option before; every existing option type (`single`/`multiple`) only ever picks from a predefined list the owner wrote.
 
