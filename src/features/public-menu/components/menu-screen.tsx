@@ -356,6 +356,15 @@ export function MenuScreen({
                   <Phone className="size-3 sm:size-3.5" />
                   {t.restaurant.call}
                 </a>
+                <button
+                  type="button"
+                  onClick={() => setMapModalOpen(true)}
+                  aria-label={t.restaurant.location}
+                  title={t.restaurant.location}
+                  className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                >
+                  <MapPin className="size-3 sm:size-3.5" />
+                </button>
                 {business.instagram && (
                   <a
                     href={toInstagramHref(business.instagram)}
@@ -380,15 +389,6 @@ export function MenuScreen({
                     <FacebookIcon className="size-3 sm:size-3.5" />
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setMapModalOpen(true)}
-                  aria-label={t.restaurant.location}
-                  title={t.restaurant.location}
-                  className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
-                >
-                  <MapPin className="size-3 sm:size-3.5" />
-                </button>
                 <button
                   type="button"
                   onClick={() => void shareMenu()}

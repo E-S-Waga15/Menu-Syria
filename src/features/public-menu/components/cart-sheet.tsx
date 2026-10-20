@@ -642,10 +642,10 @@ export function CartSheet({
                         width={32}
                         height={32}
                         quality={90}
-                        className="size-8 shrink-0 rounded-full border border-border/60 object-cover"
+                        className="size-8 shrink-0 rounded-xl border border-border/60 object-cover"
                       />
                     ) : (
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                         <Building2 className="size-3.5" />
                       </span>
                     )}
@@ -676,11 +676,11 @@ export function CartSheet({
                           width={32}
                           height={32}
                           quality={90}
-                          className="size-8 shrink-0 rounded-full border border-border/60 object-cover"
+                          className="size-8 shrink-0 rounded-xl border border-border/60 object-cover"
                         />
                       ) : (
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                          <MapPin className="size-3.5" />
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                          <Building2 className="size-3.5" />
                         </span>
                       )}
                       <span className="min-w-0 flex-1">

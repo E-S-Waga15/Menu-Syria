@@ -369,12 +369,12 @@ export function BusinessDetailsGrid({
                     width={36}
                     height={36}
                     quality={90}
-                    className="size-9 shrink-0 rounded-full border border-border/60 object-cover"
+                    className="size-9 shrink-0 rounded-xl border border-border/60 object-cover"
                   />
                 ) : (
                   <span
                     className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200",
+                      "flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
                       selectedId === MAIN
                         ? "bg-primary text-white"
                         : "bg-muted text-muted-foreground",
@@ -422,18 +422,18 @@ export function BusinessDetailsGrid({
                       width={36}
                       height={36}
                       quality={90}
-                      className="size-9 shrink-0 rounded-full border border-border/60 object-cover"
+                      className="size-9 shrink-0 rounded-xl border border-border/60 object-cover"
                     />
                   ) : (
                     <span
                       className={cn(
-                        "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200",
+                        "flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
                         selectedId === branch.id
                           ? "bg-primary text-white"
                           : "bg-muted text-muted-foreground",
                       )}
                     >
-                      <MapPin className="size-4" />
+                      <Building2 className="size-4" />
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
