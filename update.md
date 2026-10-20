@@ -1,5 +1,39 @@
 # Backend changes — status
 
+## 🆕 New ask: an optional `logoUrl` on branches, plus confirm the `branches` upload folder
+
+**Why:** each branch (فرع) can now carry its own optional photo — shown next to its name wherever branches are picked (the business details page's branch list, the dashboard's branch cards, and the cart's "order from branch" picker). The business's own main address, shown as the first entry in these pickers, already uses the business's existing `logoUrl` — no change needed there. This is only about the separate `branches` table/entity.
+
+### Read — `GET /branches?businessId=`, and every place a branch is embedded on a public read (`GET /restaurants/:slug`, `GET /stores/:slug`, the `restaurant.branches` embedded in `GET /menu/:slug`)
+
+```jsonc
+{
+  "id": "...",
+  "name": "فرع المزة",
+  "address": "...",
+  "latitude": 33.5,
+  "longitude": 36.25,
+  "phone": "...",
+  "logoUrl": "https://.../branches/abc.png"   // new, optional — absent/null means no photo, same as a category's imageUrl
+}
+```
+
+### Write — `POST /branches`, `PATCH /branches/:id`
+
+```jsonc
+// POST /branches
+{ "businessId": "...", "name": "فرع المزة", "districtId": "...", "phone": "...", "logoUrl": "https://.../branches/abc.png" }
+
+// PATCH /branches/:id — omit the field to leave it untouched, or send "" to clear it back to no photo
+{ "logoUrl": "" }
+```
+
+Same plain top-level column pattern as the category `imageUrl` we shipped earlier — not nested inside any JSON blob.
+
+**Upload folder:** the frontend uploads the file first via `POST /uploads?folder=branches` before sending the resulting URL in the body above. Please confirm `branches` is accepted there — it's a new folder value on our side, added alongside the existing `categories`/`items`/`agents`/etc.
+
+---
+
 ## ✅ Fixed on our side: the editor was computing a single-choice option's price instead of showing/sending `priceDelta` as-is
 
 Root cause of both the "800 instead of 50" display you confirmed via direct DB query (item "فروج" at 750, option "نص" with `priceDelta: 50`) and almost certainly the `PATCH /items/:id` 400 we flagged earlier on item `60a95282-391e-4c00-80f1-957cfb1b28bc`: the dashboard's option editor treated a single-choice group's price box as the option's absolute final price (`displayed = item.price + priceDelta`, and on save `priceDelta = typed - item.price`) instead of just reading/writing `priceDelta` directly. Re-saving an item through that editor could silently rewrite its `priceDelta` to something the owner never intended.

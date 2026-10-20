@@ -637,6 +637,7 @@
     "editBranch": "تعديل الفرع",
     "branchName": "اسم الفرع",
     "branchNamePlaceholder": "مثال: فرع المزة",
+    "branchLogo": "شعار الفرع",
     "branchPhone": "رقم هاتف الفرع",
     "noBranches": "لا توجد فروع بعد",
     "noBranchesBody": "أضف فروع مطعمك أو متجرك ليسهل على زبائنك الوصول إليها",

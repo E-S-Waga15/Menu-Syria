@@ -25,6 +25,13 @@ import {
 import { FavoriteButton } from "@/components/shared/favorite-button";
 import { FormattedText } from "@/components/shared/formatted-text";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { BusinessShareActions } from "@/features/marketing/components/business-share-actions";
 import { MapEmbed } from "@/features/marketing/components/map-embed";
 import { OpeningHours } from "@/features/marketing/components/opening-hours";
@@ -146,6 +153,7 @@ export function BusinessDetailsGrid({
 }) {
   const separator = lang === "ar" ? "، " : ", ";
   const [selectedId, setSelectedId] = useState<string>(MAIN);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
 
   const selectedBranch =
     selectedId === MAIN ? null : branches.find((b) => b.id === selectedId);
@@ -158,15 +166,23 @@ export function BusinessDetailsGrid({
     selectedBranch?.latitude != null && selectedBranch?.longitude != null
       ? { lat: selectedBranch.latitude, lng: selectedBranch.longitude }
       : mainLocation;
-  const branchRegion = selectedBranch
-    ? regions.find((r) => r.id === selectedBranch.districtId)
-    : undefined;
-  const branchRegionName = branchRegion?.name[lang] ?? "";
-  const branchGovernorateName = selectedBranch
-    ? (governorates.find(
-        (g) => g.id === (selectedBranch.governorateId ?? branchRegion?.governorateId),
-      )?.name[lang] ?? "")
-    : "";
+  // resolves a branch's own governorate/region names — reused for every
+  // branch in the picker list below, not just whichever one is selected
+  const areaLabelFor = (branch: PublicBranch) => {
+    const region = regions.find((r) => r.id === branch.districtId);
+    const govName =
+      governorates.find(
+        (g) => g.id === (branch.governorateId ?? region?.governorateId),
+      )?.name[lang] ?? "";
+    const regName = region?.name[lang] ?? "";
+    return govName || regName
+      ? [govName, regName].filter(Boolean).join(separator)
+      : null;
+  };
+  const mainAreaLabel =
+    governorateName || regionName
+      ? [governorateName, regionName].filter(Boolean).join(separator)
+      : null;
 
   const supportsDelivery = getSupportedFulfillment(restaurant).includes(
     "delivery",
@@ -180,16 +196,9 @@ export function BusinessDetailsGrid({
 
   // the area tile follows the selected branch, falling back to the main
   // business's governorate/region when "main" (or no branches) is selected
-  const effectiveGovernorateName = selectedBranch
-    ? branchGovernorateName
-    : governorateName;
-  const effectiveRegionName = selectedBranch ? branchRegionName : regionName;
-  const areaLabel =
-    effectiveGovernorateName || effectiveRegionName
-      ? [effectiveGovernorateName, effectiveRegionName]
-          .filter(Boolean)
-          .join(separator)
-      : null;
+  const areaLabel = selectedBranch
+    ? areaLabelFor(selectedBranch)
+    : mainAreaLabel;
 
   // trusted from the resolved `kind`, not a duck-typed `"category" in
   // restaurant` check — a restaurant's own API response can carry a
@@ -375,18 +384,37 @@ export function BusinessDetailsGrid({
                     : "border-border/60 hover:bg-surface-container",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200",
-                    selectedId === MAIN
-                      ? "bg-primary text-white"
-                      : "bg-muted text-muted-foreground",
+                {restaurant.logoUrl ? (
+                  <Image
+                    src={restaurant.logoUrl}
+                    alt=""
+                    width={36}
+                    height={36}
+                    quality={90}
+                    className="size-9 shrink-0 rounded-full border border-border/60 object-cover"
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200",
+                      selectedId === MAIN
+                        ? "bg-primary text-white"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <Building2 className="size-4" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">
+                    {restaurant.name[lang]}
+                  </span>
+                  {mainAreaLabel && (
+                    <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                      <MapPin className="size-3 shrink-0" />
+                      <span className="truncate">{mainAreaLabel}</span>
+                    </span>
                   )}
-                >
-                  <Building2 className="size-4" />
-                </span>
-                <span className="flex-1 text-sm font-semibold">
-                  {t.restaurant.mainBranch}
                 </span>
                 {selectedId === MAIN && (
                   <span className="shrink-0 rounded-full bg-zest px-3 py-1 text-xs font-bold text-zest-foreground">
@@ -394,7 +422,9 @@ export function BusinessDetailsGrid({
                   </span>
                 )}
               </button>
-              {branches.map((branch) => (
+              {branches.map((branch) => {
+                const branchArea = areaLabelFor(branch);
+                return (
                 <button
                   key={branch.id}
                   type="button"
@@ -407,18 +437,37 @@ export function BusinessDetailsGrid({
                       : "border-border/60 hover:bg-surface-container",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200",
-                      selectedId === branch.id
-                        ? "bg-primary text-white"
-                        : "bg-muted text-muted-foreground",
+                  {branch.logoUrl ? (
+                    <Image
+                      src={branch.logoUrl}
+                      alt=""
+                      width={36}
+                      height={36}
+                      quality={90}
+                      className="size-9 shrink-0 rounded-full border border-border/60 object-cover"
+                    />
+                  ) : (
+                    <span
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200",
+                        selectedId === branch.id
+                          ? "bg-primary text-white"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      <MapPin className="size-4" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">
+                      {branch.name}
+                    </span>
+                    {branchArea && (
+                      <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="size-3 shrink-0" />
+                        <span className="truncate">{branchArea}</span>
+                      </span>
                     )}
-                  >
-                    <MapPin className="size-4" />
-                  </span>
-                  <span className="flex-1 text-sm font-semibold">
-                    {branch.name}
                   </span>
                   {selectedId === branch.id && (
                     <span className="shrink-0 rounded-full bg-zest px-3 py-1 text-xs font-bold text-zest-foreground">
@@ -426,7 +475,8 @@ export function BusinessDetailsGrid({
                     </span>
                   )}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </Panel>
         )}
@@ -530,6 +580,36 @@ export function BusinessDetailsGrid({
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
+              {restaurant.instagram && (
+                <a
+                  href={toInstagramHref(restaurant.instagram)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t.restaurant.instagram}
+                  className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                >
+                  <InstagramIcon className="size-3.5" />
+                </a>
+              )}
+              {restaurant.facebook && (
+                <a
+                  href={withProtocol(restaurant.facebook)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t.restaurant.facebook}
+                  className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                >
+                  <FacebookIcon className="size-3.5" />
+                </a>
+              )}
+              <button
+                type="button"
+                aria-label={t.restaurant.location}
+                onClick={() => setMapModalOpen(true)}
+                className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+              >
+                <MapPin className="size-3.5" />
+              </button>
               <button
                 type="button"
                 aria-label={t.common.copy}
@@ -602,6 +682,36 @@ export function BusinessDetailsGrid({
           <OpeningHours hours={restaurant.openingHours} t={t} />
         </Panel>
       </div>
+
+      {/* quick access from the call row, separate from the always-visible
+          map embed in the sidebar — a modal here means it's reachable from
+          wherever the phone number is, not just after scrolling to it */}
+      <Dialog open={mapModalOpen} onOpenChange={setMapModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t.restaurant.location}</DialogTitle>
+          </DialogHeader>
+          <MapEmbed lat={location.lat} lng={location.lng} label={t.restaurant.location} />
+          <DialogFooter className="flex-row gap-2">
+            <a
+              href={`https://maps.google.com/?q=${location.lat},${location.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              {t.restaurant.openInMaps}
+              <ExternalLink className="size-3.5" />
+            </a>
+            <button
+              type="button"
+              onClick={() => setMapModalOpen(false)}
+              className="flex h-10 flex-1 items-center justify-center rounded-full border border-border/60 text-xs font-bold text-foreground transition-colors hover:bg-surface-container"
+            >
+              {t.common.close}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

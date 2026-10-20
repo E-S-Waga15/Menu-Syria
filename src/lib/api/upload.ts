@@ -17,6 +17,7 @@ export const UPLOAD_FOLDERS = [
   "offers",
   "categories",
   "agents",
+  "branches",
   "general",
 ] as const;
 

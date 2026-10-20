@@ -257,7 +257,7 @@ export function CartSheet({
   const [branchId, setBranchId] = useState<string | null>(null);
   const selectedBranch = branches.find((b) => b.id === branchId) ?? null;
   const branchItems: Record<string, string> = {
-    [MAIN_BRANCH_VALUE]: t.restaurant.mainBranch,
+    [MAIN_BRANCH_VALUE]: business.name[lang],
     ...Object.fromEntries(branches.map((b) => [b.id, b.name])),
   };
 
@@ -639,12 +639,34 @@ export function CartSheet({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={MAIN_BRANCH_VALUE}>
-                      <Building2 className="size-3.5" />
-                      {t.restaurant.mainBranch}
+                      {business.logoUrl ? (
+                        <Image
+                          src={business.logoUrl}
+                          alt=""
+                          width={18}
+                          height={18}
+                          quality={90}
+                          className="size-[18px] shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <Building2 className="size-3.5" />
+                      )}
+                      {business.name[lang]}
                     </SelectItem>
                     {branches.map((branch) => (
                       <SelectItem key={branch.id} value={branch.id}>
-                        <MapPin className="size-3.5" />
+                        {branch.logoUrl ? (
+                          <Image
+                            src={branch.logoUrl}
+                            alt=""
+                            width={18}
+                            height={18}
+                            quality={90}
+                            className="size-[18px] shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <MapPin className="size-3.5" />
+                        )}
                         {branch.name}
                       </SelectItem>
                     ))}

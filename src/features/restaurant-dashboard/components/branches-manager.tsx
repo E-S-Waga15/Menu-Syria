@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
+import { SafeImage } from "@/components/shared/safe-image";
 import { BranchDialog } from "@/features/restaurant-dashboard/components/branch-dialog";
 import { useBranchMutations } from "@/features/restaurant-dashboard/hooks/use-branches";
 import { useBusinessId } from "@/features/restaurant-dashboard/hooks/use-my-business";
@@ -71,6 +72,7 @@ export function BranchesManager() {
     phone: string;
     lat: number | null;
     lng: number | null;
+    logoUrl?: string;
   }) => {
     try {
       await mutations.save(
@@ -81,6 +83,7 @@ export function BranchesManager() {
           phone: values.phone,
           latitude: values.lat,
           longitude: values.lng,
+          logoUrl: values.logoUrl ?? "",
         },
         editing?.id ?? null,
       );
@@ -155,9 +158,19 @@ export function BranchesManager() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-berry-soft text-berry-soft-foreground">
-                    <Building2 className="size-5" />
-                  </span>
+                  {branch.logoUrl ? (
+                    <SafeImage
+                      src={branch.logoUrl}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="size-10 shrink-0 rounded-xl border border-border/60 object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-berry-soft text-berry-soft-foreground">
+                      <Building2 className="size-5" />
+                    </span>
+                  )}
                   <h3 className="min-w-0 truncate font-heading text-base font-bold">
                     {branch.name}
                   </h3>

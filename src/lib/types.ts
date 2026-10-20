@@ -38,6 +38,9 @@ export interface Branch {
   latitude: number | null;
   longitude: number | null;
   phone: string;
+  /** optional — a branch with none falls back to the generic branch icon
+   * everywhere it's shown, same as before this field existed */
+  logoUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +62,8 @@ export interface PublicBranch {
   phone: string;
   governorateId: string | null;
   districtId: string;
+  /** optional — falls back to the generic branch icon when absent */
+  logoUrl?: string;
 }
 
 /**

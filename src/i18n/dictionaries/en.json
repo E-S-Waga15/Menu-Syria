@@ -637,6 +637,7 @@
     "editBranch": "Edit branch",
     "branchName": "Branch name",
     "branchNamePlaceholder": "e.g. Mazzeh branch",
+    "branchLogo": "Branch logo",
     "branchPhone": "Branch phone number",
     "noBranches": "No branches yet",
     "noBranchesBody": "Add your restaurant's or store's branches so customers can find them",

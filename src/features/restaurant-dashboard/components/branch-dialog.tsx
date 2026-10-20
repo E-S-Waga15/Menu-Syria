@@ -4,12 +4,14 @@ import { useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { Check, MapPin } from "lucide-react";
+import { Check, MapPin, X } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { FieldError } from "@/components/shared/field-error";
+import { FileDropzone } from "@/components/shared/file-dropzone";
 import { GoogleLocationPicker } from "@/components/shared/google-location-picker";
 import { GovernorateRegionSelect } from "@/components/shared/governorate-region-select";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,7 +32,10 @@ import {
   getRegions,
 } from "@/features/marketing/services";
 import { useI18n } from "@/i18n/client";
+import { ApiError } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { uploadImageWithProgress } from "@/lib/api/upload";
+import { toast } from "@/lib/toast";
 import type { Branch } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -50,11 +55,13 @@ export function BranchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Branch | null;
-  onSave: (values: BranchFormValues) => Promise<void> | void;
+  onSave: (values: BranchFormValues & { logoUrl?: string }) => Promise<void> | void;
   isSaving: boolean;
 }) {
   const { t, lang } = useI18n();
   const [mapOpen, setMapOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const { data: governorates } = useQuery({
     queryKey: queryKeys.governorates,
@@ -110,6 +117,7 @@ export function BranchDialog({
       lat: editing?.latitude ?? null,
       lng: editing?.longitude ?? null,
     });
+    setLogoUrl(editing?.logoUrl);
   }
 
   const regionItems = Object.fromEntries(
@@ -118,7 +126,26 @@ export function BranchDialog({
       .map((region) => [region.id, region.name[lang]]),
   );
 
-  const submit = (values: BranchFormValues) => onSave(values);
+  const pickLogo = (file: File | null) => {
+    if (!file) return;
+    setUploadingLogo(true);
+    uploadImageWithProgress(file, "branches")
+      .then(({ url }) => setLogoUrl(url))
+      .catch((error: unknown) => {
+        toast.error(
+          error instanceof ApiError ? error.message : t.common.saveFailed,
+        );
+      })
+      .finally(() => setUploadingLogo(false));
+  };
+
+  const submit = (values: BranchFormValues) => {
+    if (uploadingLogo) {
+      toast.error(t.dashboard.imageStillUploading);
+      return;
+    }
+    return onSave({ ...values, logoUrl });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,6 +166,40 @@ export function BranchDialog({
                 {...register("name")}
               />
               <FieldError message={errors.name?.message} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>
+                {t.dashboard.branchLogo}
+                <span className="ms-1 text-muted-foreground">
+                  ({t.common.optional})
+                </span>
+              </Label>
+              <div className="relative">
+                <FileDropzone
+                  // remounts whenever the picked image actually changes —
+                  // FileDropzone only ever reads `previewUrl` once, on mount
+                  key={`${editing?.id ?? "new"}-${logoUrl ?? "none"}`}
+                  label={t.dashboard.branchLogo}
+                  previewUrl={logoUrl}
+                  onFile={pickLogo}
+                />
+                {uploadingLogo && (
+                  <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-background/70">
+                    <LoadingSpinner className="min-h-0" />
+                  </span>
+                )}
+                {logoUrl && !uploadingLogo && (
+                  <button
+                    type="button"
+                    aria-label={t.dashboard.removeImage}
+                    onClick={() => setLogoUrl(undefined)}
+                    className="absolute top-2 end-2 flex size-7 items-center justify-center rounded-full bg-card text-muted-foreground ring-2 ring-background hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -267,8 +328,13 @@ export function BranchDialog({
             </div>
           </div>
           <DialogFooter className="px-4 pb-4">
-            <Button type="submit" loading={isSaving} className="w-full shadow-glow">
-              {t.common.save}
+            <Button
+              type="submit"
+              loading={isSaving}
+              disabled={uploadingLogo}
+              className="w-full shadow-glow"
+            >
+              {uploadingLogo ? t.dashboard.imageStillUploading : t.common.save}
             </Button>
           </DialogFooter>
         </form>

@@ -553,6 +553,7 @@ function normalizeBranch(raw: Raw): WithMessage<Branch> {
     latitude: raw.latitude === null || raw.latitude === undefined ? null : toNumber(raw.latitude),
     longitude: raw.longitude === null || raw.longitude === undefined ? null : toNumber(raw.longitude),
     phone: String(raw.phone ?? ""),
+    logoUrl: typeof raw.logoUrl === "string" && raw.logoUrl ? raw.logoUrl : undefined,
     createdAt: String(raw.createdAt ?? ""),
     updatedAt: String(raw.updatedAt ?? ""),
     message: typeof raw.message === "string" ? raw.message : undefined,
@@ -566,6 +567,9 @@ export interface BranchWriteInput {
   latitude?: number | null;
   longitude?: number | null;
   phone: string;
+  /** "" clears it back to no logo — same empty-string-clears convention
+   * used for a category/business logo */
+  logoUrl?: string;
 }
 
 export async function getMyBranches(businessId: string): Promise<Branch[]> {
@@ -588,6 +592,7 @@ export async function createBranch(
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
       phone: input.phone,
+      logoUrl: input.logoUrl || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
