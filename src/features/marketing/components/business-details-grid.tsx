@@ -25,21 +25,15 @@ import {
 import { FavoriteButton } from "@/components/shared/favorite-button";
 import { FormattedText } from "@/components/shared/formatted-text";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { MapEmbed } from "@/components/shared/map-embed";
 import { BusinessShareActions } from "@/features/marketing/components/business-share-actions";
-import { MapEmbed } from "@/features/marketing/components/map-embed";
 import { OpeningHours } from "@/features/marketing/components/opening-hours";
 import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import type { Locale } from "@/i18n/config";
 import { fmt } from "@/i18n/fmt";
 import type { Dictionary } from "@/i18n/get-dictionary";
+import { toInstagramHref, withProtocol } from "@/lib/social-links";
 import type { Business, Governorate, PublicBranch, Region } from "@/lib/types";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -51,21 +45,6 @@ const MAIN = "main";
  * in the row's first/right (RTL start) track, the sidebar in the second/
  * left track */
 const SIDE_COLS = "lg:grid-cols-[1.25fr_0.75fr]";
-
-function withProtocol(url: string) {
-  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
-}
-
-/** Instagram's field takes either a bare handle ("yasmeen.house") or a full
- * profile link — a handle never contains "instagram.com", so that's enough
- * to tell the two apart without needing a separate field for each. */
-function toInstagramHref(value: string) {
-  const trimmed = value.trim();
-  if (/^https?:\/\//i.test(trimmed) || /instagram\.com/i.test(trimmed)) {
-    return withProtocol(trimmed);
-  }
-  return `https://instagram.com/${trimmed.replace(/^@/, "")}`;
-}
 
 /** one card shell for every block on this page — smaller, lighter headings
  * than a default <h2> for a quieter, more composed read */
@@ -153,7 +132,6 @@ export function BusinessDetailsGrid({
 }) {
   const separator = lang === "ar" ? "، " : ", ";
   const [selectedId, setSelectedId] = useState<string>(MAIN);
-  const [mapModalOpen, setMapModalOpen] = useState(false);
 
   const selectedBranch =
     selectedId === MAIN ? null : branches.find((b) => b.id === selectedId);
@@ -580,36 +558,6 @@ export function BusinessDetailsGrid({
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              {restaurant.instagram && (
-                <a
-                  href={toInstagramHref(restaurant.instagram)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t.restaurant.instagram}
-                  className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-                >
-                  <InstagramIcon className="size-3.5" />
-                </a>
-              )}
-              {restaurant.facebook && (
-                <a
-                  href={withProtocol(restaurant.facebook)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t.restaurant.facebook}
-                  className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-                >
-                  <FacebookIcon className="size-3.5" />
-                </a>
-              )}
-              <button
-                type="button"
-                aria-label={t.restaurant.location}
-                onClick={() => setMapModalOpen(true)}
-                className="flex size-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-              >
-                <MapPin className="size-3.5" />
-              </button>
               <button
                 type="button"
                 aria-label={t.common.copy}
@@ -682,36 +630,6 @@ export function BusinessDetailsGrid({
           <OpeningHours hours={restaurant.openingHours} t={t} />
         </Panel>
       </div>
-
-      {/* quick access from the call row, separate from the always-visible
-          map embed in the sidebar — a modal here means it's reachable from
-          wherever the phone number is, not just after scrolling to it */}
-      <Dialog open={mapModalOpen} onOpenChange={setMapModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t.restaurant.location}</DialogTitle>
-          </DialogHeader>
-          <MapEmbed lat={location.lat} lng={location.lng} label={t.restaurant.location} />
-          <DialogFooter className="flex-row gap-2">
-            <a
-              href={`https://maps.google.com/?q=${location.lat},${location.lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              {t.restaurant.openInMaps}
-              <ExternalLink className="size-3.5" />
-            </a>
-            <button
-              type="button"
-              onClick={() => setMapModalOpen(false)}
-              className="flex h-10 flex-1 items-center justify-center rounded-full border border-border/60 text-xs font-bold text-foreground transition-colors hover:bg-surface-container"
-            >
-              {t.common.close}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

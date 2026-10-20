@@ -7,8 +7,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { Armchair, Info, MapPin, Phone, Search, Share2, Star } from "lucide-react";
+import { Armchair, ExternalLink, Info, MapPin, Phone, Search, Share2, Star } from "lucide-react";
 
+import { FacebookIcon, InstagramIcon } from "@/components/shared/brand-icons";
+import { MapEmbed } from "@/components/shared/map-embed";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { FloatingCartBar } from "@/features/public-menu/components/cart";
 import { StorefrontOffers } from "@/features/offers/components/storefront-offers";
 import { getLiveOffers } from "@/features/offers/services";
@@ -18,6 +27,7 @@ import { getSupportedFulfillment } from "@/features/public-menu/lib/fulfillment"
 import type { StorefrontCopy } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { toInstagramHref, withProtocol } from "@/lib/social-links";
 import { toast } from "@/lib/toast";
 import type {
   Business,
@@ -148,6 +158,7 @@ export function MenuScreen({
   const [search, setSearch] = useState("");
   const [compact, setCompact] = useState(false);
   const [openedDish, setOpenedDish] = useState<CatalogItem | null>(null);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
   const setCartSheetOpen = useUiStore((s) => s.setCartSheetOpen);
   const [activeCategory, setActiveCategory] = useState(categories[0]?.id);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -345,6 +356,39 @@ export function MenuScreen({
                   <Phone className="size-3 sm:size-3.5" />
                   {t.restaurant.call}
                 </a>
+                {business.instagram && (
+                  <a
+                    href={toInstagramHref(business.instagram)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t.restaurant.instagram}
+                    title={t.restaurant.instagram}
+                    className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                  >
+                    <InstagramIcon className="size-3 sm:size-3.5" />
+                  </a>
+                )}
+                {business.facebook && (
+                  <a
+                    href={withProtocol(business.facebook)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t.restaurant.facebook}
+                    title={t.restaurant.facebook}
+                    className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                  >
+                    <FacebookIcon className="size-3 sm:size-3.5" />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setMapModalOpen(true)}
+                  aria-label={t.restaurant.location}
+                  title={t.restaurant.location}
+                  className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                >
+                  <MapPin className="size-3 sm:size-3.5" />
+                </button>
                 <button
                   type="button"
                   onClick={() => void shareMenu()}
@@ -545,6 +589,37 @@ export function MenuScreen({
           onClose={() => setOpenedDish(null)}
         />
       )}
+
+      <Dialog open={mapModalOpen} onOpenChange={setMapModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t.restaurant.location}</DialogTitle>
+          </DialogHeader>
+          <MapEmbed
+            lat={business.location.lat}
+            lng={business.location.lng}
+            label={t.restaurant.location}
+          />
+          <DialogFooter className="flex-row gap-2">
+            <a
+              href={`https://maps.google.com/?q=${business.location.lat},${business.location.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              {t.restaurant.openInMaps}
+              <ExternalLink className="size-3.5" />
+            </a>
+            <button
+              type="button"
+              onClick={() => setMapModalOpen(false)}
+              className="flex h-10 flex-1 items-center justify-center rounded-full border border-border/60 text-xs font-bold text-foreground transition-colors hover:bg-surface-container"
+            >
+              {t.common.close}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

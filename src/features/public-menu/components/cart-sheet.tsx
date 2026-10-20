@@ -6,6 +6,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Building2,
+  Check,
   Copy,
   Download,
   MapPin,
@@ -72,10 +73,6 @@ import {
 import { useOrderHistoryStore } from "@/stores/order-history-store";
 import { useUiStore } from "@/stores/ui-store";
 
-/** sentinel for the branch <Select>; null (the real "main branch" state
- * value) can't ride through Base UI's Select value prop, which wants a
- * string */
-const MAIN_BRANCH_VALUE = "main";
 
 const PICKUP_HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const PICKUP_MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
@@ -256,10 +253,6 @@ export function CartSheet({
   // backend as a literal "main" value, see placeOrder's `branchId ?? undefined`
   const [branchId, setBranchId] = useState<string | null>(null);
   const selectedBranch = branches.find((b) => b.id === branchId) ?? null;
-  const branchItems: Record<string, string> = {
-    [MAIN_BRANCH_VALUE]: business.name[lang],
-    ...Object.fromEntries(branches.map((b) => [b.id, b.name])),
-  };
 
   // no submit handler here — the WhatsApp link is the action, so the form
   // validates live and the URL recomputes from watched values
@@ -626,52 +619,87 @@ export function CartSheet({
 
             {branches.length > 0 && (
               <div className="space-y-1.5">
-                <Label htmlFor="cart-branch">{t.restaurant.orderFromBranch}</Label>
-                <Select
-                  value={branchId ?? MAIN_BRANCH_VALUE}
-                  onValueChange={(v) =>
-                    setBranchId(v === MAIN_BRANCH_VALUE ? null : v)
-                  }
-                  items={branchItems}
-                >
-                  <SelectTrigger id="cart-branch" className="h-10 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={MAIN_BRANCH_VALUE}>
-                      {business.logoUrl ? (
+                <Label>{t.restaurant.orderFromBranch}</Label>
+                {/* same card shape as the branch picker on the business
+                    details page, not a plain dropdown — a logo/location
+                    is easier to tell apart at a glance than text in a list */}
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setBranchId(null)}
+                    aria-pressed={branchId === null}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start transition-colors duration-200",
+                      branchId === null
+                        ? "border-[var(--menu-primary)]/40 bg-[var(--menu-primary)]/5"
+                        : "border-border/60 hover:bg-surface-container-low",
+                    )}
+                  >
+                    {business.logoUrl ? (
+                      <Image
+                        src={business.logoUrl}
+                        alt=""
+                        width={32}
+                        height={32}
+                        quality={90}
+                        className="size-8 shrink-0 rounded-full border border-border/60 object-cover"
+                      />
+                    ) : (
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        <Building2 className="size-3.5" />
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                      {business.name[lang]}
+                    </span>
+                    {branchId === null && (
+                      <Check className="size-4 shrink-0 text-[var(--menu-primary)]" />
+                    )}
+                  </button>
+                  {branches.map((branch) => (
+                    <button
+                      key={branch.id}
+                      type="button"
+                      onClick={() => setBranchId(branch.id)}
+                      aria-pressed={branchId === branch.id}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-start transition-colors duration-200",
+                        branchId === branch.id
+                          ? "border-[var(--menu-primary)]/40 bg-[var(--menu-primary)]/5"
+                          : "border-border/60 hover:bg-surface-container-low",
+                      )}
+                    >
+                      {branch.logoUrl ? (
                         <Image
-                          src={business.logoUrl}
+                          src={branch.logoUrl}
                           alt=""
-                          width={18}
-                          height={18}
+                          width={32}
+                          height={32}
                           quality={90}
-                          className="size-[18px] shrink-0 rounded-full object-cover"
+                          className="size-8 shrink-0 rounded-full border border-border/60 object-cover"
                         />
                       ) : (
-                        <Building2 className="size-3.5" />
-                      )}
-                      {business.name[lang]}
-                    </SelectItem>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch.id} value={branch.id}>
-                        {branch.logoUrl ? (
-                          <Image
-                            src={branch.logoUrl}
-                            alt=""
-                            width={18}
-                            height={18}
-                            quality={90}
-                            className="size-[18px] shrink-0 rounded-full object-cover"
-                          />
-                        ) : (
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                           <MapPin className="size-3.5" />
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">
+                          {branch.name}
+                        </span>
+                        {branch.address && (
+                          <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                            <MapPin className="size-3 shrink-0" />
+                            <span className="truncate">{branch.address}</span>
+                          </span>
                         )}
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      </span>
+                      {branchId === branch.id && (
+                        <Check className="size-4 shrink-0 text-[var(--menu-primary)]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
