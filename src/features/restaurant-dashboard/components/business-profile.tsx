@@ -1402,11 +1402,6 @@ function FulfillmentSection({
 
 const EMPTY_WEEK: (DayHours | null)[] = Array.from({ length: 7 }, () => null);
 
-function timeToMinutes(value: string): number {
-  const [h, m] = value.split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
 /**
  * Opening hours — 7 days, each independently open/closed with its own
  * start/end time. A quick-setup row lets the owner set one range and stamp
@@ -1431,12 +1426,10 @@ function OpeningHoursSection({
   const [quickOpens, setQuickOpens] = useState("09:00");
   const [quickCloses, setQuickCloses] = useState("22:00");
   const [applyAllConfirm, setApplyAllConfirm] = useState(false);
-  const [rangeError, setRangeError] = useState<number | null>(null);
   const snapshot = useRef(hours);
 
   const setDay = (index: number, next: DayHours | null) => {
     setHours((prev) => prev.map((d, i) => (i === index ? next : d)));
-    setRangeError((prev) => (prev === index ? null : prev));
   };
 
   const toggleDay = (index: number, open: boolean) => {
@@ -1447,7 +1440,6 @@ function OpeningHoursSection({
     setHours(
       Array.from({ length: 7 }, () => ({ opens: quickOpens, closes: quickCloses })),
     );
-    setRangeError(null);
     setApplyAllConfirm(false);
   };
 
@@ -1462,24 +1454,15 @@ function OpeningHoursSection({
         setEditing(true);
       }}
       onSave={async () => {
-        // closes <= opens is NOT invalid on its own — that's an overnight
-        // range (e.g. opens 08:00, closes 01:00 the next day), which
-        // `getBusinessOpenStatus` already understands and wraps correctly.
-        // The only genuinely meaningless input is opens === closes: zero
-        // duration, nothing to wrap.
-        const invalidIndex = hours.findIndex(
-          (d) => d && timeToMinutes(d.closes) === timeToMinutes(d.opens),
-        );
-        if (invalidIndex !== -1) {
-          setRangeError(invalidIndex);
-          throw new Error(t.dashboard.openingHoursInvalidRange);
-        }
+        // no client-side range check — the backend now computes open/closed
+        // correctly for every case (including overnight), and owns what
+        // counts as a valid schedule. Its own error message (surfaced by
+        // `save`'s onError) is the only validation shown here.
         await save({ openingHours: hours });
         setEditing(false);
       }}
       onCancel={() => {
         setHours(snapshot.current);
-        setRangeError(null);
         setEditing(false);
       }}
     >
@@ -1576,9 +1559,6 @@ function OpeningHoursSection({
                 <span className="text-sm text-muted-foreground">
                   {t.dashboard.openingHoursDayClosed}
                 </span>
-              )}
-              {rangeError === index && (
-                <FieldError message={t.dashboard.openingHoursInvalidRange} />
               )}
             </li>
           );

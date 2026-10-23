@@ -850,7 +850,6 @@
     "openingHoursClosesLabel": "To",
     "openingHoursDayOpen": "Open",
     "openingHoursDayClosed": "Closed",
-    "openingHoursInvalidRange": "Opening and closing time can't be the same",
     "confirmEnableDeliveryTitle": "Enable delivery",
     "editDeliveryFeeTitle": "Edit delivery fee",
     "socialMediaTab": "Social media",
