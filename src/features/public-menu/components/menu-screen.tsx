@@ -284,7 +284,7 @@ export function MenuScreen({
             <div className="flex items-center gap-2.5 pt-2.5 sm:gap-3.5 sm:pt-3">
               {business.logoUrl ? (
                 <Image
-                  quality={90}
+                  unoptimized
                   src={business.logoUrl}
                   alt=""
                   width={72}

@@ -267,11 +267,12 @@ function Avatar({
 }) {
   return session.avatarUrl ? (
     <Image
-      quality={90}
       src={session.avatarUrl}
       alt=""
       width={size}
       height={size}
+      // a user avatar, business logo, or agent photo (whichever this
+      // session's own account picture is) — never recompressed
       unoptimized
       className={`${className} object-cover`}
     />

@@ -174,7 +174,7 @@ export function AgentsDirectory({
             >
               {agent.photoUrl ? (
                 <Image
-                  quality={90}
+                  unoptimized
                   src={agent.photoUrl}
                   alt=""
                   width={64}

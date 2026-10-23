@@ -100,6 +100,7 @@ export function OfferBanner({ offers }: { offers: FeaturedOffer[] }) {
                       {typeof business.logoUrl === "string" &&
                         business.logoUrl.trim() && (
                         <SafeImage
+                          unoptimized
                           src={business.logoUrl}
                           alt=""
                           width={20}

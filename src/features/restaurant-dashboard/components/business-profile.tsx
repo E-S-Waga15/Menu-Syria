@@ -1855,7 +1855,7 @@ function AgentContactCard({
             alt=""
             width={48}
             height={48}
-            unoptimized={agent.photoUrl.startsWith("data:")}
+            unoptimized
             className="size-12 shrink-0 rounded-full border border-border object-cover"
           />
         ) : (
@@ -2322,11 +2322,10 @@ export function BusinessProfile() {
                   alt=""
                   width={112}
                   height={112}
-                  // a freshly picked logo is a data URL, which next/image cannot optimise
-                  unoptimized={
-                    typeof restaurant.logoUrl === "string" &&
-                    restaurant.logoUrl.startsWith("data:")
-                  }
+                  // never recompressed — a logo stays exactly what the
+                  // owner uploaded, same as a freshly picked data URL was
+                  // already exempt from the optimizer
+                  unoptimized
                   className="size-16 rounded-2xl border border-border object-cover sm:size-24 md:size-28"
                 />
               </button>

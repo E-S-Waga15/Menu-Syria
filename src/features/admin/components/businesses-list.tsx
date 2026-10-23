@@ -311,6 +311,9 @@ export function AdminBusinessesList({
                   aria-label={business.name[lang]}
                 >
                   <SafeImage
+                    // only the logo fallback is exempt from compression —
+                    // a real cover photo still goes through the optimizer
+                    unoptimized={!business.coverImages[0]}
                     src={business.coverImages[0] ?? business.logoUrl}
                     alt=""
                     fill
@@ -337,6 +340,7 @@ export function AdminBusinessesList({
                   just its top edge over the photo. */}
               <div className="flex flex-1 items-start gap-2 px-2.5 pt-1.5 pb-2.5">
                 <SafeImage
+                  unoptimized
                   src={business.logoUrl}
                   alt=""
                   width={40}
@@ -377,6 +381,7 @@ export function AdminBusinessesList({
               className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
             >
               <SafeImage
+                unoptimized
                 src={business.logoUrl}
                 alt=""
                 width={48}

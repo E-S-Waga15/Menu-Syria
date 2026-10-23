@@ -168,6 +168,7 @@ export function AdminControlCenter({
                     className="flex items-center gap-3 rounded-xl border border-border/60 p-2.5 transition-colors hover:border-primary/35"
                   >
                     <SafeImage
+                      unoptimized
                       src={row.business.logoUrl}
                       alt=""
                       width={40}

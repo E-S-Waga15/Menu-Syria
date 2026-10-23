@@ -152,7 +152,7 @@ export default async function AgentDetailsPage({
           {/* decorative: the name is the heading right beside it */}
           {agent.photoUrl ? (
             <Image
-              quality={90}
+              unoptimized
               src={agent.photoUrl}
               alt=""
               width={224}

@@ -120,6 +120,7 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
       <section className="rounded-2xl border border-border/60 bg-card p-5">
         <div className="flex flex-wrap items-center gap-4">
           <SafeImage
+            unoptimized
             src={agent.photoUrl}
             alt=""
             width={64}

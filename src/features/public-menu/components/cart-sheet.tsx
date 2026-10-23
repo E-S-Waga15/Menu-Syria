@@ -686,11 +686,11 @@ export function CartSheet({
                   >
                     {business.logoUrl ? (
                       <Image
+                        unoptimized
                         src={business.logoUrl}
                         alt=""
                         width={32}
                         height={32}
-                        quality={90}
                         className="size-8 shrink-0 rounded-xl border border-border/60 object-cover"
                       />
                     ) : (

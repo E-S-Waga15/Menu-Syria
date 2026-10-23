@@ -437,6 +437,7 @@ export function AgentOverviewView() {
                   className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
                 >
                   <SafeImage
+                    unoptimized
                     src={business.logoUrl}
                     alt=""
                     width={44}

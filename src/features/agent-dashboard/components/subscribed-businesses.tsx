@@ -131,6 +131,9 @@ export function SubscribedBusinesses({
               >
                 <div className="relative aspect-[16/9]">
                   <SafeImage
+                    // only the logo fallback is exempt — a real cover
+                    // photo still goes through the optimizer
+                    unoptimized={!business.coverImages[0]}
                     src={business.coverImages[0] ?? business.logoUrl}
                     alt=""
                     fill
@@ -139,6 +142,7 @@ export function SubscribedBusinesses({
                   />
                   {/* the logo overlaps the cover, the way the storefront shows it */}
                   <SafeImage
+                    unoptimized
                     src={business.logoUrl}
                     alt=""
                     width={48}
@@ -165,6 +169,7 @@ export function SubscribedBusinesses({
                 className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 transition-colors duration-200 hover:border-primary/35"
               >
                 <SafeImage
+                  unoptimized
                   src={business.logoUrl}
                   alt=""
                   width={56}

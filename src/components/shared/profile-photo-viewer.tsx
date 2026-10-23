@@ -79,7 +79,9 @@ export function ProfilePhotoViewer({
               src={src}
               alt={alt}
               fill
-              unoptimized={src.startsWith("data:")}
+              // a business logo or an agent photo — never recompressed, so
+              // what opens full-screen is exactly what was uploaded
+              unoptimized
               className="object-contain"
             />
           </div>

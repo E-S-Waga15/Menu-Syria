@@ -111,6 +111,7 @@ export function SubscriptionDetail({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-4">
         <SafeImage
+          unoptimized
           src={business.logoUrl}
           alt=""
           width={72}

@@ -390,7 +390,7 @@ export function AgentProfileView() {
               alt=""
               width={96}
               height={96}
-              unoptimized={agent.photoUrl.startsWith("data:")}
+              unoptimized
               className="size-20 rounded-2xl border border-border object-cover sm:size-24"
             />
           </button>

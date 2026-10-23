@@ -245,6 +245,7 @@ export function AdminAgentsList({
               className="group flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-4 transition-colors duration-200 hover:border-primary/35"
             >
               <SafeImage
+                unoptimized
                 src={agent.photoUrl}
                 alt=""
                 width={56}
@@ -280,6 +281,7 @@ export function AdminAgentsList({
               className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"
             >
               <SafeImage
+                unoptimized
                 src={agent.photoUrl}
                 alt=""
                 width={48}

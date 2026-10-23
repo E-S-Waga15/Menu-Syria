@@ -197,6 +197,7 @@ export function AdminBusinessDetail({
       <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
         <div className="flex flex-wrap items-center gap-4">
           <SafeImage
+            unoptimized
             src={business.logoUrl}
             alt=""
             width={72}
