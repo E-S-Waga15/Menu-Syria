@@ -9,6 +9,7 @@ import {
 } from "@/lib/mock/data";
 import type {
   CatalogOptionGroup,
+  FulfillmentMode,
   LocalizedText,
   MenuCategory,
   MenuItem,
@@ -217,4 +218,58 @@ export function trackItemCartAdd(itemId: string): void {
   void apiFetch(`/public/items/${itemId}/cart-add`, { method: "POST" }).catch(
     () => {},
   );
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp order logging — not yet a real backend endpoint, see update.md
+// ---------------------------------------------------------------------------
+
+/**
+ * What the "order via WhatsApp" button hands the backend to log — this path
+ * never touches `placeExternalOrder`/`POST .../orders` (that endpoint
+ * validates against real catalog item ids and rejects an offer bundle's
+ * synthetic `offer-` id), so an order placed this way was otherwise invisible
+ * to the backend entirely: the customer leaves for WhatsApp and nothing is
+ * ever recorded. This is purely a log of the attempt — fire-and-forget, never
+ * blocks or fails the WhatsApp hand-off itself.
+ */
+export interface WhatsAppOrderLogInput {
+  customerName: string;
+  customerPhone: string;
+  fulfillment: FulfillmentMode;
+  /** only meaningful when `fulfillment` is "delivery" */
+  address?: string;
+  /** only meaningful when `fulfillment` is "pickup" — "HH:mm" or "asap" */
+  pickupTime?: string;
+  /** only meaningful when `fulfillment` is "dineIn" */
+  tableNumber?: string;
+  branchId?: string;
+  notes?: string;
+  /** plain text per line — an offer bundle has no catalog item id to look
+   * up, so this logs the same name/price text the WhatsApp message itself
+   * already shows rather than requiring a real item id */
+  items: {
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    options?: { name: string; priceDelta: number }[];
+  }[];
+  total: number;
+  currency: "SYP" | "USD";
+}
+
+/** Logs an order placed via the plain WhatsApp hand-off — see
+ * `WhatsAppOrderLogInput` for why this needs its own endpoint. */
+export function recordWhatsAppOrder(
+  slug: string,
+  input: WhatsAppOrderLogInput,
+): void {
+  if (IS_MOCK) return;
+  void apiFetch(`/public/businesses/${slug}/whatsapp-orders`, {
+    method: "POST",
+    body: input,
+  }).catch(() => {
+    // the log entry is lost, not the customer's order — the WhatsApp
+    // message itself already carries everything the business needs
+  });
 }

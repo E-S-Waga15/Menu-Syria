@@ -48,7 +48,10 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuthStore } from "@/features/auth/store";
-import { placeExternalOrder } from "@/features/public-menu/services";
+import {
+  placeExternalOrder,
+  recordWhatsAppOrder,
+} from "@/features/public-menu/services";
 import {
   buildWhatsAppOrderUrl,
   describeClosedUntil,
@@ -378,8 +381,45 @@ export function CartSheet({
     });
   };
 
-  /** WhatsApp hand-off: the link opens, we just log the order on the way out */
-  const handleSend = () => recordOrder();
+  /** WhatsApp hand-off: the link opens, we just log the order on the way out
+   * — locally (for a signed-in customer's own order history) and to the
+   * backend (so the business/admin side has a record of it too, since this
+   * path never calls `placeExternalOrder`) */
+  const handleSend = () => {
+    recordOrder();
+    recordWhatsAppOrder(business.slug, {
+      customerName: customerName.trim(),
+      customerPhone: phone?.trim() ?? "",
+      fulfillment: fulfillmentValue,
+      address:
+        fulfillmentValue === "delivery" ? address?.trim() || undefined : undefined,
+      pickupTime: fulfillmentValue === "pickup" ? pickupTime : undefined,
+      tableNumber:
+        fulfillmentValue === "dineIn" ? tableNumber || undefined : undefined,
+      branchId: branchId ?? undefined,
+      notes: notes?.trim() || undefined,
+      items: lines.map((line) => {
+        const singleOption = line.options.find(
+          (o) => o.selectionType === "single",
+        );
+        const multiOptions = line.options.filter(
+          (o) => o.selectionType === "multiple",
+        );
+        return {
+          name: [line.item.name[lang], singleOption?.id]
+            .filter(Boolean)
+            .join(" — "),
+          quantity: line.quantity,
+          unitPrice: lineUnitPrice(line),
+          options: multiOptions.length
+            ? multiOptions.map((o) => ({ name: o.id, priceDelta: o.priceDelta }))
+            : undefined,
+        };
+      }),
+      total,
+      currency: lines[0]?.item.currency ?? "SYP",
+    });
+  };
 
   /**
    * platform route: submit the order to the backend, then hand it over via
@@ -603,6 +643,14 @@ export function CartSheet({
                 );
               })}
             </ul>
+
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="mx-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/10"
+            >
+              {copy.continueShopping}
+            </button>
 
             {/* notes come before the fulfillment switch: what you want changed
                 about the food is a thought you have while looking at the list,

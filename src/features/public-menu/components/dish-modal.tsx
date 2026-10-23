@@ -49,6 +49,7 @@ import type {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { lineUnitPrice, useCartStore, type CartOption } from "@/stores/cart-store";
+import { useUiStore } from "@/stores/ui-store";
 
 export function DishModal({
   item,
@@ -78,6 +79,7 @@ export function DishModal({
 }) {
   const { t, lang, dir } = useI18n();
   const addItem = useCartStore((s) => s.addItem);
+  const setCartSheetOpen = useUiStore((s) => s.setCartSheetOpen);
 
   const [selected, setSelected] = useState<CartOption[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -241,6 +243,7 @@ export function DishModal({
     trackItemCartAdd(item.id);
     addItem(businessId, item, selected, item.quantityLocked ? 1 : quantity);
     onClose();
+    setCartSheetOpen(true);
   };
 
   return (

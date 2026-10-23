@@ -361,9 +361,9 @@ export function MenuScreen({
                   onClick={() => setMapModalOpen(true)}
                   aria-label={t.restaurant.location}
                   title={t.restaurant.location}
-                  className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                  className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-2 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
                 >
-                  <MapPin className="size-3 sm:size-3.5" />
+                  <MapPin className="size-3.5 sm:size-4" />
                 </button>
                 {business.instagram && (
                   <a
@@ -372,9 +372,11 @@ export function MenuScreen({
                     rel="noopener noreferrer"
                     aria-label={t.restaurant.instagram}
                     title={t.restaurant.instagram}
-                    className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                    // the real Instagram gradient, not a flat tint — same
+                    // treatment the details page's own social block uses
+                    className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#f9ce34]/15 via-[#ee2a7b]/15 to-[#6228d7]/15 p-2 text-[#c13584] transition-colors duration-200 hover:from-[#f9ce34]/25 hover:via-[#ee2a7b]/25 hover:to-[#6228d7]/25 dark:text-[#ef7cae]"
                   >
-                    <InstagramIcon className="size-3 sm:size-3.5" />
+                    <InstagramIcon className="size-3.5 sm:size-4" />
                   </a>
                 )}
                 {business.facebook && (
@@ -384,9 +386,9 @@ export function MenuScreen({
                     rel="noopener noreferrer"
                     aria-label={t.restaurant.facebook}
                     title={t.restaurant.facebook}
-                    className="flex shrink-0 items-center justify-center rounded-full bg-[var(--menu-primary)]/10 p-1.5 text-[var(--menu-primary)] transition-colors duration-200 hover:bg-[var(--menu-primary)]/20"
+                    className="flex shrink-0 items-center justify-center rounded-full bg-[#1877F2]/10 p-2 text-[#1462c4] transition-colors duration-200 hover:bg-[#1877F2]/20 dark:text-[#6ba8f5]"
                   >
-                    <FacebookIcon className="size-3 sm:size-3.5" />
+                    <FacebookIcon className="size-3.5 sm:size-4" />
                   </a>
                 )}
                 <button

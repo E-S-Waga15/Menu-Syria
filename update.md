@@ -1,5 +1,38 @@
 # Backend changes — status
 
+## 🆕 New ask: a new endpoint to log an order placed via the plain WhatsApp button
+
+**Why:** the cart has two separate order buttons — "اطلب عبر المنصة" (goes through `POST /public/businesses/:slug/orders`, which both records the order and hands it back a WhatsApp link) and "اطلب عبر واتساب" (opens `wa.me` directly, built entirely client-side). The second path **never touches the backend at all** — the business/admin side has no record an order happened this way, only the WhatsApp message itself. We want this path logged too, without making it go through the real orders endpoint (which validates against real catalog item ids and would reject an offer bundle's synthetic id).
+
+### New — `POST /public/businesses/:slug/whatsapp-orders`
+
+Fire-and-forget from our side (never blocks or fails the WhatsApp hand-off; we swallow any error) — a log entry, not something the frontend waits on or needs a meaningful response from.
+
+```jsonc
+{
+  "customerName": "...",
+  "customerPhone": "...",
+  "fulfillment": "delivery",            // "delivery" | "pickup" | "dineIn"
+  "address": "...",                     // present only when fulfillment is "delivery"
+  "pickupTime": "14:30",                // present only when fulfillment is "pickup" — "HH:mm" or "asap"
+  "tableNumber": "12",                  // present only when fulfillment is "dineIn"
+  "branchId": "...",                    // optional — which branch the order is routed to
+  "notes": "...",                       // optional
+  "items": [
+    {
+      "name": "شاورما دجاج — كبير",     // plain text, not an item id — an offer bundle has no real id
+      "quantity": 2,
+      "unitPrice": 1500,
+      "options": [{ "name": "إضافة جبنة", "priceDelta": 200 }]   // optional, multiple-choice add-ons only
+    }
+  ],
+  "total": 3400,
+  "currency": "SYP"                      // "SYP" | "USD"
+}
+```
+
+No `itemId`s anywhere on purpose — this endpoint exists specifically for orders the real catalog-validated endpoint can't take (offer bundles) or that the customer chose to send via WhatsApp regardless. Please just store it as a record of "an order was sent to this business via WhatsApp, here's what was in it" — however that's most useful on the admin/business side (a list, a count, whatever fits the existing orders view).
+
 ## 🆕 New ask: an optional `logoUrl` on branches, plus confirm the `branches` upload folder
 
 **Why:** each branch (فرع) can now carry its own optional photo — shown next to its name wherever branches are picked (the business details page's branch list, the dashboard's branch cards, and the cart's "order from branch" picker). The business's own main address, shown as the first entry in these pickers, already uses the business's existing `logoUrl` — no change needed there. This is only about the separate `branches` table/entity.
