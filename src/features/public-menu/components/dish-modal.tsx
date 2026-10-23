@@ -17,6 +17,7 @@ import {
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -91,6 +92,7 @@ export function DishModal({
   const [api, setApi] = useState<CarouselApi>();
   const [slide, setSlide] = useState(0);
   const [showClosedModal, setShowClosedModal] = useState(false);
+  const [confirmCustomAmount, setConfirmCustomAmount] = useState(false);
 
   // Reset selections whenever a different dish opens (during render, no
   // effect). Nothing starts pre-picked, required or not — a customer must
@@ -168,10 +170,16 @@ export function DishModal({
       return;
     }
     setSelected((prev) => {
-      const withoutGroup = prev.filter(
+      // picking any predefined option cancels an open "type your own
+      // value" pick — the two are mutually exclusive ways to set the
+      // price, never combined
+      const withoutCustomAmount = prev.filter(
+        (o) => o.selectionType !== "customAmount",
+      );
+      const withoutGroup = withoutCustomAmount.filter(
         (o) => !group.options.some((go) => go.id === o.id),
       );
-      const wasSelected = prev.some((o) => o.id === option.id);
+      const wasSelected = withoutCustomAmount.some((o) => o.id === option.id);
       if (group.selectionType === "single") {
         // exclusive within this group — tapping the already-picked option
         // clears the group back to nothing, same as any other option
@@ -180,9 +188,13 @@ export function DishModal({
           : [...withoutGroup, { ...option, selectionType: "single" }];
       }
       return wasSelected
-        ? prev.filter((o) => o.id !== option.id)
-        : [...prev, { ...option, selectionType: "multiple" }];
+        ? withoutCustomAmount.filter((o) => o.id !== option.id)
+        : [...withoutCustomAmount, { ...option, selectionType: "multiple" }];
     });
+    // the field itself goes blank too, not just its selection — a stale
+    // typed number sitting in the box while another option is active would
+    // look like it's still in effect
+    setCustomAmountText({});
   };
 
   /** the group itself IS the pick for a "customAmount" group — there's no
@@ -193,13 +205,13 @@ export function DishModal({
   const setCustomAmount = (group: CatalogOptionGroup, text: string) => {
     setCustomAmountText((prev) => ({ ...prev, [group.id]: text }));
     const amount = Number(text);
-    setSelected((prev) => {
-      const withoutGroup = prev.filter((o) => o.id !== group.id);
-      if (!text.trim() || !Number.isFinite(amount) || amount <= 0) {
-        return withoutGroup;
-      }
+    const isValid = text.trim() !== "" && Number.isFinite(amount) && amount > 0;
+    setSelected(() => {
+      if (!isValid) return [];
+      // a typed value is the whole price, not one more thing added to
+      // whatever else was picked — it replaces every other selection
+      // outright rather than stacking alongside it
       return [
-        ...withoutGroup,
         {
           id: group.id,
           priceDelta: amount - item.price,
@@ -217,6 +229,13 @@ export function DishModal({
         : item.badge === "chefSpecial"
           ? copy.chefSpecial
           : null;
+
+  const performAdd = () => {
+    trackItemCartAdd(item.id);
+    addItem(businessId, item, selected, item.quantityLocked ? 1 : quantity);
+    onClose();
+    setCartSheetOpen(true);
+  };
 
   const addToCart = () => {
     if (!business.isOpen) {
@@ -240,10 +259,17 @@ export function DishModal({
       );
       return;
     }
-    trackItemCartAdd(item.id);
-    addItem(businessId, item, selected, item.quantityLocked ? 1 : quantity);
-    onClose();
-    setCartSheetOpen(true);
+    // a typed value is easy to mistype and has no predefined price to sanity
+    // check it against — one more tap to confirm exactly what's about to be
+    // ordered, naming the amount back to the customer before it's final
+    const hasCustomAmount = selected.some(
+      (o) => o.selectionType === "customAmount",
+    );
+    if (hasCustomAmount) {
+      setConfirmCustomAmount(true);
+      return;
+    }
+    performAdd();
   };
 
   return (
@@ -528,6 +554,40 @@ export function DishModal({
           </a>
           <AlertDialogAction onClick={() => setShowClosedModal(false)}>
             {t.common.close}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog
+      open={confirmCustomAmount}
+      onOpenChange={setConfirmCustomAmount}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t.common.confirmCustomAmountTitle}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {fmt(t.common.confirmCustomAmountBody, {
+              name: item.name[lang],
+              amount: formatPrice(
+                unitPrice,
+                item.currency ?? "SYP",
+                lang,
+              ),
+            })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setConfirmCustomAmount(false)}>
+            {t.common.cancel}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setConfirmCustomAmount(false);
+              performAdd();
+            }}
+          >
+            {t.common.confirm}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

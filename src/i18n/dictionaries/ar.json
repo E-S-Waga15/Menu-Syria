@@ -33,6 +33,8 @@
     "required": "مطلوب",
     "orPasteImage": "اسحب الصورة وأفلتها هنا أو الصقها (Ctrl+V)",
     "selectRequiredOption": "الرجاء اختيار \"{group}\" قبل الإضافة للسلة",
+    "confirmCustomAmountTitle": "تأكيد الطلب",
+    "confirmCustomAmountBody": "هل أنت متأكد أنك تريد طلب {name} بقيمة {amount}؟",
     "comingSoon": "قريباً",
     "notFoundTitle": "الصفحة غير موجودة",
     "notFoundBody": "يبدو أن هذا الطبق ليس على قائمتنا. عد إلى الصفحة الرئيسية.",

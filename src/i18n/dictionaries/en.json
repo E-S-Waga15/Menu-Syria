@@ -33,6 +33,8 @@
     "required": "Required",
     "orPasteImage": "Drag and drop an image here, or paste it (Ctrl+V)",
     "selectRequiredOption": "Please pick \"{group}\" before adding to cart",
+    "confirmCustomAmountTitle": "Confirm order",
+    "confirmCustomAmountBody": "Order {name} for {amount}?",
     "comingSoon": "Coming soon",
     "notFoundTitle": "Page not found",
     "notFoundBody": "Looks like this dish isn't on our menu. Head back home.",
