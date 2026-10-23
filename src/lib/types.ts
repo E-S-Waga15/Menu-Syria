@@ -116,6 +116,11 @@ export interface Business {
   id: string;
   slug: string;
   name: LocalizedText;
+  /** overrides just the label shown for the "main" entry in a branch
+   * picker (the business details page, the cart's branch picker, the
+   * dashboard's own branches page) — the business's real `name` is
+   * untouched everywhere else. Absent/empty falls back to `name`. */
+  mainBranchName?: string;
   description: LocalizedText;
   logoUrl: string;
   coverImages: string[];

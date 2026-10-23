@@ -385,7 +385,7 @@ export function BusinessDetailsGrid({
                 )}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">
-                    {restaurant.name[lang]}
+                    {restaurant.mainBranchName || restaurant.name[lang]}
                   </span>
                   {mainAreaLabel && (
                     <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">

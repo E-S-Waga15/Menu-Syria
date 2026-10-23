@@ -16,13 +16,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { SafeImage } from "@/components/shared/safe-image";
 import { BranchDialog } from "@/features/restaurant-dashboard/components/branch-dialog";
 import { useBranchMutations } from "@/features/restaurant-dashboard/hooks/use-branches";
+import { useBusinessProfileMutations } from "@/features/restaurant-dashboard/hooks/use-business-profile";
 import { useBusinessId } from "@/features/restaurant-dashboard/hooks/use-my-business";
-import { getMyBranches } from "@/features/restaurant-dashboard/services";
+import { getMyBranches, getMyRestaurant } from "@/features/restaurant-dashboard/services";
 import { getRegions } from "@/features/marketing/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -46,11 +56,18 @@ export function BranchesManager() {
     queryKey: queryKeys.regions,
     queryFn: getRegions,
   });
+  const { data: restaurant } = useQuery({
+    queryKey: queryKeys.me.business,
+    queryFn: getMyRestaurant,
+  });
 
   const mutations = useBranchMutations(businessId);
+  const profileMutations = useBusinessProfileMutations(businessId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
   const [deleting, setDeleting] = useState<Branch | null>(null);
+  const [renamingMain, setRenamingMain] = useState(false);
+  const [mainNameDraft, setMainNameDraft] = useState("");
 
   const districtName = (districtId: string) =>
     regions?.find((r) => r.id === districtId)?.name[lang] ?? "";
@@ -63,6 +80,20 @@ export function BranchesManager() {
   const openEdit = (branch: Branch) => {
     setEditing(branch);
     setDialogOpen(true);
+  };
+
+  const openRenameMain = () => {
+    setMainNameDraft(restaurant?.mainBranchName ?? "");
+    setRenamingMain(true);
+  };
+
+  const saveMainName = async () => {
+    try {
+      await profileMutations.save({ mainBranchName: mainNameDraft.trim() });
+      setRenamingMain(false);
+    } catch {
+      // onError already toasted — keep the dialog open to fix and retry
+    }
   };
 
   const save = async (values: {
@@ -130,6 +161,42 @@ export function BranchesManager() {
           {t.dashboard.addBranch}
         </Button>
       </div>
+
+      {restaurant && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 sm:flex-row sm:items-center">
+          {restaurant.logoUrl ? (
+            <SafeImage
+              unoptimized
+              src={restaurant.logoUrl}
+              alt=""
+              width={40}
+              height={40}
+              className="size-10 shrink-0 rounded-xl border border-border/60 object-cover"
+            />
+          ) : (
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-berry-soft text-berry-soft-foreground">
+              <Building2 className="size-5" />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-heading text-base font-bold">
+              {restaurant.mainBranchName || restaurant.name[lang]}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {t.dashboard.mainBranchNameHint}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={openRenameMain}
+          >
+            <Pencil className="size-3.5" />
+            {t.common.edit}
+          </Button>
+        </div>
+      )}
 
       {!branches ? (
         <LoadingSpinner />
@@ -208,6 +275,37 @@ export function BranchesManager() {
         onSave={save}
         isSaving={mutations.isSaving}
       />
+
+      <Dialog open={renamingMain} onOpenChange={setRenamingMain}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t.dashboard.editMainBranchName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5 px-4 pb-2">
+            <Label htmlFor="main-branch-name">{t.dashboard.branchName}</Label>
+            <Input
+              id="main-branch-name"
+              autoFocus
+              placeholder={restaurant?.name[lang]}
+              value={mainNameDraft}
+              onChange={(e) => setMainNameDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void saveMainName()}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t.dashboard.mainBranchNameHint}
+            </p>
+          </div>
+          <DialogFooter className="px-4 pb-4">
+            <Button
+              className="w-full shadow-glow"
+              loading={profileMutations.isPending}
+              onClick={saveMainName}
+            >
+              {t.common.save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={deleting !== null}

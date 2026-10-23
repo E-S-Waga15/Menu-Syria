@@ -1,5 +1,32 @@
 # Backend changes — status
 
+## 🆕 New ask: an optional `mainBranchName` on the business, to rename the "main" entry in a branch picker without renaming the business
+
+**Why:** the "main branch" shown in every branch picker (business details page, cart, dashboard branches page) isn't a row in the `branches` table — it's just the business itself, labeled with the business's own `name`. An owner with branches wants to relabel that one entry (e.g. a restaurant named "الأمير" whose actual main location is really its "داريا" branch) without renaming the business everywhere else — the header, the menu title, SEO, everything else must keep showing the real business name. A new field solves this cleanly: a display-only override, read only by the branch-picker UI, that the real name is never derived from or confused with.
+
+### Read — `GET /me/restaurant`, `GET /me/store`, and the public `GET /restaurants/:slug`, `GET /stores/:slug`, the `restaurant`/`store` object embedded in `GET /menu/:slug`
+
+```jsonc
+{
+  "id": "...",
+  "name": "الأمير",
+  // ...every other field already there...
+  "mainBranchName": "فرع داريا"   // new, optional — absent/null means no override, branch pickers just fall back to `name`
+}
+```
+
+### Write — same endpoint the rest of the business profile already saves through: `PATCH /businesses/:id`
+
+```jsonc
+// PATCH /businesses/:id
+{ "mainBranchName": "فرع داريا" }
+
+// send "" to clear it back to following `name`
+{ "mainBranchName": "" }
+```
+
+Plain top-level column, same pattern as every other business-profile field (address, phone, etc.) — not nested, no new endpoint needed, this rides the existing business-update route.
+
 ## 🆕 New ask: a new endpoint to log an order placed via the plain WhatsApp button
 
 **Why:** the cart has two separate order buttons — "اطلب عبر المنصة" (goes through `POST /public/businesses/:slug/orders`, which both records the order and hands it back a WhatsApp link) and "اطلب عبر واتساب" (opens `wa.me` directly, built entirely client-side). The second path **never touches the backend at all** — the business/admin side has no record an order happened this way, only the WhatsApp message itself. We want this path logged too, without making it go through the real orders endpoint (which validates against real catalog item ids and would reject an offer bundle's synthetic id).

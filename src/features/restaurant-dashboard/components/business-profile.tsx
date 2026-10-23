@@ -1462,8 +1462,13 @@ function OpeningHoursSection({
         setEditing(true);
       }}
       onSave={async () => {
+        // closes <= opens is NOT invalid on its own — that's an overnight
+        // range (e.g. opens 08:00, closes 01:00 the next day), which
+        // `getBusinessOpenStatus` already understands and wraps correctly.
+        // The only genuinely meaningless input is opens === closes: zero
+        // duration, nothing to wrap.
         const invalidIndex = hours.findIndex(
-          (d) => d && timeToMinutes(d.closes) <= timeToMinutes(d.opens),
+          (d) => d && timeToMinutes(d.closes) === timeToMinutes(d.opens),
         );
         if (invalidIndex !== -1) {
           setRangeError(invalidIndex);

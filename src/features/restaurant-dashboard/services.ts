@@ -497,6 +497,9 @@ export async function updateTable(
 
 export interface BusinessProfileInput {
   name?: string;
+  /** overrides just the "main" entry's label in a branch picker — "" clears
+   * it back to following `name`. See update.md. */
+  mainBranchName?: string;
   /** the storefront link's unique identifier (/menu-syria.app/{slug}) — owner-
    * editable; the backend converts spaces to "_", rejects dots, and 409s if
    * another business already holds it. See update.md. */
