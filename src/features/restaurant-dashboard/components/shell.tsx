@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LifeBuoy,
+  MessageCircle,
   QrCode,
   Tag,
   Settings,
@@ -76,6 +77,11 @@ export function RestaurantDashboardShell({
     { href: `${base}/offers`, label: t.offers.title, icon: Tag },
     // Orders and dining-table management are hidden for now — not part of
     // this release's plan yet, kept in the codebase to turn back on later
+    {
+      href: `${base}/whatsapp-orders`,
+      label: t.dashboard.whatsappOrders,
+      icon: MessageCircle,
+    },
     { href: `${base}/branches`, label: t.dashboard.branches, icon: Building2 },
     {
       href: `${base}/analytics`,

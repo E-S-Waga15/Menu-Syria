@@ -26,6 +26,7 @@ export const queryKeys = {
     agentProfile: ["me", "agent-profile"] as const,
     menu: ["me", "menu"] as const,
     orders: ["me", "orders"] as const,
+    whatsappOrders: ["me", "whatsapp-orders"] as const,
     tables: ["me", "tables"] as const,
     waiters: ["me", "waiters"] as const,
     branches: ["me", "branches"] as const,

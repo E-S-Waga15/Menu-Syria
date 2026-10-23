@@ -40,6 +40,7 @@ import type {
   Restaurant,
   RestaurantAnalytics,
   Waiter,
+  WhatsAppOrder,
 } from "@/lib/types";
 
 type Raw = Record<string, unknown>;
@@ -164,6 +165,16 @@ export async function getMyOrders(): Promise<Order[]> {
   if (IS_MOCK) return mockDelay(orders);
   const raw = await apiFetch<Raw[]>("/me/orders");
   return raw.map(normalizeOrder);
+}
+
+/** Orders placed through the plain "order via WhatsApp" button — logged by
+ * `recordWhatsAppOrder` (public-menu/services.ts), read back here for the
+ * dashboard's own WhatsApp-orders page. Not yet a real backend endpoint,
+ * see update.md. */
+export async function getMyWhatsAppOrders(): Promise<WhatsAppOrder[]> {
+  if (IS_MOCK) return mockDelay([]);
+  const raw = await apiFetch<Raw[]>("/me/whatsapp-orders");
+  return raw as unknown as WhatsAppOrder[];
 }
 
 export async function getMyTables(): Promise<DiningTable[]> {

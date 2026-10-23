@@ -200,6 +200,11 @@ export interface Business {
    * fallbacks below. `null`/absent means the business never picked one.
    */
   subType?: { id: string; name: string } | null;
+  /** how many orders this business has received through the plain
+   * "order via WhatsApp" button (never the real order-placement endpoint,
+   * so this is the only count the admin side has for those) — admin-only,
+   * absent on every owner-facing read. */
+  whatsappOrdersCount?: number;
 }
 
 export interface DayHours {
@@ -429,6 +434,39 @@ export interface Order {
   notes?: string;
   total: number;
   status: OrderStatus;
+  createdAt: string;
+}
+
+/**
+ * An order placed through the plain "order via WhatsApp" button rather than
+ * the real order-placement endpoint — logged separately (see update.md)
+ * since that path never touches a real catalog item id (an offer bundle has
+ * none), so these items are plain text, not `OrderLine`s with an `itemId`.
+ */
+export interface WhatsAppOrderItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  options?: { name: string; priceDelta: number }[];
+}
+
+export interface WhatsAppOrder {
+  id: string;
+  businessId: string;
+  customerName: string;
+  customerPhone: string;
+  fulfillment: FulfillmentMode;
+  /** only meaningful when `fulfillment` is "delivery" */
+  address?: string;
+  /** only meaningful when `fulfillment` is "pickup" — "HH:mm" or "asap" */
+  pickupTime?: string;
+  /** only meaningful when `fulfillment` is "dineIn" */
+  tableNumber?: string;
+  branchId?: string;
+  notes?: string;
+  items: WhatsAppOrderItem[];
+  total: number;
+  currency: "SYP" | "USD";
   createdAt: string;
 }
 

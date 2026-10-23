@@ -31,7 +31,50 @@ Fire-and-forget from our side (never blocks or fails the WhatsApp hand-off; we s
 }
 ```
 
-No `itemId`s anywhere on purpose — this endpoint exists specifically for orders the real catalog-validated endpoint can't take (offer bundles) or that the customer chose to send via WhatsApp regardless. Please just store it as a record of "an order was sent to this business via WhatsApp, here's what was in it" — however that's most useful on the admin/business side (a list, a count, whatever fits the existing orders view).
+No `itemId`s anywhere on purpose — this endpoint exists specifically for orders the real catalog-validated endpoint can't take (offer bundles) or that the customer chose to send via WhatsApp regardless. Please just store it as a record of "an order was sent to this business via WhatsApp, here's what was in it."
+
+**Now that the write side above is designed, we also need to read it back** — we built two surfaces on our side waiting on these two reads:
+
+### New — `GET /me/whatsapp-orders` (owner-authenticated, scoped to the signed-in business)
+
+Returns every WhatsApp-order log entry for that business, newest first (or any order — we sort client-side too). We display these on a new dedicated dashboard page ("طلبات واتساب"), one card per order.
+
+```jsonc
+[
+  {
+    "id": "...",
+    "businessId": "...",
+    "customerName": "...",
+    "customerPhone": "...",
+    "fulfillment": "delivery",
+    "address": "...",
+    "pickupTime": "14:30",
+    "tableNumber": "12",
+    "branchId": "...",
+    "notes": "...",
+    "items": [
+      { "name": "شاورما دجاج — كبير", "quantity": 2, "unitPrice": 1500, "options": [{ "name": "إضافة جبنة", "priceDelta": 200 }] }
+    ],
+    "total": 3400,
+    "currency": "SYP",
+    "createdAt": "2026-10-23T10:00:00.000Z"
+  }
+]
+```
+
+Same shape as the write body above, plus `id`/`businessId`/`createdAt`. No pagination needed on our side yet — a plain array is fine for now, same as `GET /me/orders` today.
+
+### New — a `whatsappOrdersCount` field on `GET /admin/restaurants` and `GET /admin/stores` (the list endpoints the admin console's business-detail page already reads from)
+
+```jsonc
+{
+  "id": "...",
+  // ...every other field already there...
+  "whatsappOrdersCount": 12   // total count of logged WhatsApp orders for this business
+}
+```
+
+We show this as a single stat ("طلبات واتساب — 12 طلب عبر واتساب حتى الآن") on the admin console's own business-detail page — admin only ever needs the count here, not the full order list (that's the owner-facing page above). If a count is cheaper for you to compute than joining the full list on every admin restaurants/stores fetch, a cached/denormalized counter is completely fine — we only ever read the number.
 
 ## 🆕 New ask: an optional `logoUrl` on branches, plus confirm the `branches` upload folder
 

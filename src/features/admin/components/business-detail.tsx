@@ -10,6 +10,7 @@ import {
   CalendarDays,
   ExternalLink,
   MapPin,
+  MessageCircle,
   Phone,
   Power,
   RefreshCw,
@@ -323,6 +324,21 @@ export function AdminBusinessDetail({
             {t.admin.renewNotAllowedHint}
           </p>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
+        <h2 className="flex items-center gap-2 font-heading text-lg font-bold">
+          <MessageCircle className="size-4.5 text-muted-foreground" />
+          {t.dashboard.whatsappOrders}
+        </h2>
+        <p className="mt-3 flex items-baseline gap-2">
+          <span className="text-3xl font-bold text-primary">
+            {(business.whatsappOrdersCount ?? 0).toLocaleString("en-US")}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {t.admin.whatsappOrdersCountLabel}
+          </span>
+        </p>
       </section>
 
       <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">

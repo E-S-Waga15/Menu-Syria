@@ -14,6 +14,7 @@ import type {
   MenuCategory,
   MenuItem,
   Restaurant,
+  WhatsAppOrderItem,
 } from "@/lib/types";
 
 export interface PublicMenu {
@@ -248,12 +249,7 @@ export interface WhatsAppOrderLogInput {
   /** plain text per line — an offer bundle has no catalog item id to look
    * up, so this logs the same name/price text the WhatsApp message itself
    * already shows rather than requiring a real item id */
-  items: {
-    name: string;
-    quantity: number;
-    unitPrice: number;
-    options?: { name: string; priceDelta: number }[];
-  }[];
+  items: WhatsAppOrderItem[];
   total: number;
   currency: "SYP" | "USD";
 }
