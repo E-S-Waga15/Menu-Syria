@@ -1546,9 +1546,15 @@ function OpeningHoursSection({
                 <span className="text-sm font-semibold">{dayName}</span>
               </div>
               {day ? (
-                <div className="flex flex-wrap items-center gap-2" dir="ltr">
+                // no forced dir on the wrapper — that flipped the flex order
+                // in this RTL app, so "opens" (من) rendered second/leftmost
+                // and "closes" (إلى) first/rightmost, the reverse of reading
+                // order. Each input keeps its own dir="ltr" for the digits,
+                // same as the quick-setup row above.
+                <div className="flex flex-wrap items-center gap-2">
                   <Input
                     type="time"
+                    dir="ltr"
                     aria-label={t.dashboard.openingHoursOpensLabel}
                     className="h-9 w-28"
                     disabled={!editing}
@@ -1558,6 +1564,7 @@ function OpeningHoursSection({
                   <span className="text-muted-foreground">—</span>
                   <Input
                     type="time"
+                    dir="ltr"
                     aria-label={t.dashboard.openingHoursClosesLabel}
                     className="h-9 w-28"
                     disabled={!editing}
