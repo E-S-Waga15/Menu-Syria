@@ -152,9 +152,23 @@ export function AgentShareActions({
 
   const fileName = qrFileName([t.common.agentWord, agentName, "qr"]);
 
+  /** the Download button's own action — the plain QR code only, same as the
+   * restaurant dashboard's own QR download (`qr-panel.tsx`'s `downloadPng`):
+   * reads the already-rendered `<QRCodeCanvas>` straight off the DOM rather
+   * than composing a card with the caption/link baked in underneath it */
+  const downloadQr = () => {
+    const canvas = qrWrapRef.current?.querySelector("canvas");
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = fileName;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
   // a remote photo without CORS headers taints the canvas: it still draws
   // and displays fine, it just can't be read back for export — so the
-  // download/share actions fail closed with a toast instead of throwing
+  // share action (which still composes the fuller card) fails closed with
+  // a toast instead of throwing
   const downloadCard = async () => {
     const canvas = await composeCard();
     if (!canvas) return;
@@ -315,7 +329,7 @@ export function AgentShareActions({
             <Button
               variant="outline"
               className="h-10 flex-1 border-[1.5px]"
-              onClick={downloadCard}
+              onClick={downloadQr}
             >
               <Download className="size-4" />
               {t.agentPage.qrDownload}
