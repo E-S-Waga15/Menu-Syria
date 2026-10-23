@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Armchair,
+  Calendar,
   ChevronDown,
   Clock,
   MessageCircle,
@@ -62,11 +63,11 @@ function OrderCard({ order }: { order: WhatsAppOrder }) {
   // means no Arabic-Indic digits and no ambiguity, not a localized string
   const createdAt = new Date(order.createdAt);
   const dateLabel = createdAt.toLocaleDateString("en-GB");
-  const timeLabel = createdAt.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const hour24 = createdAt.getHours();
+  const minute = createdAt.getMinutes();
+  const period = hour24 >= 12 ? t.restaurant.pmLabel : t.restaurant.amLabel;
+  const hour12 = hour24 % 12 || 12;
+  const timeLabel = `${hour12}:${minute.toString().padStart(2, "0")}`;
 
   return (
     <li className="rounded-2xl border border-border/60 bg-card p-4">
@@ -95,13 +96,17 @@ function OrderCard({ order }: { order: WhatsAppOrder }) {
         </div>
       </div>
 
-      <p
-        className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"
-        dir="ltr"
-      >
-        <Clock className="size-3.5 shrink-0" />
-        {dateLabel} - {timeLabel}
-      </p>
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Calendar className="size-3.5 shrink-0" />
+          <span dir="ltr">{dateLabel}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Clock className="size-3.5 shrink-0" />
+          <span dir="ltr">{timeLabel}</span>
+          {period}
+        </span>
+      </div>
 
       <div className="mt-2 flex items-start gap-1.5 text-xs font-semibold text-muted-foreground">
         <FulfillmentIcon className="mt-0.5 size-3.5 shrink-0" />
