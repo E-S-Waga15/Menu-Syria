@@ -26,6 +26,7 @@ Fire-and-forget from our side (never blocks or fails the WhatsApp hand-off; we s
       "options": [{ "name": "إضافة جبنة", "priceDelta": 200 }]   // optional, multiple-choice add-ons only
     }
   ],
+  "deliveryFee": 1000,                   // optional — only sent for a delivery order with a non-zero fee, already folded into total
   "total": 3400,
   "currency": "SYP"                      // "SYP" | "USD"
 }
@@ -55,6 +56,7 @@ Returns every WhatsApp-order log entry for that business, newest first (or any o
     "items": [
       { "name": "شاورما دجاج — كبير", "quantity": 2, "unitPrice": 1500, "options": [{ "name": "إضافة جبنة", "priceDelta": 200 }] }
     ],
+    "deliveryFee": 1000,
     "total": 3400,
     "currency": "SYP",
     "createdAt": "2026-10-23T10:00:00.000Z"

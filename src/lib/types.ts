@@ -465,6 +465,10 @@ export interface WhatsAppOrder {
   branchId?: string;
   notes?: string;
   items: WhatsAppOrderItem[];
+  /** only present for a delivery order with a non-zero fee — already
+   * folded into `total`, kept separate too so it can be shown as its own
+   * line before the total */
+  deliveryFee?: number;
   total: number;
   currency: "SYP" | "USD";
   createdAt: string;

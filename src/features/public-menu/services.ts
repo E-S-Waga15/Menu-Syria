@@ -250,6 +250,9 @@ export interface WhatsAppOrderLogInput {
    * up, so this logs the same name/price text the WhatsApp message itself
    * already shows rather than requiring a real item id */
   items: WhatsAppOrderItem[];
+  /** only sent for a delivery order with a non-zero fee — already folded
+   * into `total` */
+  deliveryFee?: number;
   total: number;
   currency: "SYP" | "USD";
 }

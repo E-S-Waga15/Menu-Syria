@@ -416,6 +416,7 @@ export function CartSheet({
             : undefined,
         };
       }),
+      deliveryFee: deliveryFee > 0 ? deliveryFee : undefined,
       total,
       currency: lines[0]?.item.currency ?? "SYP",
     });

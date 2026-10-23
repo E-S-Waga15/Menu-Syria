@@ -639,6 +639,7 @@
     "noWhatsappOrdersBody": "Details of any order a customer sends via the \"order via WhatsApp\" button on your menu page will show up here",
     "asapPickup": "As soon as possible",
     "orderTotal": "Total",
+    "showMoreItems": "Show more",
     "branches": "Branches",
     "branchesHint": "Manage your business's branches",
     "addBranch": "Add branch",
