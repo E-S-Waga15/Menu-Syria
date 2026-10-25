@@ -312,7 +312,7 @@ export function BusinessShareActions({
                   )}
                 </button>
               </div>
-              {/* break-all over truncate: a menu-syria.com/slug link is one
+              {/* break-all over truncate: a menusyria.app/slug link is one
                   unbroken token with nowhere to wrap, so it either breaks
                   mid-word or it overflows — wrapping onto a second line beats
                   both an ellipsis that hides the link and a line that spills

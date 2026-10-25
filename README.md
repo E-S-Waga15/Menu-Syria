@@ -9,7 +9,7 @@
    `Next.js` و**Build Command** على `npm run build`.
 2. أضف متغيرات البيئة من [.env.example](./.env.example) إلى بيئتي Production
    وPreview. يجب أن يطابق `NEXT_PUBLIC_SITE_URL` النطاق الأساسي الفعلي للموقع،
-   مثل `https://menusyria.com`.
+   وهو `https://menusyria.app`.
 3. بعد النشر، تحقّق من:
    - `/ar` و`/en`
    - `/sitemap.xml` و`/robots.txt`

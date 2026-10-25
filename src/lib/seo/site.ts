@@ -2,7 +2,7 @@ import type { Locale } from "@/i18n/config";
 
 /** Canonical production origin — override per environment. */
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://menusyria.com";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://menusyria.app";
 
 /**
  * hreflang + canonical for a localized path.
