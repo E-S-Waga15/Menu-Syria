@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.com.menusyria.menuSyria",
+        "appIDs": ["TEAM_ID.com.menusyria.menuSyria"],
+        "paths": ["*"],
+        "components": [{ "/": "/*" }]
+      }
+    ]
+  }
+}

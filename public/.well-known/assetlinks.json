@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.menusyria.menu_syria",
+      "sha256_cert_fingerprints": [
+        "16:15:3A:8B:87:D1:D2:CA:59:BF:E6:6F:E2:92:27:07:4C:9D:A5:56:18:BF:A4:5F:04:50:ED:E4:D9:B0:BC:31"
+      ]
+    }
+  }
+]
