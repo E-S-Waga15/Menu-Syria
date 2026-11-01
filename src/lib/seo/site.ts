@@ -18,3 +18,16 @@ export function alternatesFor(lang: Locale, path: string) {
     },
   };
 }
+
+/**
+ * A business's own uploaded logo, routed through Next's image optimizer
+ * before it's used as an `og:image` — the original upload can be several
+ * megabytes (nothing compresses it on the way in), and link-preview
+ * crawlers (WhatsApp's especially) are known to silently drop an og:image
+ * past a few hundred KB rather than showing it. This is still the real
+ * photo, just resized/recompressed the same way `next/image` already does
+ * everywhere else on the site — not a generated placeholder.
+ */
+export function ogImageFor(logoUrl: string): string {
+  return `${SITE_URL}/_next/image?url=${encodeURIComponent(logoUrl)}&w=1200&q=75`;
+}

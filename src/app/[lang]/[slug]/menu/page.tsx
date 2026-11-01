@@ -8,7 +8,7 @@ import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { fmt } from "@/i18n/fmt";
 import { JsonLd, restaurantJsonLd, storeJsonLd } from "@/lib/seo/json-ld";
-import { alternatesFor, SITE_URL } from "@/lib/seo/site";
+import { alternatesFor, ogImageFor, SITE_URL } from "@/lib/seo/site";
 import type { Business, LocalizedText } from "@/lib/types";
 
 /** The business's real structured type (e.g. "مطعم إيطالي") when the owner
@@ -71,12 +71,12 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      // a business with no logo still gets a share-card image — the
-      // platform's own brand mark — rather than no image at all, which is
-      // what most crawlers (WhatsApp included) fall back to showing as a
-      // blank/text-only preview
+      // the real logo, resized — an unprocessed upload can be several
+      // megabytes, which crawlers (WhatsApp's especially) often just drop
+      // instead of showing. A business with no logo gets the platform's own
+      // brand mark instead of no image at all.
       images: business.logoUrl
-        ? [business.logoUrl]
+        ? [{ url: ogImageFor(business.logoUrl) }]
         : [
             {
               url: `${SITE_URL}/icon.png`,
