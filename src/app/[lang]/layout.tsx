@@ -72,11 +72,14 @@ export async function generateMetadata({
       title: t.seo.homeTitle,
       description: t.seo.homeDescription,
       url: `${SITE_URL}/${lang}`,
+      // the actual brand mark, not a generated text card — a logo reads
+      // instantly in a share preview's small thumbnail; a card with text
+      // that size doesn't
       images: [
         {
-          url: `${SITE_URL}/${lang}/opengraph-image`,
-          width: 1200,
-          height: 630,
+          url: `${SITE_URL}/icon.png`,
+          width: 512,
+          height: 512,
           alt: t.seo.homeTitle,
         },
       ],
