@@ -74,7 +74,19 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      images: business.logoUrl ? [business.logoUrl] : undefined,
+      // a business with no logo still gets a share-card image — the same
+      // generic branded card the home page uses — rather than no image at
+      // all, which is what most crawlers (WhatsApp included) fall back to
+      // showing as a blank/text-only preview
+      images: business.logoUrl
+        ? [business.logoUrl]
+        : [
+            {
+              url: `${SITE_URL}/${lang}/opengraph-image`,
+              width: 1200,
+              height: 630,
+            },
+          ],
     },
   };
 }

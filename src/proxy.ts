@@ -49,6 +49,15 @@ const RESERVED_TOP_LEVEL_SEGMENTS = new Set([
   "terms",
   "profile",
   "stores",
+  // Next's file-convention metadata routes with no extension of their own
+  // (sitemap.xml/robots.txt/manifest.webmanifest already have a dot, so the
+  // matcher below skips them before this list ever runs) — without this,
+  // `/ar/opengraph-image` reads as a storefront slug and 308-redirects to
+  // `/opengraph-image` before resolving, which crawlers like WhatsApp's link
+  // previewer won't follow for an image URL, so the share card's image
+  // silently fails while the text preview (a normal page request) works fine
+  "opengraph-image",
+  "twitter-image",
 ]);
 
 function isStorefrontPath(localelessPath: string): boolean {
