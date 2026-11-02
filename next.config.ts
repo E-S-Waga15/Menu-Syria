@@ -52,6 +52,19 @@ const nextConfig: NextConfig = {
      */
     qualities: [75, 90],
 
+    /**
+     * Vercel's free Image Optimization quota is billed per unique
+     * (source image × width × quality) combination, not per image — so
+     * Next's default 8 deviceSizes × 8 imageSizes matrix multiplies every
+     * photo on the site into dozens of billable variants. Trimmed down to
+     * the widths the `sizes` prop on <Image>/<SafeImage> actually asks for
+     * across the app (viewport-relative cards/heroes vs. fixed-px
+     * avatars/thumbnails) — Next still serves the closest size up, it just
+     * has far fewer distinct ones to generate.
+     */
+    deviceSizes: [640, 828, 1080, 1920],
+    imageSizes: [64, 96, 128, 256, 384],
+
     /** a day of edge caching for optimised derivatives */
     minimumCacheTTL: 60 * 60 * 24,
   },
