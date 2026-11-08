@@ -342,6 +342,7 @@
     "metaSpecializesIn": "Specializes in {type}",
     "metaDescriptionPrefix": "Description: {description}",
     "browseMenu": "View menu",
+    "browseProducts": "View products",
     "contactInfo": "Contact info",
     "favorite": "Favorite",
     "reviewsTitle": "Ratings & reviews",

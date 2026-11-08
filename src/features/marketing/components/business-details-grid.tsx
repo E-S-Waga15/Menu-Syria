@@ -11,6 +11,7 @@ import {
   ExternalLink,
   MapPin,
   Phone,
+  ShoppingBag,
   Star,
   Tag,
   Truck,
@@ -459,22 +460,25 @@ export function BusinessDetailsGrid({
           </Panel>
         )}
 
-        {showMenuCta && (
-          <Link
-            href={menuHref ?? `/${restaurant.slug}/menu`}
-            className="group relative flex w-full transform-gpu items-center justify-center gap-3 overflow-hidden rounded-2xl px-8 py-5 text-lg font-bold text-white transition-[scale] duration-300 ease-smooth hover:scale-[1.01]"
-            style={{
-              background: `linear-gradient(135deg, ${restaurant.theme.primaryColor}, color-mix(in oklch, ${restaurant.theme.primaryColor}, ${restaurant.theme.secondaryColor} 35%))`,
-            }}
-          >
-            <span
-              aria-hidden
-              className="absolute inset-y-0 -inset-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-smooth group-hover:translate-x-full"
-            />
-            <UtensilsCrossed className="relative size-5 transition-transform duration-300 group-hover:rotate-12" />
-            <span className="relative">{t.restaurant.browseMenu}</span>
-          </Link>
-        )}
+        {showMenuCta &&
+          (() => {
+            const MenuCtaIcon = kind === "store" ? ShoppingBag : UtensilsCrossed;
+            const menuCtaLabel =
+              kind === "store" ? t.restaurant.browseProducts : t.restaurant.browseMenu;
+            return (
+              <Link
+                href={menuHref ?? `/${restaurant.slug}/menu`}
+                className="group relative flex w-full transform-gpu items-center justify-center gap-3 overflow-hidden rounded-2xl bg-primary px-8 py-5 text-lg font-bold text-primary-foreground transition-[scale] duration-300 ease-smooth hover:scale-[1.01]"
+              >
+                <span
+                  aria-hidden
+                  className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/35 to-transparent bg-[length:200%_100%]"
+                />
+                <MenuCtaIcon className="relative size-5 transition-transform duration-300 group-hover:rotate-12" />
+                <span className="relative">{menuCtaLabel}</span>
+              </Link>
+            );
+          })()}
 
         <Panel title={t.restaurant.quickInfoTitle}>
           <div className="space-y-2.5">
