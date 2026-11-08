@@ -16,15 +16,21 @@ import { fmt } from "@/i18n/fmt";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { breadcrumbsJsonLd, JsonLd, restaurantJsonLd, storeJsonLd } from "@/lib/seo/json-ld";
 import { alternatesFor, ogImageFor, SITE_URL } from "@/lib/seo/site";
+import { isActuallyStore } from "@/lib/types";
 
 /**
  * A slug belongs to exactly one of the two kinds — tried as a restaurant
  * first (the larger of the two), falling back to a store. One lookup
  * resolves, so the other costs nothing but an extra 404 round-trip at most.
+ * `/restaurants/:slug` isn't actually type-filtered on the backend, so a
+ * store's slug 200s there too — `isActuallyStore` catches that false
+ * positive before it's trusted as a restaurant match.
  */
 async function resolveBusiness(slug: string) {
   const restaurant = await getRestaurantBySlug(slug);
-  if (restaurant) return { kind: "restaurant" as const, business: restaurant };
+  if (restaurant && !isActuallyStore(restaurant)) {
+    return { kind: "restaurant" as const, business: restaurant };
+  }
   const store = await getStoreBySlug(slug);
   if (store) return { kind: "store" as const, business: store };
   return undefined;

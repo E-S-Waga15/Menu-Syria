@@ -226,6 +226,29 @@ export interface Store extends Business {
   category: LocalizedText;
 }
 
+/**
+ * `GET /restaurants/:slug` and `GET /menu/:slug` return a store's own
+ * record too when its slug is looked up there — the backend doesn't filter
+ * by type on those routes, it just returns whatever business matches the
+ * slug (confirmed live: a store's slug 200s on `/restaurants/:slug` with
+ * the exact same payload `/stores/:slug` returns). A caller that tries the
+ * restaurant endpoint first and trusts any success as "this is a
+ * restaurant" misclassifies every store whose slug happens to resolve
+ * there first — wrong CTA label/icon, wrong "about" heading, etc.
+ *
+ * `category.en` is the one field the backend sets correctly regardless of
+ * which endpoint returned the record (`"Restaurant"` vs `"Store"`), so it's
+ * what callers check instead of trusting the endpoint's shape. Deliberately
+ * not a presence check — `category`/`cuisine` both ride along on every
+ * business record either way, which is its own trap (see the `typeLabel`
+ * note in `business-details-grid.tsx`).
+ */
+export function isActuallyStore(business: Business): boolean {
+  return (
+    (business as unknown as { category?: LocalizedText }).category?.en === "Store"
+  );
+}
+
 /** How the customer will receive their order. Restaurants support all
  * three; stores never offer dine-in (see `getSupportedFulfillment`). */
 export type FulfillmentMode = "dineIn" | "pickup" | "delivery";

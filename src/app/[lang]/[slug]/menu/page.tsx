@@ -9,7 +9,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 import { fmt } from "@/i18n/fmt";
 import { JsonLd, restaurantJsonLd, storeJsonLd } from "@/lib/seo/json-ld";
 import { alternatesFor, ogImageFor, SITE_URL } from "@/lib/seo/site";
-import type { Business, LocalizedText } from "@/lib/types";
+import { isActuallyStore, type Business, type LocalizedText } from "@/lib/types";
 
 /** The business's real structured type (e.g. "مطعم إيطالي") when the owner
  * picked one, in place of the legacy free-text cuisine/category fallback —
@@ -27,7 +27,12 @@ function subtitleFor(business: Business, fallback: LocalizedText): LocalizedText
  */
 async function getCatalog(slug: string) {
   const menu = await getPublicMenu(slug);
-  if (menu) return { kind: "restaurant" as const, ...menu };
+  // `/menu/:slug` isn't actually type-filtered on the backend, so a store's
+  // slug 200s there too — reject that false positive before falling through
+  // to the real store catalog lookup
+  if (menu && !isActuallyStore(menu.restaurant)) {
+    return { kind: "restaurant" as const, ...menu };
+  }
   const catalog = await getPublicStoreCatalog(slug);
   if (catalog)
     return {

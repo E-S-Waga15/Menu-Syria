@@ -7,10 +7,18 @@ import { getRestaurantBySlug } from "@/features/marketing/services";
 import { getStoreBySlug } from "@/features/public-store/services";
 import { isLocale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { isActuallyStore } from "@/lib/types";
 
+/**
+ * `/restaurants/:slug` isn't actually type-filtered on the backend, so a
+ * store's slug 200s there too — `isActuallyStore` catches that false
+ * positive before it's trusted as a restaurant match.
+ */
 async function resolveBusiness(slug: string) {
   const restaurant = await getRestaurantBySlug(slug);
-  if (restaurant) return { kind: "restaurant" as const, business: restaurant };
+  if (restaurant && !isActuallyStore(restaurant)) {
+    return { kind: "restaurant" as const, business: restaurant };
+  }
   const store = await getStoreBySlug(slug);
   if (store) return { kind: "store" as const, business: store };
   return undefined;
