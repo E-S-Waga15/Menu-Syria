@@ -3,7 +3,18 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { Ban, Bike, ChefHat, CircleCheck, MapPin, Receipt, User } from "lucide-react";
+import {
+  Ban,
+  Bike,
+  ChefHat,
+  CircleCheck,
+  MapPin,
+  Receipt,
+  SquarePen,
+  Truck,
+  User,
+  UserRound,
+} from "lucide-react";
 
 import {
   AlertDialog,
@@ -17,14 +28,41 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { EditOrderDialog } from "@/features/restaurant-dashboard/components/edit-order-dialog";
 import { useOrderMutations } from "@/features/restaurant-dashboard/hooks/use-orders";
-import { getMyOrders } from "@/features/restaurant-dashboard/services";
+import { getMyDrivers, getMyOrders } from "@/features/restaurant-dashboard/services";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { Order, OrderStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const NO_DRIVER = "none";
+
+const DELIVERY_STATUS_LABEL: Record<
+  string,
+  (t: ReturnType<typeof useI18n>["t"]) => string
+> = {
+  unassigned: (t) => t.dashboard.deliveryStatusUnassigned,
+  assigned: (t) => t.dashboard.deliveryStatusAssigned,
+  outForDelivery: (t) => t.dashboard.deliveryStatusOutForDelivery,
+  delivered: (t) => t.dashboard.deliveryStatusDelivered,
+};
+
+const DELIVERY_ADVANCE_LABEL: Partial<
+  Record<string, (t: ReturnType<typeof useI18n>["t"]) => string>
+> = {
+  assigned: (t) => t.dashboard.markOutForDelivery,
+  outForDelivery: (t) => t.dashboard.markDeliveredByDriver,
+};
 
 const ADVANCE_LABEL: Partial<Record<OrderStatus, (t: ReturnType<typeof useI18n>["t"]) => string>> = {
   pending: (t) => t.dashboard.markConfirmed,
@@ -46,9 +84,15 @@ export function OrdersKanban() {
     queryKey: queryKeys.me.orders,
     queryFn: getMyOrders,
   });
+  const { data: driversData } = useQuery({
+    queryKey: queryKeys.me.drivers,
+    queryFn: getMyDrivers,
+  });
+  const drivers = driversData ?? [];
 
-  const { advance, cancel, isPending } = useOrderMutations();
+  const { advance, cancel, isPending, assignDriver, advanceDelivery } = useOrderMutations();
   const [cancelling, setCancelling] = useState<Order | null>(null);
+  const [editing, setEditing] = useState<Order | null>(null);
 
   // the cached board is the source of truth: advancing an order patches the
   // card into its next column immediately, then reconciles with the server
@@ -142,6 +186,53 @@ export function OrdersKanban() {
                     </p>
                   )}
 
+                  {order.fulfillmentMode === "delivery" && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {order.driverId && (
+                        <Badge className="shrink-0 bg-surface-container text-[0.65rem] text-foreground/70">
+                          {DELIVERY_STATUS_LABEL[order.deliveryStatus ?? "assigned"]?.(t)}
+                        </Badge>
+                      )}
+                      <Select
+                        value={order.driverId ?? NO_DRIVER}
+                        onValueChange={(v) =>
+                          assignDriver(order, v === NO_DRIVER ? null : v)
+                        }
+                        items={{
+                          [NO_DRIVER]: t.dashboard.noDriverAssigned,
+                          ...Object.fromEntries(drivers.map((d) => [d.id, d.name])),
+                        }}
+                      >
+                        <SelectTrigger className="h-8! flex-1 gap-1.5 rounded-full text-xs">
+                          <UserRound className="size-3.5 text-muted-foreground" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_DRIVER}>
+                            {t.dashboard.noDriverAssigned}
+                          </SelectItem>
+                          {drivers.map((driver) => (
+                            <SelectItem key={driver.id} value={driver.id}>
+                              {driver.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {order.driverId &&
+                        DELIVERY_ADVANCE_LABEL[order.deliveryStatus ?? "assigned"] && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 gap-1"
+                            onClick={() => advanceDelivery(order)}
+                          >
+                            <Truck className="size-3.5" />
+                            {DELIVERY_ADVANCE_LABEL[order.deliveryStatus ?? "assigned"]?.(t)}
+                          </Button>
+                        )}
+                    </div>
+                  )}
+
                   <ul className="mt-3 space-y-1 border-t border-dashed border-border pt-3 text-sm">
                     {order.lines.map((line) => (
                       <li key={line.itemId} className="flex flex-col gap-0.5">
@@ -193,6 +284,18 @@ export function OrdersKanban() {
                       {formatPrice(order.total, t.common.currency)}
                     </span>
                     <div className="flex items-center gap-1.5">
+                      {order.status === "pending" && (
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          aria-label={t.dashboard.editOrder}
+                          disabled={isPending}
+                          onClick={() => setEditing(order)}
+                        >
+                          <SquarePen className="size-3.5" />
+                        </Button>
+                      )}
                       <Button
                         size="icon-sm"
                         variant="ghost"
@@ -261,6 +364,12 @@ export function OrdersKanban() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditOrderDialog
+        order={editing}
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
+      />
     </div>
   );
 }

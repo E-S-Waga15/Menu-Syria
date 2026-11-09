@@ -489,6 +489,12 @@ export interface Order {
   deliveryFee?: number;
   /** only meaningful when `fulfillmentMode` is "delivery" */
   deliveryAddress?: string;
+  /** only meaningful when `fulfillmentMode` is "delivery". Not live on the
+   * backend yet, see update-backend-orders.md's Phase 2 section. */
+  driverId?: string;
+  /** defaults to "unassigned" when `driverId` is absent — see
+   * `DeliveryStatus`. Not live on the backend yet. */
+  deliveryStatus?: DeliveryStatus;
 }
 
 /**
@@ -540,12 +546,44 @@ export interface DiningTable {
   /** position on the interactive hall canvas, in % */
   x: number;
   y: number;
+  /**
+   * A timed reservation for this table — independent of `isOccupied` (a
+   * table can be reserved for a later slot while currently free, or
+   * occupied by walk-ins with no reservation at all). Not live on the
+   * backend yet, see update-backend-orders.md's Phase 2 section. Read as
+   * released once `reservedUntil` is in the past — see
+   * `isReservationActive` in `use-tables.ts` — rather than waiting on a
+   * scheduled job to flip it back.
+   */
+  reservedFrom?: string;
+  reservedUntil?: string;
+  reservedByName?: string;
+  reservedByPhone?: string;
 }
 
 export interface Waiter {
   id: string;
   name: string;
 }
+
+/**
+ * A delivery driver on this business's own staff — a separate concept from
+ * `Waiter` (no table-serving role) and not live on the backend yet, see
+ * update-backend-orders.md's Phase 2 section. Deliberately minimal (same
+ * shape as `Waiter`) until the backend settles on a real `STAFF`-flagged
+ * account for this.
+ */
+export interface Driver {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
+/** How far a delivery order's hand-off to a driver has gotten — independent
+ * of the order's own `status` (prep can finish while delivery hasn't even
+ * started). `unassigned` is the implicit default when `Order.driverId` is
+ * absent. */
+export type DeliveryStatus = "unassigned" | "assigned" | "outForDelivery" | "delivered";
 
 export interface Transaction {
   id: string;

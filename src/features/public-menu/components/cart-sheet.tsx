@@ -236,6 +236,9 @@ export function CartSheet({
   const setOpen = useUiStore((s) => s.setCartSheetOpen);
   const session = useAuthStore((s) => s.session);
   const addOrderEntry = useOrderHistoryStore((s) => s.addEntry);
+  // set once a platform order places successfully — surfaces a "track your
+  // order" link independent of the cart sheet's own open/close state
+  const [trackingOrderId, setTrackingOrderId] = useState<string | null>(null);
 
   const lines = useCartStore((s) => s.lines);
   const setQuantity = useCartStore((s) => s.setQuantity);
@@ -371,10 +374,11 @@ export function CartSheet({
     }
   };
 
-  const recordOrder = () => {
+  const recordOrder = (serverId?: string) => {
     if (session?.role !== "user") return;
     addOrderEntry({
       id: crypto.randomUUID(),
+      serverId,
       customerId: session.identifier,
       businessId: business.id,
       businessSlug: business.slug,
@@ -477,17 +481,19 @@ export function CartSheet({
         })),
       });
 
-      recordOrder();
+      recordOrder(response.id);
       if (response.whatsappLink) window.open(response.whatsappLink, "_blank");
       toast.success(copy.orderPlacedTitle);
       clear();
       setOpen(false);
+      setTrackingOrderId(response.id);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t.auth.genericError);
     }
   };
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={setOpen}>
       <SheetContent
         side="bottom"
@@ -1110,5 +1116,40 @@ export function CartSheet({
         )}
       </SheetContent>
     </Sheet>
+
+    <Dialog
+      open={trackingOrderId !== null}
+      onOpenChange={(open) => !open && setTrackingOrderId(null)}
+    >
+      <DialogContent className="max-w-sm text-center">
+        <div className="flex flex-col items-center gap-3 px-4 py-2">
+          <span className="flex size-12 items-center justify-center rounded-full bg-success/10 text-success">
+            <Check className="size-6" />
+          </span>
+          <DialogHeader>
+            <DialogTitle>{copy.orderPlacedTitle}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {copy.orderConfirmedBody}
+          </p>
+        </div>
+        <div className="space-y-2 px-4 pb-4">
+          <Button
+            className="w-full"
+            render={<a href={`/${lang}/track/${trackingOrderId}`} target="_blank" rel="noreferrer" />}
+          >
+            {copy.trackOrderCta}
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setTrackingOrderId(null)}
+          >
+            {t.common.done}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

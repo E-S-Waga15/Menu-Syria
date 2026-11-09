@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
-import { RotateCcw } from "lucide-react";
+import { Compass, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/features/public-menu/lib/format";
@@ -86,15 +86,28 @@ export function CustomerOrdersCard({ customerId }: { customerId: string }) {
                   {formatPrice(order.total, t.common.currency)}
                 </span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 w-full gap-1.5"
-                onClick={() => handleReorder(order)}
-              >
-                <RotateCcw className="size-3.5" />
-                {t.orderHistory.reorder}
-              </Button>
+              <div className="mt-3 flex gap-2">
+                {order.serverId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    render={<Link href={`/${lang}/track/${order.serverId}`} />}
+                  >
+                    <Compass className="size-3.5" />
+                    {t.orderHistory.track}
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  onClick={() => handleReorder(order)}
+                >
+                  <RotateCcw className="size-3.5" />
+                  {t.orderHistory.reorder}
+                </Button>
+              </div>
             </li>
           ))}
         </ul>

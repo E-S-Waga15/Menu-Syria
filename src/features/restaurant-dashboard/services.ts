@@ -8,6 +8,7 @@ import {
   categoriesAnalytics,
   customers,
   diningTables,
+  drivers,
   invoices,
   liveActivity,
   menuCategories,
@@ -29,7 +30,9 @@ import type {
   CurrencyCode,
   Customer,
   DayHours,
+  DeliveryStatus,
   DiningTable,
+  Driver,
   FulfillmentMode,
   Invoice,
   InvoiceLine,
@@ -239,6 +242,10 @@ function normalizeTable(raw: Raw): WithMessage<DiningTable> {
     waiterId: raw.waiterId ? String(raw.waiterId) : undefined,
     x: toNumber(raw.x),
     y: toNumber(raw.y),
+    reservedFrom: typeof raw.reservedFrom === "string" ? raw.reservedFrom : undefined,
+    reservedUntil: typeof raw.reservedUntil === "string" ? raw.reservedUntil : undefined,
+    reservedByName: typeof raw.reservedByName === "string" ? raw.reservedByName : undefined,
+    reservedByPhone: typeof raw.reservedByPhone === "string" ? raw.reservedByPhone : undefined,
     message: typeof raw.message === "string" ? raw.message : undefined,
   };
 }
@@ -557,6 +564,95 @@ export async function updateOrderStatus(
   return normalizeOrder(raw);
 }
 
+export interface OrderLineEditInput {
+  itemId: string;
+  quantity: number;
+}
+
+/**
+ * Editing a still-`pending` order's lines (change a quantity, drop a line
+ * entirely) — the report's own Phase 2 ask. Not a real backend endpoint
+ * yet, see update-backend-orders.md. The total is recomputed the same way
+ * initial placement already is — never summed client-side and trusted.
+ */
+export async function updateOrderLines(
+  id: string,
+  lines: OrderLineEditInput[],
+): Promise<WithMessage<Order>> {
+  if (IS_MOCK) {
+    const order = orders.find((o) => o.id === id);
+    if (!order) throw new ApiError(404, "الطلب غير موجود");
+    const updatedLines = order.lines
+      .filter((line) => lines.some((l) => l.itemId === line.itemId))
+      .map((line) => ({
+        ...line,
+        quantity: lines.find((l) => l.itemId === line.itemId)!.quantity,
+      }));
+    const itemsTotal = updatedLines.reduce(
+      (sum, line) => sum + line.price * line.quantity,
+      0,
+    );
+    return mockDelay({
+      ...order,
+      lines: updatedLines,
+      total: itemsTotal + (order.deliveryFee ?? 0),
+    });
+  }
+  const raw = await apiFetch<Raw>(`/orders/${id}/items`, {
+    method: "PATCH",
+    body: { items: lines },
+  });
+  return normalizeOrder(raw);
+}
+
+// ---------------------------------------------------------------------------
+// Drivers & delivery hand-off — not live on the backend yet, see
+// update-backend-orders.md's Phase 2 section.
+// ---------------------------------------------------------------------------
+
+export async function getMyDrivers(): Promise<Driver[]> {
+  if (IS_MOCK) return mockDelay(drivers);
+  return apiFetch("/me/drivers");
+}
+
+export async function createDriver(input: {
+  name: string;
+  phone?: string;
+}): Promise<WithMessage<Driver>> {
+  if (IS_MOCK) return mockDelay({ id: `d${Date.now()}`, ...input });
+  return apiFetch("/drivers", { method: "POST", body: input });
+}
+
+export async function assignOrderDriver(
+  id: string,
+  driverId: string | null,
+): Promise<WithMessage<Order>> {
+  if (IS_MOCK) {
+    return mockDelay({
+      id,
+      driverId: driverId ?? undefined,
+      deliveryStatus: driverId ? "assigned" : "unassigned",
+    } as Order);
+  }
+  const raw = await apiFetch<Raw>(`/orders/${id}/driver`, {
+    method: "PATCH",
+    body: { driverId },
+  });
+  return normalizeOrder(raw);
+}
+
+export async function updateDeliveryStatus(
+  id: string,
+  deliveryStatus: DeliveryStatus,
+): Promise<WithMessage<Order>> {
+  if (IS_MOCK) return mockDelay({ id, deliveryStatus } as Order);
+  const raw = await apiFetch<Raw>(`/orders/${id}/delivery-status`, {
+    method: "PATCH",
+    body: { deliveryStatus },
+  });
+  return normalizeOrder(raw);
+}
+
 // ---------------------------------------------------------------------------
 // Writes — tables
 // ---------------------------------------------------------------------------
@@ -569,6 +665,12 @@ export interface TableWriteInput {
   shape?: string;
   x?: number;
   y?: number;
+  /** `null` on every field clears the reservation entirely (see
+   * `useTableMutations().cancelReservation`) */
+  reservedFrom?: string | null;
+  reservedUntil?: string | null;
+  reservedByName?: string | null;
+  reservedByPhone?: string | null;
 }
 
 export async function updateTable(

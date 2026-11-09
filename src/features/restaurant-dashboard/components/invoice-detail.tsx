@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { useState } from "react";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, MessageCircle, Receipt } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageCircle, Printer, Receipt } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,9 +104,21 @@ export function InvoiceDetail({ id }: { id: string }) {
               </p>
             </div>
           </div>
-          <Badge className={cn(PAYMENT_STATUS_STYLE[invoice.paymentStatus])}>
-            {statusLabel}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge className={cn(PAYMENT_STATUS_STYLE[invoice.paymentStatus])}>
+              {statusLabel}
+            </Badge>
+            <Button
+              size="icon-sm"
+              variant="outline"
+              aria-label={t.dashboard.printReceipt}
+              render={
+                <a href={`/${lang}/print/invoices/${invoice.id}`} target="_blank" rel="noreferrer" />
+              }
+            >
+              <Printer className="size-3.5" />
+            </Button>
+          </div>
         </div>
 
         {(invoice.customerName || invoice.customerPhone) && (

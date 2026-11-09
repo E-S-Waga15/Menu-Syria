@@ -11,7 +11,9 @@
   - `POST /customers`' 409 (phone already in use) and `POST /invoices/:id/payments`' 400 (amount over remaining) are both shown as toasts using whatever message the backend sends — same `extractErrorMessage` convention as every other write in the app, so no explicit 1:1 mapping was needed here.
   - Not done yet: the actual 80mm thermal-print template (§6) — building against this real invoice shape is now unblocked, just not started.
 
-This is a separate handoff from `update.md` (which stays for the ongoing day-to-day asks) because everything here traces back to one internal report ("نظام الطلبات على منيو سوريا", تشرين الثاني 2026) that audited the whole order flow end to end and laid out a 4-phase plan. §1–§2 below are asks the frontend has already built against (mock data today, real data the moment these ship). §3 is the next phase, not yet built on our side — documented now so it can be scoped in parallel. §4–§5 (invoicing, debt) are superseded by the "Update" note above — the real API already exists and the frontend is built against it. §6 (printing) remains **not started on the frontend at all**.
+**Update (2026-11-10):** Phase 2 (order tracking, editing a `pending` order, driver assignment, timed table reservations) and thermal printing are now both built on the frontend too — see the "🆕 New ask: Phase 2" and "✅ Thermal printing" sections below for the concrete API asks and what's already shipped without one. Nothing in this round is blocked on anything else in this doc; all four Phase 2 pieces work against mock data today and switch to real data the moment each endpoint ships, same pattern as every other phase here.
+
+This is a separate handoff from `update.md` (which stays for the ongoing day-to-day asks) because everything here traces back to one internal report ("نظام الطلبات على منيو سوريا", تشرين الثاني 2026) that audited the whole order flow end to end and laid out a 4-phase plan. §1–§2 and the Phase 2 section below are asks the frontend has already built against (mock data today, real data the moment these ship). §4–§5 (invoicing, debt) are superseded by the 2026-11-09 "Update" note above — the real API already exists and the frontend is built against it. Thermal printing is done and needs no backend work at all (see its own section). Nothing from the original report remains unaddressed on the frontend side at this point.
 
 ---
 
@@ -126,14 +128,77 @@ The frontend's board now talks to the real 7-state machine directly — `pending
 
 ---
 
-## Phase 2 (not yet built on our side — next after phase 1 ships)
+## 🆕 New ask: Phase 2 — order tracking, editing, drivers, timed reservations
 
-Not implemented in the frontend yet; listed here only so it can be scoped ahead of time, per the report's own §3 "الأشهر الأولى بعد الإطلاق":
+**Status (2026-11-10): the frontend for all four of these is now built against mock data and ready to switch over the moment each endpoint below ships — nothing here is blocked on anything else in this doc.** Per the report's own §3 "الأشهر الأولى بعد الإطلاق".
 
-- **Customer order-tracking page** — a public, no-login endpoint for a single order's current status by some unguessable reference (its id is probably enough, but please say if a separate tracking token is preferred over the raw order id being guessable).
-- **Edit an order while still `pending`** — change quantities/remove lines, with the total recomputed server-side the same way initial placement already is.
-- **Driver assignment** — no concept of a delivery driver exists anywhere in the data model today (confirmed by the report); needs a `STAFF`-type account flagged as a driver, plus a delivery-status field independent of the order's own prep status.
-- **Timed table reservation + auto-release** — `DiningTable.status` today is a flat `available`/`occupied`/`reserved` with no start/end time; needs a start/end timestamp on a reservation and a scheduled job (or lazy check-on-read) to flip it back to `available` once an order's last active line reaches `delivered`.
+### 1. Public order tracking — `GET /public/orders/:id`
+
+**Why:** a guest who placed an order through the platform has no way to check on it afterward today — the order confirmation is a one-time toast and nothing else. The frontend now shows a "track your order" link right after checkout (and, for a signed-in customer, from their own order-history card) pointing at `/track/:id`.
+
+No auth — the order's own id is the only thing standing in for a login, same model most delivery apps use for a guest tracking link. Please confirm the real order id (as returned by `POST /public/businesses/:slug/orders` today) is unguessable enough to serve this role as-is; if not, a separate tracking token is an easy addition on top.
+
+```jsonc
+// GET /public/orders/:id — 200, or 404 if the id is wrong/gone
+{
+  "id": "...",
+  "businessName": { "ar": "...", "en": "..." },
+  "businessSlug": "...",
+  "businessLogoUrl": "...",
+  "status": "preparing",            // the same 7-value enum everywhere else
+  "totalAmount": 95000,
+  "currency": "SYP",
+  "fulfillmentMode": "delivery",
+  "deliveryAddress": "...",
+  "items": [
+    { "name": "كبسة ياسمين الملكية", "quantity": 1, "unitPrice": 95000, "lineTotal": 95000 }
+  ],
+  "createdAt": "..."
+}
+```
+
+### 2. Editing a still-`pending` order's lines — `PATCH /orders/:id/items`
+
+**Why:** the report's own §3 ask — a customer calls to change a quantity or drop an item before the kitchen has even confirmed the order, and today the only options are cancel-and-redo or edit it by hand off-system. The frontend now has an edit button (pencil icon) on every `pending` card in `/dashboard/orders`, gated to `pending` only.
+
+```jsonc
+// PATCH /orders/:id/items — body; 409 if the order is no longer `pending`
+{ "items": [ { "itemId": "...", "quantity": 2 } ] }   // a line left out of the array is understood as removed
+```
+Response: the updated order, same shape as `GET /orders/:id`, with `total` recomputed server-side exactly like initial placement already does — the frontend never computes this itself and trusts it blindly. 400 if the array would leave zero items (the frontend already blocks submitting that, but the backend should reject it too, as the order should be cancelled instead of emptied).
+
+### 3. Driver assignment — new `Driver` concept + two new order fields
+
+**Why:** the report confirmed no concept of a delivery driver exists anywhere in the data model. The frontend now shows a driver picker on every `delivery`-fulfillment order card, plus a one-tap "mark out for delivery" / "mark delivered" action independent of the order's own prep status (`status` can reach `delivered` for prep purposes while the driver hand-off is still catching up, or vice versa).
+
+```
+GET  /me/drivers                      → Driver[]
+POST /drivers                         → Driver        body: { name, phone? }
+PATCH /orders/:id/driver              → Order         body: { driverId: string | null }
+PATCH /orders/:id/delivery-status     → Order         body: { deliveryStatus: "assigned" | "outForDelivery" | "delivered" }
+```
+```jsonc
+// Driver
+{ "id": "...", "name": "سليم ضاهر", "phone": "0944112233" }
+```
+`Order.driverId`/`Order.deliveryStatus` ride alongside every other order field on `GET /me/orders`/`GET /orders/:id`; `deliveryStatus` is implicitly `"unassigned"` whenever `driverId` is absent, so there's no need to ever write that value explicitly — only `assigned`/`outForDelivery`/`delivered` are ever sent. Whether a `Driver` is its own table or a `STAFF`-role account flagged as a driver is left to you; the frontend only needs the three fields above back.
+
+### 4. Timed table reservation + auto-release — new fields on `Table`
+
+**Why:** `DiningTable.status` today is a flat `available`/`occupied`/`reserved` with no start/end time, so "reserved" has never meant anything concrete. The frontend's hall board now has a reservation form (guest name/phone, start/end time) per table, and reads a reservation as expired — showing the table as free again — the moment `reservedUntil` is in the past, **without waiting on a scheduled job**: a plain read-time check (`new Date(reservedUntil) < now`) is all the frontend does, so a scheduled job to flip the status back is optional on your side too, not required.
+
+```jsonc
+// PATCH /tables/:id — new optional fields alongside the existing ones
+{
+  "status": "reserved",
+  "reservedFrom": "2026-11-10T19:00:00.000Z",
+  "reservedUntil": "2026-11-10T21:00:00.000Z",
+  "reservedByName": "...",
+  "reservedByPhone": "..."          // optional
+}
+// sending all four reservation fields as null clears the reservation (the frontend's "cancel reservation" action)
+```
+Read back the same four fields on `GET /me/tables`. No auto-release job needed from you unless you'd rather enforce it server-side too (e.g. to stop a double-booking at write time) — the frontend already treats an expired reservation as free on its own.
 
 ---
 
@@ -194,6 +259,15 @@ No backend work needed for the WhatsApp reminder itself — same pattern as ever
 
 ---
 
-## Thermal printing (proposal — this one is not purely a backend ask)
+## ✅ Thermal printing — built (browser print, not a backend ask)
+
+**Status (2026-11-10):** built on the frontend at `/print/invoices/:id` (a standalone, no-chrome page) — an 80mm-styled receipt (`@page { size: 80mm auto }`, monospace, dashed separators) that auto-opens the browser's own print dialog. **No backend work was needed**: every field the receipt prints (business name/address, invoice number + date, line items, total/paid/remaining, customer name+phone, payment method) already exists on the real `Invoice` shape documented above in §1/§2 of this doc's invoicing section — exactly the "will this be enough to print with no further lookups" check the original proposal below asked for, confirmed yes.
+
+Deliberately **not** wired to QZ Tray or a direct network-printer socket (port 9100/ESC-POS) — the browser print dialog already covers a USB thermal printer through its own driver, a regular printer, or "save as PDF," which is enough for a first version without that extra local-agent integration. If a specific printer model turns out not to behave through a plain browser print, that integration is still open as a later, separate piece of work — nothing here blocks it.
+
+<details>
+<summary>Original proposal (superseded by the "Status" note above, kept for context)</summary>
 
 **Why:** per the report's §6, once Phase 3's invoice data exists, printing an 80mm receipt is mostly a frontend concern (print-sized CSS, plus a small local agent like QZ Tray for USB printers, or a direct socket connection on port 9100 for network/Wi-Fi printers — all three channels documented in the report use the same `ESC/POS` protocol). **The only backend dependency is that the Invoice entity in Phase 3 carries every field a printed receipt needs** (business name/logo, invoice number + date, line items, total, paid/remaining, customer name+phone when a debt is open) so the print template never has to combine data from more than one endpoint. No separate printing endpoint is needed — this is flagged here only so Phase 3's field list is reviewed with "will this be enough to print a receipt with no further lookups" in mind.
+
+</details>

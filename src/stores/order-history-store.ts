@@ -6,6 +6,10 @@ import type { FulfillmentMode, LocalizedText } from "@/lib/types";
 
 export interface OrderHistoryEntry {
   id: string;
+  /** the real backend order id (`placeExternalOrder`'s response.id) — only
+   * present for an order placed through the platform, not the plain
+   * WhatsApp hand-off. Lets this entry link to `/track/:id`. */
+  serverId?: string;
   /** the logged-in customer's session identifier (phone) — scopes entries per account */
   customerId: string;
   businessId: string;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { Armchair, UserRound } from "lucide-react";
+import { Armchair, CalendarClock, UserRound, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -22,7 +23,10 @@ import {
 } from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { Switch } from "@/components/ui/switch";
-import { useTableMutations } from "@/features/restaurant-dashboard/hooks/use-tables";
+import {
+  isReservationActive,
+  useTableMutations,
+} from "@/features/restaurant-dashboard/hooks/use-tables";
 import {
   getMyTables,
   getMyWaiters,
@@ -30,6 +34,7 @@ import {
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 export function TablesBoard() {
   const { t } = useI18n();
@@ -43,8 +48,14 @@ export function TablesBoard() {
     queryFn: getMyWaiters,
   });
 
-  const { setOccupied, assignWaiter } = useTableMutations();
+  const { setOccupied, assignWaiter, reserve, cancelReservation, isPending } =
+    useTableMutations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reservedByName, setReservedByName] = useState("");
+  const [reservedByPhone, setReservedByPhone] = useState("");
+  const [reservedFrom, setReservedFrom] = useState("");
+  const [reservedUntil, setReservedUntil] = useState("");
+  const [seededFor, setSeededFor] = useState<string | null>(null);
 
   // the cache is the source of truth; occupancy and waiter changes patch it
   // optimistically and then reconcile with the server
@@ -53,6 +64,31 @@ export function TablesBoard() {
   if (!tablesData) return <LoadingSpinner />;
 
   const selected = tables.find((table) => table.id === selectedId) ?? null;
+  const selectedIsReserved = !!selected && isReservationActive(selected);
+
+  if (selected && seededFor !== selected.id) {
+    setSeededFor(selected.id);
+    setReservedByName(selected.reservedByName ?? "");
+    setReservedByPhone(selected.reservedByPhone ?? "");
+    setReservedFrom(selected.reservedFrom?.slice(0, 16) ?? "");
+    setReservedUntil(selected.reservedUntil?.slice(0, 16) ?? "");
+  }
+
+  const submitReservation = () => {
+    if (!selected || !reservedByName.trim() || !reservedFrom || !reservedUntil) return;
+    if (new Date(reservedUntil).getTime() <= new Date(reservedFrom).getTime()) {
+      toast.error(t.dashboard.reservationUntil);
+      return;
+    }
+    reserve(selected.id, {
+      reservedFrom: new Date(reservedFrom).toISOString(),
+      reservedUntil: new Date(reservedUntil).toISOString(),
+      reservedByName: reservedByName.trim(),
+      reservedByPhone: reservedByPhone.trim() || undefined,
+    });
+    toast.success(t.dashboard.reservationSaved);
+    setSelectedId(null);
+  };
 
   return (
     <div className="space-y-5">
@@ -65,6 +101,10 @@ export function TablesBoard() {
           <span className="size-3.5 rounded-md bg-primary" />
           {t.dashboard.tableOccupied}
         </span>
+        <span className="flex items-center gap-2">
+          <span className="size-3.5 rounded-md bg-zest" />
+          {t.dashboard.tableReserved}
+        </span>
       </div>
 
       {/* interactive hall canvas */}
@@ -76,7 +116,9 @@ export function TablesBoard() {
           backgroundSize: "36px 36px",
         }}
       >
-        {tables.map((table) => (
+        {tables.map((table) => {
+          const reserved = !table.isOccupied && isReservationActive(table);
+          return (
           <button
             key={table.id}
             type="button"
@@ -87,7 +129,9 @@ export function TablesBoard() {
               table.shape === "round" ? "rounded-full" : "rounded-xl",
               table.isOccupied
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-foreground hover:border-primary/50",
+                : reserved
+                  ? "border-zest bg-zest-soft text-zest-soft-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary/50",
             )}
           >
             <span className="font-heading text-lg font-bold">
@@ -98,14 +142,17 @@ export function TablesBoard() {
                 "flex items-center gap-0.5 text-[0.6rem] font-bold",
                 table.isOccupied
                   ? "text-primary-foreground/80"
-                  : "text-muted-foreground",
+                  : reserved
+                    ? "text-zest-soft-foreground/80"
+                    : "text-muted-foreground",
               )}
             >
               <Armchair className="size-3" />
               {table.seats}
             </span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* table dialog */}
@@ -161,6 +208,75 @@ export function TablesBoard() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-3 border-t border-dashed border-border pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5">
+                      <CalendarClock className="size-4 text-muted-foreground" />
+                      {t.dashboard.reservationTitle}
+                    </Label>
+                    {selectedIsReserved && (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs font-semibold text-destructive hover:underline"
+                        onClick={() => {
+                          cancelReservation(selected.id);
+                          setSelectedId(null);
+                        }}
+                      >
+                        <X className="size-3.5" />
+                        {t.dashboard.cancelReservation}
+                      </button>
+                    )}
+                  </div>
+
+                  <Input
+                    value={reservedByName}
+                    onChange={(e) => setReservedByName(e.target.value)}
+                    placeholder={t.dashboard.reservedByName}
+                  />
+                  <Input
+                    value={reservedByPhone}
+                    onChange={(e) => setReservedByPhone(e.target.value)}
+                    dir="ltr"
+                    inputMode="tel"
+                    placeholder={`${t.dashboard.reservedByPhone} (${t.common.optional})`}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        {t.dashboard.reservationFrom}
+                      </Label>
+                      <Input
+                        type="datetime-local"
+                        value={reservedFrom}
+                        onChange={(e) => setReservedFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        {t.dashboard.reservationUntil}
+                      </Label>
+                      <Input
+                        type="datetime-local"
+                        value={reservedUntil}
+                        onChange={(e) => setReservedUntil(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t.dashboard.reservationHint}
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    loading={isPending}
+                    disabled={!reservedByName.trim() || !reservedFrom || !reservedUntil}
+                    onClick={submitReservation}
+                  >
+                    {t.dashboard.reserveTable}
+                  </Button>
                 </div>
 
                 <Button className="w-full" onClick={() => setSelectedId(null)}>

@@ -12,6 +12,16 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
 import type { DiningTable } from "@/lib/types";
 
+/**
+ * Whether a table's reservation is still in its window — read on every
+ * render rather than waiting on a scheduled job to flip the table back,
+ * per the report's own "or lazy check-on-read" option for auto-release.
+ */
+export function isReservationActive(table: DiningTable): boolean {
+  if (!table.reservedUntil) return false;
+  return new Date(table.reservedUntil).getTime() > Date.now();
+}
+
 /** Occupancy and waiter assignment on the hall board. */
 export function useTableMutations() {
   const queryClient = useQueryClient();
@@ -67,6 +77,23 @@ export function useTableMutations() {
       }),
     assignWaiter: (id: string, waiterId?: string) =>
       update.mutate({ id, waiterId: waiterId ?? null }),
+    reserve: (
+      id: string,
+      reservation: {
+        reservedFrom: string;
+        reservedUntil: string;
+        reservedByName: string;
+        reservedByPhone?: string;
+      },
+    ) => update.mutate({ id, status: "reserved", ...reservation }),
+    cancelReservation: (id: string) =>
+      update.mutate({
+        id,
+        reservedFrom: null,
+        reservedUntil: null,
+        reservedByName: null,
+        reservedByPhone: null,
+      }),
     isPending: update.isPending,
   };
 }

@@ -4,15 +4,18 @@ import {
   governorates,
   menuCategories,
   menuItems,
+  orders,
   regions,
   restaurants,
 } from "@/lib/mock/data";
 import type {
   CatalogOptionGroup,
+  CurrencyCode,
   FulfillmentMode,
   LocalizedText,
   MenuCategory,
   MenuItem,
+  OrderStatus,
   Restaurant,
   WhatsAppOrderItem,
 } from "@/lib/types";
@@ -211,6 +214,88 @@ export async function placeExternalOrder(
     method: "POST",
     body: input,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Order tracking — public, no-login read of one order's own status, by its
+// (unguessable) id. See update-backend-orders.md's Phase 2 section — not a
+// real backend endpoint yet.
+// ---------------------------------------------------------------------------
+
+export interface PublicOrderTrackingItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface PublicOrderTracking {
+  id: string;
+  businessName: LocalizedText;
+  businessSlug: string;
+  businessLogoUrl?: string;
+  status: OrderStatus;
+  totalAmount: number;
+  currency: CurrencyCode;
+  fulfillmentMode?: FulfillmentMode;
+  deliveryAddress?: string;
+  items: PublicOrderTrackingItem[];
+  createdAt: string;
+}
+
+/** `GET /public/orders/:id` — no auth, meant to be opened straight from the
+ * order-confirmation screen/link, same unguessable-id-as-the-only-secret
+ * model most delivery apps use for a guest tracking link. */
+export async function getPublicOrderTracking(
+  id: string,
+): Promise<PublicOrderTracking | undefined> {
+  if (IS_MOCK) {
+    const order = orders.find((o) => o.id === id);
+    if (!order) return mockDelay(undefined);
+    const restaurant = restaurants.find((r) => r.id === order.restaurantId);
+    return mockDelay({
+      id: order.id,
+      businessName: restaurant?.name ?? { ar: "", en: "" },
+      businessSlug: restaurant?.slug ?? "",
+      businessLogoUrl: restaurant?.logoUrl,
+      status: order.status,
+      totalAmount: order.total,
+      currency: "SYP",
+      fulfillmentMode: order.fulfillmentMode,
+      deliveryAddress: order.deliveryAddress,
+      items: order.lines.map((line) => ({
+        name: line.name.ar,
+        quantity: line.quantity,
+        unitPrice: line.price,
+        lineTotal: line.price * line.quantity,
+      })),
+      createdAt: order.createdAt,
+    });
+  }
+  const raw = await apiGetOrUndefined<RawRecord>(`/public/orders/${id}`);
+  if (!raw) return undefined;
+  return {
+    id: String(raw.id),
+    businessName: (raw.businessName as LocalizedText) ?? { ar: "", en: "" },
+    businessSlug: String(raw.businessSlug ?? ""),
+    businessLogoUrl:
+      typeof raw.businessLogoUrl === "string" ? raw.businessLogoUrl : undefined,
+    status: (raw.status as OrderStatus) ?? "pending",
+    totalAmount: Number(raw.totalAmount ?? 0),
+    currency: raw.currency === "USD" ? "USD" : "SYP",
+    fulfillmentMode: raw.fulfillmentMode as FulfillmentMode | undefined,
+    deliveryAddress:
+      typeof raw.deliveryAddress === "string" ? raw.deliveryAddress : undefined,
+    items: Array.isArray(raw.items)
+      ? (raw.items as RawRecord[]).map((item) => ({
+          name: String(item.name ?? ""),
+          quantity: Number(item.quantity ?? 0),
+          unitPrice: Number(item.unitPrice ?? 0),
+          lineTotal: Number(item.lineTotal ?? 0),
+        }))
+      : [],
+    createdAt: String(raw.createdAt ?? ""),
+  };
 }
 
 // ---------------------------------------------------------------------------

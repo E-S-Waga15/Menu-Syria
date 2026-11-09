@@ -8,6 +8,7 @@ import type {
   CategoriesAnalytics,
   Customer,
   DiningTable,
+  Driver,
   Governorate,
   Invoice,
   LiveActivityStats,
@@ -988,6 +989,11 @@ export const waiters: Waiter[] = [
   { id: "w1", name: "يوسف" },
   { id: "w2", name: "عمر" },
   { id: "w3", name: "جورج" },
+];
+
+export const drivers: Driver[] = [
+  { id: "d1", name: "سليم ضاهر", phone: "0944112233" },
+  { id: "d2", name: "رامي عيسى", phone: "0955667788" },
 ];
 
 export const diningTables: DiningTable[] = [

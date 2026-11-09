@@ -29,6 +29,7 @@ export const queryKeys = {
     whatsappOrders: ["me", "whatsapp-orders"] as const,
     tables: ["me", "tables"] as const,
     waiters: ["me", "waiters"] as const,
+    drivers: ["me", "drivers"] as const,
     branches: ["me", "branches"] as const,
     /** one page of the business's own customer book, server-filtered and
      * -paginated — see `getCustomers`. */
