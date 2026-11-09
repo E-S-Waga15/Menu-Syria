@@ -1,8 +1,20 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { ChefHat, CircleCheck, Receipt, User } from "lucide-react";
+import { useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
+import { Ban, Bike, ChefHat, CircleCheck, MapPin, Receipt, User } from "lucide-react";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -11,9 +23,22 @@ import { getMyOrders } from "@/features/restaurant-dashboard/services";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import type { OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+const ADVANCE_LABEL: Partial<Record<OrderStatus, (t: ReturnType<typeof useI18n>["t"]) => string>> = {
+  pending: (t) => t.dashboard.markConfirmed,
+  confirmed: (t) => t.dashboard.markPreparing,
+  preparing: (t) => t.dashboard.markReady,
+  ready: (t) => t.dashboard.markDelivered,
+};
+
+/**
+ * The kanban's own filter of the backend's full state machine — only the
+ * live, actionable columns. `delivered`/`cancelled`/`refunded` orders drop
+ * off the board once reached, same as any kitchen's "today's work" view;
+ * they're still on record, just not something anyone needs to act on here.
+ */
 export function OrdersKanban() {
   const { t, lang } = useI18n();
 
@@ -22,7 +47,8 @@ export function OrdersKanban() {
     queryFn: getMyOrders,
   });
 
-  const { advance } = useOrderMutations();
+  const { advance, cancel, isPending } = useOrderMutations();
+  const [cancelling, setCancelling] = useState<Order | null>(null);
 
   // the cached board is the source of truth: advancing an order patches the
   // card into its next column immediately, then reconciles with the server
@@ -37,13 +63,14 @@ export function OrdersKanban() {
     label: string;
     dot: string;
   }[] = [
-    { status: "new", label: t.dashboard.newOrders, dot: "bg-primary" },
+    { status: "pending", label: t.dashboard.newOrders, dot: "bg-primary" },
+    { status: "confirmed", label: t.dashboard.confirmed, dot: "bg-berry-bright" },
     { status: "preparing", label: t.dashboard.preparing, dot: "bg-zest" },
     { status: "ready", label: t.dashboard.ready, dot: "bg-success" },
   ];
 
   return (
-    <div className="grid items-start gap-5 lg:grid-cols-3">
+    <div className="grid items-start gap-5 lg:grid-cols-4">
       {columns.map((column) => {
         const columnOrders = orders.filter((o) => o.status === column.status);
         return (
@@ -72,7 +99,7 @@ export function OrdersKanban() {
                   key={order.id}
                   className={cn(
                     "rounded-xl border bg-card p-4",
-                    order.status === "new"
+                    order.status === "pending"
                       ? "border-primary/30 animate-pulse [animation-duration:2.5s]"
                       : "border-border/60",
                   )}
@@ -93,12 +120,27 @@ export function OrdersKanban() {
                     </span>
                   </div>
 
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                    <User className="size-3.5" />
-                    {order.tableNumber
-                      ? fmt(t.dashboard.table, { number: order.tableNumber })
-                      : (order.customerName ?? "—")}
-                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <User className="size-3.5" />
+                      {order.tableNumber
+                        ? fmt(t.dashboard.table, { number: order.tableNumber })
+                        : (order.customerName ?? "—")}
+                    </span>
+                    {order.fulfillmentMode === "delivery" && (
+                      <span className="flex items-center gap-1.5 text-primary">
+                        <Bike className="size-3.5" />
+                        {t.dashboard.fulfillmentDelivery}
+                      </span>
+                    )}
+                  </div>
+
+                  {order.fulfillmentMode === "delivery" && order.deliveryAddress && (
+                    <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                      <span className="truncate">{order.deliveryAddress}</span>
+                    </p>
+                  )}
 
                   <ul className="mt-3 space-y-1 border-t border-dashed border-border pt-3 text-sm">
                     {order.lines.map((line) => (
@@ -122,6 +164,11 @@ export function OrdersKanban() {
                             {line.selectedOptions.map((o) => o.id).join("، ")}
                           </p>
                         )}
+                        {line.notes && (
+                          <p className="truncate text-xs font-semibold text-zest-soft-foreground">
+                            {line.notes}
+                          </p>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -132,11 +179,30 @@ export function OrdersKanban() {
                     </p>
                   )}
 
+                  {order.fulfillmentMode === "delivery" && !!order.deliveryFee && (
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{t.dashboard.deliveryFeeLabel}</span>
+                      <span dir="ltr">
+                        {formatPrice(order.deliveryFee, t.common.currency)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-dashed border-border pt-3">
                     <span className="font-bold text-primary" dir="ltr">
                       {formatPrice(order.total, t.common.currency)}
                     </span>
-                    {order.status !== "ready" && (
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={t.dashboard.cancelOrder}
+                        disabled={isPending}
+                        onClick={() => setCancelling(order)}
+                      >
+                        <Ban className="size-3.5" />
+                      </Button>
                       <Button
                         size="sm"
                         className={cn(
@@ -144,18 +210,19 @@ export function OrdersKanban() {
                           order.status === "preparing" &&
                             "bg-success text-success-foreground hover:bg-success/85",
                         )}
+                        disabled={isPending}
                         onClick={() => advance(order)}
                       >
-                        {order.status === "new" ? (
+                        {order.status === "pending" ? (
+                          <CircleCheck className="size-3.5" />
+                        ) : order.status === "confirmed" ? (
                           <ChefHat className="size-3.5" />
                         ) : (
                           <CircleCheck className="size-3.5" />
                         )}
-                        {order.status === "new"
-                          ? t.dashboard.markPreparing
-                          : t.dashboard.markReady}
+                        {ADVANCE_LABEL[order.status]?.(t)}
                       </Button>
-                    )}
+                    </div>
                   </div>
                 </article>
               ))}
@@ -163,6 +230,37 @@ export function OrdersKanban() {
           </section>
         );
       })}
+
+      <AlertDialog
+        open={cancelling !== null}
+        onOpenChange={(open) => !open && setCancelling(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {cancelling && fmt(t.dashboard.confirmCancelOrderTitle, { number: cancelling.number })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.dashboard.confirmCancelOrderBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCancelling(null)}>
+              {t.common.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              loading={isPending}
+              onClick={() => {
+                if (cancelling) cancel(cancelling);
+                setCancelling(null);
+              }}
+            >
+              {t.dashboard.cancelOrder}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -30,6 +30,9 @@ export function notificationHref(
       return `/${lang}/dashboard/settings`;
     case "account_disabled":
       return undefined;
+    case "new_order":
+    case "order_status_changed":
+      return `/${lang}/dashboard/orders`;
     default:
       return undefined;
   }

@@ -154,7 +154,7 @@ export function buildWhatsAppOrderUrl({
           amount,
           line.item.currency ?? currency,
           lang,
-        )}`;
+        )}${line.notes ? ` (${line.notes})` : ""}`;
       }
       const name = [
         line.item.name[lang],
@@ -167,7 +167,7 @@ export function buildWhatsAppOrderUrl({
         lineUnitPrice(line) * line.quantity,
         line.item.currency ?? currency,
         lang,
-      )}`;
+      )}${line.notes ? ` (${line.notes})` : ""}`;
     }),
     "",
   ];

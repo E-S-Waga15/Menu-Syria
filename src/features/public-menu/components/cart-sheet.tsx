@@ -241,8 +241,14 @@ export function CartSheet({
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeLine = useCartStore((s) => s.removeLine);
   const removeLineOption = useCartStore((s) => s.removeLineOption);
+  const setLineNotes = useCartStore((s) => s.setLineNotes);
   const clear = useCartStore((s) => s.clear);
   const subtotal = useCartStore(selectCartTotal);
+  // which lines' per-item note field is expanded — a line that already
+  // carries a note (e.g. restored from a persisted cart) opens with it shown
+  const [openNoteKeys, setOpenNoteKeys] = useState(
+    () => new Set(lines.filter((l) => l.notes).map((l) => l.key)),
+  );
 
   const supportedModes = getSupportedFulfillment(business);
   // derived from the real published schedule, not a manually-toggled flag
@@ -453,6 +459,10 @@ export function CartSheet({
         customerPhone,
         notes: values.notes.trim() || undefined,
         branchId: branchId ?? undefined,
+        fulfillmentMode: fulfillmentValue,
+        deliveryAddress:
+          fulfillmentValue === "delivery" ? address?.trim() || undefined : undefined,
+        deliveryFee: deliveryFee > 0 ? deliveryFee : undefined,
         items: lines.map((line) => ({
           itemId: line.item.id,
           quantity: line.quantity,
@@ -463,6 +473,7 @@ export function CartSheet({
                   : { id: o.id },
               )
             : undefined,
+          notes: line.notes,
         })),
       });
 
@@ -640,6 +651,38 @@ export function CartSheet({
                       ))}
                     </div>
                   )}
+
+                  {/* a note on this one line ("بدون بصل") — separate from
+                      the order-level notes field below the list */}
+                  <div className="mt-2 ps-[68px]">
+                    {openNoteKeys.has(line.key) ? (
+                      <Input
+                        autoFocus
+                        value={line.notes ?? ""}
+                        onChange={(e) => setLineNotes(line.key, e.target.value)}
+                        onBlur={() => {
+                          if (!line.notes)
+                            setOpenNoteKeys((keys) => {
+                              const next = new Set(keys);
+                              next.delete(line.key);
+                              return next;
+                            });
+                        }}
+                        placeholder={copy.itemNotePlaceholder}
+                        className="h-8 max-w-xs text-xs"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenNoteKeys((keys) => new Set(keys).add(line.key))
+                        }
+                        className="text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-[var(--menu-primary)]"
+                      >
+                        {copy.addItemNote}
+                      </button>
+                    )}
+                  </div>
                   </li>
                 );
               })}

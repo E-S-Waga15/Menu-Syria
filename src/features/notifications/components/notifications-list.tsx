@@ -9,12 +9,14 @@ import {
   BellRing,
   CalendarClock,
   CheckCheck,
+  ChefHat,
   FileText,
   HandCoins,
   RefreshCw,
   ShieldBan,
   UserCheck,
   UserPlus,
+  UtensilsCrossed,
   Wallet,
 } from "lucide-react";
 
@@ -39,11 +41,14 @@ const TYPE_ICON: Record<NotificationType, typeof Bell> = {
   subscription_expiring: CalendarClock,
   subscription_expired: AlertTriangle,
   account_disabled: ShieldBan,
+  new_order: UtensilsCrossed,
+  order_status_changed: ChefHat,
 };
 
 const URGENT_TYPES: NotificationType[] = [
   "subscription_expired",
   "account_disabled",
+  "new_order",
 ];
 
 /**

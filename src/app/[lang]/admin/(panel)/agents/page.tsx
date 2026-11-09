@@ -8,15 +8,15 @@ export default async function AdminAgentsPage({
 }: PageProps<"/[lang]/admin/agents">) {
   const { lang } = await params;
 
-  const [agents, governorates, regions] = await Promise.all([
-    fetchAdminPage(lang, (accessToken) => getAdminAgents({ accessToken })),
+  const [initialData, governorates, regions] = await Promise.all([
+    fetchAdminPage(lang, (accessToken) => getAdminAgents({}, { accessToken })),
     getGovernorates(),
     getRegions(),
   ]);
 
   return (
     <AdminAgentsList
-      agents={agents}
+      initialData={initialData}
       governorates={governorates}
       regions={regions}
     />

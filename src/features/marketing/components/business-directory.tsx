@@ -1,13 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Search } from "lucide-react";
 
+import {
+  DIRECTORY_PAGE_SIZE,
+  Pagination,
+} from "@/components/shared/pagination";
 import { GovernorateRegionSelect } from "@/components/shared/governorate-region-select";
 import { Input } from "@/components/ui/input";
 import { RestaurantCard } from "@/features/marketing/components/restaurant-card";
 import type { Business, Governorate, LocalizedText, Region } from "@/lib/types";
+import {
+  useFilterParam,
+  usePageParam,
+  useSearchParam,
+} from "@/lib/url-state";
 
 const ALL = "all";
 
@@ -45,9 +54,10 @@ export function BusinessDirectory<
   lang: "ar" | "en";
   copy: DirectoryCopy;
 }) {
-  const [search, setSearch] = useState("");
-  const [governorateId, setGovernorateId] = useState(ALL);
-  const [regionId, setRegionId] = useState(ALL);
+  const [search, setSearch] = useSearchParam("q");
+  const [governorateId, setGovernorateId] = useFilterParam("governorateId");
+  const [regionId, setRegionId] = useFilterParam("regionId");
+  const [page, setPage] = usePageParam();
 
   const separator = lang === "ar" ? "، " : ", ";
   const locationLabel = (item: T) => {
@@ -83,6 +93,28 @@ export function BusinessDirectory<
     });
   }, [items, search, governorateId, regionId]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / DIRECTORY_PAGE_SIZE));
+  const pageItems = filtered.slice(
+    (page - 1) * DIRECTORY_PAGE_SIZE,
+    page * DIRECTORY_PAGE_SIZE,
+  );
+
+  /** any filter change starts back at page 1 — a narrowed result set that
+   * keeps the old page number could land past the new last page */
+  const onSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+  const onGovernorateChange = (value: string) => {
+    setGovernorateId(value);
+    setRegionId(ALL);
+    setPage(1);
+  };
+  const onRegionChange = (value: string) => {
+    setRegionId(value);
+    setPage(1);
+  };
+
   const governorateItems = {
     [ALL]: copy.allGovernorates,
     ...Object.fromEntries(governorates.map((gov) => [gov.id, gov.name[lang]])),
@@ -102,7 +134,7 @@ export function BusinessDirectory<
           <Search className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             placeholder={copy.searchPlaceholder}
             className="h-11 rounded-full ps-10"
           />
@@ -112,14 +144,11 @@ export function BusinessDirectory<
           unwrapped
           triggerClassName="rounded-full"
           governorateValue={governorateId}
-          onGovernorateChange={(value) => {
-            setGovernorateId(value);
-            setRegionId(ALL);
-          }}
+          onGovernorateChange={onGovernorateChange}
           governorateItems={governorateItems}
           governorateAriaLabel={copy.governorateLabel}
           regionValue={regionId}
-          onRegionChange={setRegionId}
+          onRegionChange={onRegionChange}
           regionItems={regionItems}
           regionAriaLabel={copy.regionLabel}
         />
@@ -132,16 +161,21 @@ export function BusinessDirectory<
             {copy.noResults}
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((item) => (
-              <RestaurantCard
-                key={item.id}
-                restaurant={item}
-                href={`/${item.slug}`}
-                locationLabel={locationLabel(item)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {pageItems.map((item) => (
+                <RestaurantCard
+                  key={item.id}
+                  restaurant={item}
+                  href={`/${item.slug}`}
+                  locationLabel={locationLabel(item)}
+                />
+              ))}
+            </div>
+            <div className="mt-8">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -8,15 +8,15 @@ export default async function AdminBusinessesPage({
 }: PageProps<"/[lang]/admin/stores">) {
   const { lang } = await params;
 
-  const [businesses, governorates, regions] = await Promise.all([
-    fetchAdminPage(lang, (accessToken) => getAdminStores({ accessToken })),
+  const [initialData, governorates, regions] = await Promise.all([
+    fetchAdminPage(lang, (accessToken) => getAdminStores({}, { accessToken })),
     getGovernorates(),
     getRegions(),
   ]);
 
   return (
     <AdminBusinessesList
-      businesses={businesses}
+      initialData={initialData}
       governorates={governorates}
       regions={regions}
       kind="store"

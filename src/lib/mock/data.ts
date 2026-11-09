@@ -6,8 +6,10 @@ import type {
   BusinessStatistics,
   BusinessSubType,
   CategoriesAnalytics,
+  Customer,
   DiningTable,
   Governorate,
+  Invoice,
   LiveActivityStats,
   MenuCategory,
   MenuItem,
@@ -843,10 +845,11 @@ export const orders: Order[] = [
         name: { ar: "مشاوي مشكلة ياسمين", en: "Yasmeen Mixed Grill" },
         quantity: 1,
         price: 145000,
+        notes: "بدون بصل",
       },
     ],
     total: 195000,
-    status: "new",
+    status: "pending",
     createdAt: "2026-07-11T18:24:00",
   },
   {
@@ -863,9 +866,12 @@ export const orders: Order[] = [
       },
     ],
     notes: "بدون مكسرات",
-    total: 190000,
-    status: "new",
+    total: 190000 + 8000,
+    status: "confirmed",
     createdAt: "2026-07-11T18:19:00",
+    fulfillmentMode: "delivery",
+    deliveryFee: 8000,
+    deliveryAddress: "المزة، شارع الربوة، بناء 14",
   },
   {
     id: "o3",
@@ -912,6 +918,69 @@ export const orders: Order[] = [
     total: 100000,
     status: "ready",
     createdAt: "2026-07-11T17:48:00",
+  },
+  {
+    id: "o5",
+    number: 1038,
+    restaurantId: "r1",
+    customerName: "سامر يوسف",
+    lines: [
+      {
+        itemId: "m4",
+        name: { ar: "كبسة ياسمين الملكية", en: "Royal Yasmeen Kabseh" },
+        quantity: 1,
+        price: 95000,
+      },
+    ],
+    total: 95000,
+    status: "delivered",
+    createdAt: "2026-07-10T13:30:00",
+  },
+];
+
+export const customers: Customer[] = [
+  {
+    id: "cu1",
+    businessId: "r1",
+    name: "سامر يوسف",
+    phone: "0991234567",
+    createdAt: "2026-06-01T10:00:00",
+    updatedAt: "2026-06-01T10:00:00",
+  },
+  {
+    id: "cu2",
+    businessId: "r1",
+    name: "أبو محمد",
+    phone: "0998765432",
+    createdAt: "2026-06-15T09:00:00",
+    updatedAt: "2026-06-15T09:00:00",
+  },
+];
+
+export const invoices: Invoice[] = [
+  {
+    id: "inv1",
+    number: 1,
+    businessId: "r1",
+    orderId: "o5",
+    customerId: "cu1",
+    lines: [
+      { name: "كبسة ياسمين الملكية", quantity: 1, unitPrice: 95000, lineTotal: 95000 },
+    ],
+    totalAmount: 95000,
+    amountPaid: 60000,
+    remaining: 35000,
+    currency: "SYP",
+    paymentStatus: "partially_paid",
+    paymentMethod: "نقداً",
+    businessName: "مطعم ياسمين الشام",
+    customerName: "سامر يوسف",
+    customerPhone: "0991234567",
+    issuedAt: "2026-07-10T14:00:00",
+    updatedAt: "2026-07-10T14:00:00",
+    payments: [
+      { id: "pay1", invoiceId: "inv1", amount: 60000, paidAt: "2026-07-10T14:00:00" },
+    ],
   },
 ];
 

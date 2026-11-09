@@ -30,6 +30,16 @@ export const queryKeys = {
     tables: ["me", "tables"] as const,
     waiters: ["me", "waiters"] as const,
     branches: ["me", "branches"] as const,
+    /** one page of the business's own customer book, server-filtered and
+     * -paginated — see `getCustomers`. */
+    customers: (query: Record<string, unknown>) =>
+      ["me", "customers", query] as const,
+    customer: (id: string) => ["me", "customers", id] as const,
+    /** one page of the business's own invoices/debt ledger — see
+     * `getInvoices`. */
+    invoices: (query: Record<string, unknown>) =>
+      ["me", "invoices", query] as const,
+    invoice: (id: string) => ["me", "invoices", id] as const,
   },
   statistics: {
     business: ["statistics", "business"] as const,
@@ -62,9 +72,22 @@ export const queryKeys = {
   },
   admin: {
     stats: ["admin", "stats"] as const,
-    restaurants: ["admin", "restaurants"] as const,
-    agents: ["admin", "agents"] as const,
+    /** one page of the restaurants/stores console list, server-filtered and
+     * -paginated — see `getAdminRestaurants`/`getAdminStores`. */
+    restaurants: (query: Record<string, unknown>) =>
+      ["admin", "restaurants", query] as const,
+    stores: (query: Record<string, unknown>) =>
+      ["admin", "stores", query] as const,
+    agents: (query: Record<string, unknown>) =>
+      ["admin", "agents", query] as const,
     whatsappOtp: ["admin", "whatsapp-otp", "status"] as const,
+    /** one `kind` section (agent/platform) of the subscriptions console,
+     * server-filtered/paginated — see `getAdminSubscriptionsList`. */
+    subscriptions: (
+      kind: "agent" | "platform",
+      status: string,
+      page: number,
+    ) => ["admin", "subscriptions", kind, status, page] as const,
   },
   notifications: {
     /** the signed-in user's full notice list, any role — the backend scopes

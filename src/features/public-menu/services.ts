@@ -161,6 +161,16 @@ export interface ExternalOrderInput {
   /** routes the WhatsApp order link to that branch's own phone instead of
    * the business's main number */
   branchId?: string;
+  /** how the order is meant to reach the customer. Not live on the backend
+   * yet, see update-backend-orders.md §2 — today's order record has no
+   * fulfillment/delivery fields at all despite the cart already collecting
+   * this. */
+  fulfillmentMode?: FulfillmentMode;
+  /** only sent when `fulfillmentMode` is "delivery" */
+  deliveryAddress?: string;
+  /** only sent for a delivery order with a non-zero fee — already folded
+   * into the order's own total server-side */
+  deliveryFee?: number;
   /** real menu/catalog item UUIDs — offer bundles use synthetic `offer-` ids
    * and cannot be submitted through this endpoint yet */
   items: {
@@ -171,6 +181,10 @@ export interface ExternalOrderInput {
      * price as `amount`, since there's no predefined option for the
      * backend to look a price up by id for (see update.md) */
     options?: { id: string; amount?: number }[];
+    /** a note on this one line only ("بدون بصل") — distinct from the
+     * order-level `notes` above. Not live on the backend yet, see
+     * update-backend-orders.md §2. */
+    notes?: string;
   }[];
 }
 

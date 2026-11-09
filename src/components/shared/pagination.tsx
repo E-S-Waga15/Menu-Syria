@@ -9,6 +9,11 @@ import { fmt, useI18n } from "@/i18n/client";
  * 4 so a grid never ends on a half-empty row at any breakpoint. */
 export const ADMIN_PAGE_SIZE = 24;
 
+/** Default page size for a public-facing directory grid (restaurants,
+ * stores, agents) — divisible by 2 and 3, matching that grid's own
+ * breakpoints (`sm:grid-cols-2 lg:grid-cols-3`). */
+export const DIRECTORY_PAGE_SIZE = 12;
+
 /**
  * Prev/next pager shared by every admin list — until the backend list
  * endpoints accept `page`/`limit` (see update.md), this paginates whatever

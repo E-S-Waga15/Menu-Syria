@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { syrianPhone, type ValidationMessages } from "@/lib/validation";
+import { isSyrianPhone, syrianPhone, type ValidationMessages } from "@/lib/validation";
 
 /**
  * One option group's shape, shared by the dedicated options editor and the
@@ -77,3 +77,45 @@ export const itemOptionsSchema = () =>
     quantityLocked: z.boolean(),
   });
 export type ItemOptionsValues = z.infer<ReturnType<typeof itemOptionsSchema>>;
+
+/** The phone is optional here (only required once a debt is actually
+ * opened, per `update-backend-orders.md`'s invoicing section) — but when
+ * typed, it still has to be a real Syrian mobile. */
+export const customerFormSchema = (v: ValidationMessages) =>
+  z.object({
+    name: z.string().trim().min(1, v.required),
+    phone: z
+      .string()
+      .refine((value) => value.trim() === "" || isSyrianPhone(value), v.phoneInvalid),
+  });
+export type CustomerFormValues = z.infer<ReturnType<typeof customerFormSchema>>;
+
+/**
+ * Issuing an invoice for a `delivered` order. Linking to a persistent
+ * customer (required for debt tracking across visits) is optional — leaving
+ * both `customerId` and `phone` blank still issues the invoice, just without
+ * a durable customer record behind it (see `IssueInvoiceInput`).
+ */
+export const issueInvoiceFormSchema = (v: ValidationMessages) =>
+  z.object({
+    customerId: z.string(),
+    phone: z
+      .string()
+      .refine((value) => value.trim() === "" || isSyrianPhone(value), v.phoneInvalid),
+    paymentMethod: z.string().trim(),
+    amountPaid: z
+      .string()
+      .refine((value) => value.trim() === "" || /^\d+$/.test(value), v.numbersOnly),
+  });
+export type IssueInvoiceFormValues = z.infer<ReturnType<typeof issueInvoiceFormSchema>>;
+
+export const invoicePaymentFormSchema = (v: ValidationMessages) =>
+  z.object({
+    amount: z
+      .string()
+      .min(1, v.priceRequired)
+      .regex(/^\d+$/, v.numbersOnly),
+  });
+export type InvoicePaymentFormValues = z.infer<
+  ReturnType<typeof invoicePaymentFormSchema>
+>;

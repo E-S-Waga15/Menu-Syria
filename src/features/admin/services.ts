@@ -265,35 +265,78 @@ export async function getAdminStats(
 }
 
 /**
- * Every admin list endpoint now defaults to 24 items per request once no
- * `page`/`limit` is sent (server pagination shipped — see update.md), while
- * every admin list page still fetches once and paginates client-side. Until
- * that's migrated to real server-driven pagination, request the server's own
- * hard cap so the client-side list isn't silently missing anything past the
- * first 24 — `?limit=100` is a stopgap, not the final shape.
+ * Used by the two internal callers below that want *every* row (building an
+ * id lookup across the whole business/agent list) rather than one page of
+ * them — not a UI page size.
  */
 const ADMIN_LIST_FETCH_LIMIT = 100;
 
-export async function getAdminRestaurants(
-  auth: AdminAuth = {},
-): Promise<Restaurant[]> {
-  if (IS_MOCK) return mockDelay(restaurants);
-  return unwrapListItems(
-    await apiFetch<Restaurant[] | { items: Restaurant[] }>(
-      `/admin/restaurants?limit=${ADMIN_LIST_FETCH_LIMIT}`,
-      { headers: authHeaders(auth) },
-    ),
-  );
+/** Default page size for a paginated admin list, same as `ADMIN_PAGE_SIZE`
+ * in `components/shared/pagination.tsx` — kept as its own constant here so
+ * this service module doesn't import a UI component file. */
+const ADMIN_LIST_PAGE_SIZE = 24;
+
+export interface AdminListQuery {
+  page?: number;
+  limit?: number;
+  /** free-text search — name (and phone, where the endpoint supports it) */
+  q?: string;
+  governorateId?: string;
+  regionId?: string;
 }
 
-export async function getAdminAgents(auth: AdminAuth = {}): Promise<Agent[]> {
-  if (IS_MOCK) return mockDelay(agents);
-  return unwrapListItems(
-    await apiFetch<Agent[] | { items: Agent[] }>(
-      `/admin/agents?limit=${ADMIN_LIST_FETCH_LIMIT}`,
-      { headers: authHeaders(auth) },
-    ),
+export interface AdminPaginatedResult<T> {
+  items: T[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
+/** Wraps a plain-array response (an endpoint not yet migrated, or the mock
+ * branch) into the same `{ items, meta }` shape a paginated one already
+ * returns — so callers never have to branch on which shape came back. */
+function toPaginatedResult<T>(
+  raw: T[] | AdminPaginatedResult<T>,
+  limit: number,
+): AdminPaginatedResult<T> {
+  if (Array.isArray(raw)) {
+    return { items: raw, meta: { page: 1, limit, total: raw.length, totalPages: 1 } };
+  }
+  return raw;
+}
+
+function adminListSearchParams(query: AdminListQuery, defaultLimit: number) {
+  const params = new URLSearchParams();
+  params.set("page", String(query.page ?? 1));
+  params.set("limit", String(query.limit ?? defaultLimit));
+  if (query.q) params.set("q", query.q);
+  if (query.governorateId) params.set("governorateId", query.governorateId);
+  if (query.regionId) params.set("regionId", query.regionId);
+  return params.toString();
+}
+
+export async function getAdminRestaurants(
+  query: AdminListQuery = {},
+  auth: AdminAuth = {},
+): Promise<AdminPaginatedResult<Restaurant>> {
+  const limit = query.limit ?? ADMIN_LIST_PAGE_SIZE;
+  if (IS_MOCK) return mockDelay(toPaginatedResult(restaurants, limit));
+  const raw = await apiFetch<Restaurant[] | AdminPaginatedResult<Restaurant>>(
+    `/admin/restaurants?${adminListSearchParams(query, ADMIN_LIST_PAGE_SIZE)}`,
+    { headers: authHeaders(auth) },
   );
+  return toPaginatedResult(raw, limit);
+}
+
+export async function getAdminAgents(
+  query: AdminListQuery = {},
+  auth: AdminAuth = {},
+): Promise<AdminPaginatedResult<Agent>> {
+  const limit = query.limit ?? ADMIN_LIST_PAGE_SIZE;
+  if (IS_MOCK) return mockDelay(toPaginatedResult(agents, limit));
+  const raw = await apiFetch<Agent[] | AdminPaginatedResult<Agent>>(
+    `/admin/agents?${adminListSearchParams(query, ADMIN_LIST_PAGE_SIZE)}`,
+    { headers: authHeaders(auth) },
+  );
+  return toPaginatedResult(raw, limit);
 }
 
 export async function getAdminAgentById(
@@ -312,14 +355,17 @@ export async function getAdminAgentLedger(
   return apiFetch(`/admin/agents/${id}/ledger`, { headers: authHeaders(auth) });
 }
 
-export async function getAdminStores(auth: AdminAuth = {}): Promise<Store[]> {
-  if (IS_MOCK) return mockDelay(stores);
-  return unwrapListItems(
-    await apiFetch<Store[] | { items: Store[] }>(
-      `/admin/stores?limit=${ADMIN_LIST_FETCH_LIMIT}`,
-      { headers: authHeaders(auth) },
-    ),
+export async function getAdminStores(
+  query: AdminListQuery = {},
+  auth: AdminAuth = {},
+): Promise<AdminPaginatedResult<Store>> {
+  const limit = query.limit ?? ADMIN_LIST_PAGE_SIZE;
+  if (IS_MOCK) return mockDelay(toPaginatedResult(stores, limit));
+  const raw = await apiFetch<Store[] | AdminPaginatedResult<Store>>(
+    `/admin/stores?${adminListSearchParams(query, ADMIN_LIST_PAGE_SIZE)}`,
+    { headers: authHeaders(auth) },
   );
+  return toPaginatedResult(raw, limit);
 }
 
 export async function getAdminUsers(
@@ -670,17 +716,17 @@ export async function deleteAdminPlan(
 export async function getAdminSubscriptions(
   auth: AdminAuth = {},
 ): Promise<{ business: Business; kind: "restaurant" | "store" }[]> {
-  const [restaurantList, storeList] = await Promise.all([
-    getAdminRestaurants(auth),
-    getAdminStores(auth),
+  const [restaurantPage, storePage] = await Promise.all([
+    getAdminRestaurants({ limit: ADMIN_LIST_FETCH_LIMIT }, auth),
+    getAdminStores({ limit: ADMIN_LIST_FETCH_LIMIT }, auth),
   ]);
 
   return [
-    ...restaurantList.map((business) => ({
+    ...restaurantPage.items.map((business) => ({
       business,
       kind: "restaurant" as const,
     })),
-    ...storeList.map((business) => ({ business, kind: "store" as const })),
+    ...storePage.items.map((business) => ({ business, kind: "store" as const })),
   ];
 }
 
@@ -689,15 +735,15 @@ export async function getAdminBusiness(
   id: string,
   auth: AdminAuth = {},
 ) {
-  const [restaurantList, storeList] = await Promise.all([
-    getAdminRestaurants(auth),
-    getAdminStores(auth),
+  const [restaurantPage, storePage] = await Promise.all([
+    getAdminRestaurants({ limit: ADMIN_LIST_FETCH_LIMIT }, auth),
+    getAdminStores({ limit: ADMIN_LIST_FETCH_LIMIT }, auth),
   ]);
 
-  const restaurant = restaurantList.find((r) => r.id === id);
+  const restaurant = restaurantPage.items.find((r) => r.id === id);
   if (restaurant) return { business: restaurant, kind: "restaurant" as const };
 
-  const store = storeList.find((s) => s.id === id);
+  const store = storePage.items.find((s) => s.id === id);
   if (store) return { business: store, kind: "store" as const };
 
   return null;

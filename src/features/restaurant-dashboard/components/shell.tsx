@@ -14,10 +14,12 @@ import {
   LifeBuoy,
   MessageCircle,
   QrCode,
+  Receipt,
   Tag,
   Settings,
   ShoppingBag,
   UtensilsCrossed,
+  Users,
 } from "lucide-react";
 
 import { AccountMenu } from "@/components/shared/account-menu";
@@ -83,6 +85,8 @@ export function RestaurantDashboardShell({
       icon: MessageCircle,
     },
     { href: `${base}/branches`, label: t.dashboard.branches, icon: Building2 },
+    { href: `${base}/invoices`, label: t.dashboard.invoices, icon: Receipt },
+    { href: `${base}/customers`, label: t.dashboard.customers, icon: Users },
     {
       href: `${base}/analytics`,
       label: t.dashboard.analytics,

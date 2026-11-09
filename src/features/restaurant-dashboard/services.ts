@@ -1,4 +1,4 @@
-import { apiFetch, apiGetOrUndefined, IS_MOCK, mockDelay } from "@/lib/api/client";
+import { apiFetch, apiGetOrUndefined, ApiError, IS_MOCK, mockDelay } from "@/lib/api/client";
 import { applyRecoveredBusinessFields } from "@/lib/business-text";
 import {
   branches,
@@ -6,7 +6,9 @@ import {
   businessInsights,
   businessStatistics,
   categoriesAnalytics,
+  customers,
   diningTables,
+  invoices,
   liveActivity,
   menuCategories,
   menuItems,
@@ -25,9 +27,14 @@ import type {
   CatalogOptionGroup,
   CategoriesAnalytics,
   CurrencyCode,
+  Customer,
   DayHours,
   DiningTable,
   FulfillmentMode,
+  Invoice,
+  InvoiceLine,
+  InvoicePayment,
+  InvoicePaymentStatus,
   ItemStatistics,
   LiveActivityStats,
   LocalizedText,
@@ -119,6 +126,103 @@ function normalizeItem(raw: Raw, businessId: string): WithMessage<MenuItem> {
 
 function normalizeOrder(raw: Raw): WithMessage<Order> {
   return raw as unknown as WithMessage<Order>;
+}
+
+/** Shared paginated-list shape — same `{items, meta}` contract the admin
+ * console's lists already use (see `AdminPaginatedResult`). */
+export interface PaginatedResult<T> {
+  items: T[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
+/** A list endpoint not migrated to pagination yet still answers a bare
+ * array — wrapped as a single, already-complete page so callers never have
+ * to branch on which shape came back. */
+function toPaginatedResult<T>(
+  raw: T[] | PaginatedResult<T>,
+  limit: number,
+): PaginatedResult<T> {
+  if (Array.isArray(raw)) {
+    return { items: raw, meta: { page: 1, limit, total: raw.length, totalPages: 1 } };
+  }
+  return raw;
+}
+
+function paginateMock<T>(rows: T[], page: number, limit: number): PaginatedResult<T> {
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const start = (page - 1) * limit;
+  return {
+    items: rows.slice(start, start + limit),
+    meta: { page, limit, total, totalPages },
+  };
+}
+
+const CUSTOMERS_PAGE_SIZE = 24;
+const INVOICES_PAGE_SIZE = 24;
+
+function normalizeCustomer(raw: Raw): WithMessage<Customer> {
+  return {
+    id: String(raw.id),
+    businessId: String(raw.businessId ?? ""),
+    name: String(raw.name ?? ""),
+    phone: typeof raw.phone === "string" && raw.phone ? raw.phone : undefined,
+    createdAt: String(raw.createdAt ?? ""),
+    updatedAt: String(raw.updatedAt ?? ""),
+    message: typeof raw.message === "string" ? raw.message : undefined,
+  };
+}
+
+function normalizeInvoiceLine(raw: Raw): InvoiceLine {
+  return {
+    name: String(raw.name ?? ""),
+    quantity: toNumber(raw.quantity),
+    unitPrice: toNumber(raw.unitPrice),
+    lineTotal: toNumber(raw.lineTotal),
+  };
+}
+
+function normalizeInvoicePayment(raw: Raw): InvoicePayment {
+  return {
+    id: String(raw.id),
+    invoiceId: String(raw.invoiceId),
+    amount: toNumber(raw.amount),
+    paidAt: String(raw.paidAt ?? ""),
+  };
+}
+
+function normalizeInvoice(raw: Raw): WithMessage<Invoice> {
+  return {
+    id: String(raw.id),
+    number: toNumber(raw.number),
+    businessId: String(raw.businessId ?? ""),
+    orderId: String(raw.orderId ?? ""),
+    customerId: raw.customerId ? String(raw.customerId) : undefined,
+    lines: Array.isArray(raw.lines)
+      ? (raw.lines as Raw[]).map(normalizeInvoiceLine)
+      : [],
+    totalAmount: toNumber(raw.totalAmount),
+    amountPaid: toNumber(raw.amountPaid),
+    remaining: toNumber(raw.remaining),
+    currency: raw.currency === "USD" ? "USD" : "SYP",
+    paymentStatus: (raw.paymentStatus as InvoicePaymentStatus) || "unpaid",
+    paymentMethod:
+      typeof raw.paymentMethod === "string" && raw.paymentMethod
+        ? raw.paymentMethod
+        : undefined,
+    businessName: String(raw.businessName ?? ""),
+    businessAddress:
+      typeof raw.businessAddress === "string" ? raw.businessAddress : undefined,
+    customerName: typeof raw.customerName === "string" ? raw.customerName : undefined,
+    customerPhone:
+      typeof raw.customerPhone === "string" ? raw.customerPhone : undefined,
+    issuedAt: String(raw.issuedAt ?? ""),
+    updatedAt: String(raw.updatedAt ?? raw.issuedAt ?? ""),
+    payments: Array.isArray(raw.payments)
+      ? (raw.payments as Raw[]).map(normalizeInvoicePayment)
+      : undefined,
+    message: typeof raw.message === "string" ? raw.message : undefined,
+  };
 }
 
 function normalizeTable(raw: Raw): WithMessage<DiningTable> {
@@ -441,18 +545,6 @@ export async function deleteItem(
 // Writes — orders
 // ---------------------------------------------------------------------------
 
-/**
- * The owner's two moves on the kanban: start cooking, then hand it over.
- *
- * The board's `new`/`preparing`/`ready` labels are the API's
- * `pending`/`preparing`/`ready`. The mapping lives here, in one place, so a
- * rename on either side cannot leave the board and the server disagreeing
- * about which column an order belongs in.
- */
-export function toApiOrderStatus(status: OrderStatus): string {
-  return status === "new" ? "pending" : status;
-}
-
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus,
@@ -460,7 +552,7 @@ export async function updateOrderStatus(
   if (IS_MOCK) return mockDelay({ id, status } as Order);
   const raw = await apiFetch<Raw>(`/orders/${id}/status`, {
     method: "PATCH",
-    body: { status: toApiOrderStatus(status) },
+    body: { status },
   });
   return normalizeOrder(raw);
 }
@@ -641,4 +733,221 @@ export async function deleteBranch(
   return apiFetch<{ message?: string }>(`/branches/${id}`, {
     method: "DELETE",
   });
+}
+
+// ---------------------------------------------------------------------------
+// Customers (`/customers`) — the business's own persistent customer book,
+// separate from the free-text `customerName`/`customerPhone` every order
+// already carries. See update-backend-orders.md's invoicing/debt section.
+// ---------------------------------------------------------------------------
+
+export interface CustomersQuery {
+  page?: number;
+  limit?: number;
+  q?: string;
+}
+
+export async function getCustomers(
+  query: CustomersQuery = {},
+): Promise<PaginatedResult<Customer>> {
+  const page = query.page ?? 1;
+  const limit = query.limit ?? CUSTOMERS_PAGE_SIZE;
+  if (IS_MOCK) {
+    const q = query.q?.trim().toLowerCase();
+    const rows = q
+      ? customers.filter(
+          (c) => c.name.toLowerCase().includes(q) || (c.phone ?? "").includes(q),
+        )
+      : customers;
+    return mockDelay(paginateMock(rows, page, limit));
+  }
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (query.q) params.set("q", query.q);
+  const raw = await apiFetch<Raw[] | PaginatedResult<Raw>>(`/customers?${params}`);
+  const { items, meta } = toPaginatedResult(raw, limit);
+  return { items: items.map(normalizeCustomer), meta };
+}
+
+export async function getCustomer(id: string): Promise<Customer | undefined> {
+  if (IS_MOCK) return mockDelay(customers.find((c) => c.id === id));
+  const raw = await apiGetOrUndefined<Raw>(`/customers/${id}`);
+  return raw ? normalizeCustomer(raw) : undefined;
+}
+
+export async function createCustomer(input: {
+  name: string;
+  phone?: string;
+}): Promise<WithMessage<Customer>> {
+  if (IS_MOCK) {
+    if (input.phone && customers.some((c) => c.phone === input.phone)) {
+      throw new ApiError(409, "هذا الرقم مستخدم لزبون آخر مسجّل مسبقاً");
+    }
+    return mockDelay({
+      id: `cu${Date.now()}`,
+      businessId: restaurants[0]!.id,
+      name: input.name,
+      phone: input.phone || undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  const raw = await apiFetch<Raw>("/customers", { method: "POST", body: input });
+  return normalizeCustomer(raw);
+}
+
+export async function updateCustomer(
+  id: string,
+  input: { name?: string; phone?: string },
+): Promise<WithMessage<Customer>> {
+  if (IS_MOCK) {
+    const existing = customers.find((c) => c.id === id)!;
+    return mockDelay({
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  const raw = await apiFetch<Raw>(`/customers/${id}`, {
+    method: "PATCH",
+    body: input,
+  });
+  return normalizeCustomer(raw);
+}
+
+// ---------------------------------------------------------------------------
+// Invoices & debt ledger (`/invoices`) — issued from a `delivered` order,
+// optionally linked to a persistent `Customer` for debt tracking across
+// visits. See update-backend-orders.md's invoicing/debt section.
+// ---------------------------------------------------------------------------
+
+export interface InvoicesQuery {
+  page?: number;
+  limit?: number;
+  q?: string;
+  paymentStatus?: InvoicePaymentStatus;
+  customerId?: string;
+}
+
+export async function getInvoices(
+  query: InvoicesQuery = {},
+): Promise<PaginatedResult<Invoice>> {
+  const page = query.page ?? 1;
+  const limit = query.limit ?? INVOICES_PAGE_SIZE;
+  if (IS_MOCK) {
+    const q = query.q?.trim().toLowerCase();
+    let rows = invoices;
+    if (query.customerId) rows = rows.filter((inv) => inv.customerId === query.customerId);
+    if (query.paymentStatus)
+      rows = rows.filter((inv) => inv.paymentStatus === query.paymentStatus);
+    if (q) {
+      rows = rows.filter(
+        (inv) =>
+          String(inv.number).includes(q) ||
+          (inv.customerName ?? "").toLowerCase().includes(q) ||
+          (inv.customerPhone ?? "").includes(q),
+      );
+    }
+    return mockDelay(paginateMock(rows, page, limit));
+  }
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (query.q) params.set("q", query.q);
+  if (query.paymentStatus) params.set("paymentStatus", query.paymentStatus);
+  if (query.customerId) params.set("customerId", query.customerId);
+  const raw = await apiFetch<Raw[] | PaginatedResult<Raw>>(`/invoices?${params}`);
+  const { items, meta } = toPaginatedResult(raw, limit);
+  return { items: items.map(normalizeInvoice), meta };
+}
+
+export async function getInvoice(id: string): Promise<Invoice | undefined> {
+  if (IS_MOCK) return mockDelay(invoices.find((inv) => inv.id === id));
+  const raw = await apiGetOrUndefined<Raw>(`/invoices/${id}`);
+  return raw ? normalizeInvoice(raw) : undefined;
+}
+
+export interface IssueInvoiceInput {
+  orderId: string;
+  customerId?: string;
+  customerPhone?: string;
+  paymentMethod?: string;
+  amountPaid?: number;
+}
+
+export async function issueInvoice(
+  input: IssueInvoiceInput,
+): Promise<WithMessage<Invoice>> {
+  if (IS_MOCK) {
+    if (invoices.some((inv) => inv.orderId === input.orderId)) {
+      throw new ApiError(409, "هذا الطلب لديه فاتورة مسبقاً");
+    }
+    const order = orders.find((o) => o.id === input.orderId);
+    if (!order) throw new ApiError(404, "الطلب غير موجود");
+    const amountPaid = input.amountPaid ?? 0;
+    const id = `inv${Date.now()}`;
+    return mockDelay({
+      id,
+      number: invoices.length + 1,
+      businessId: order.restaurantId,
+      orderId: order.id,
+      customerId: input.customerId,
+      lines: order.lines.map((line) => ({
+        name: line.name.ar,
+        quantity: line.quantity,
+        unitPrice: line.price,
+        lineTotal: line.price * line.quantity,
+      })),
+      totalAmount: order.total,
+      amountPaid,
+      remaining: order.total - amountPaid,
+      currency: "SYP",
+      paymentStatus:
+        amountPaid >= order.total ? "paid" : amountPaid > 0 ? "partially_paid" : "unpaid",
+      paymentMethod: input.paymentMethod,
+      businessName: restaurants[0]!.name.ar,
+      customerName:
+        customers.find((c) => c.id === input.customerId)?.name ?? order.customerName,
+      customerPhone: input.customerPhone,
+      issuedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      payments: amountPaid > 0
+        ? [{ id: `pay${Date.now()}`, invoiceId: id, amount: amountPaid, paidAt: new Date().toISOString() }]
+        : [],
+    });
+  }
+  const raw = await apiFetch<Raw>("/invoices", { method: "POST", body: input });
+  return normalizeInvoice(raw);
+}
+
+export async function addInvoicePayment(
+  invoiceId: string,
+  input: { amount: number; paidAt?: string },
+): Promise<WithMessage<Invoice>> {
+  if (IS_MOCK) {
+    const existing = invoices.find((inv) => inv.id === invoiceId);
+    if (!existing) throw new ApiError(404, "الفاتورة غير موجودة");
+    if (input.amount > existing.remaining) {
+      throw new ApiError(400, "المبلغ أكبر من المتبقي على الفاتورة");
+    }
+    const amountPaid = existing.amountPaid + input.amount;
+    return mockDelay({
+      ...existing,
+      amountPaid,
+      remaining: existing.totalAmount - amountPaid,
+      paymentStatus:
+        amountPaid >= existing.totalAmount ? ("paid" as const) : ("partially_paid" as const),
+      payments: [
+        ...(existing.payments ?? []),
+        {
+          id: `pay${Date.now()}`,
+          invoiceId,
+          amount: input.amount,
+          paidAt: input.paidAt ?? new Date().toISOString(),
+        },
+      ],
+    });
+  }
+  const raw = await apiFetch<Raw>(`/invoices/${invoiceId}/payments`, {
+    method: "POST",
+    body: input,
+  });
+  return normalizeInvoice(raw);
 }

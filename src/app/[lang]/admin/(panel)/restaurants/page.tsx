@@ -8,9 +8,9 @@ export default async function AdminBusinessesPage({
 }: PageProps<"/[lang]/admin/restaurants">) {
   const { lang } = await params;
 
-  const [businesses, governorates, regions] = await Promise.all([
+  const [initialData, governorates, regions] = await Promise.all([
     fetchAdminPage(lang, (accessToken) =>
-      getAdminRestaurants({ accessToken }),
+      getAdminRestaurants({}, { accessToken }),
     ),
     getGovernorates(),
     getRegions(),
@@ -18,7 +18,7 @@ export default async function AdminBusinessesPage({
 
   return (
     <AdminBusinessesList
-      businesses={businesses}
+      initialData={initialData}
       governorates={governorates}
       regions={regions}
       kind="restaurant"

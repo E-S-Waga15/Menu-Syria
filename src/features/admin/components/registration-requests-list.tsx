@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+
+import { usePageParam } from "@/lib/url-state";
 import {
   Building2,
   Calendar,
@@ -53,7 +55,7 @@ export function RegistrationRequestsList({
 }) {
   const { t, lang } = useI18n();
   const [requests, setRequests] = useState(initialRequests);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = usePageParam();
   const totalPages = Math.max(1, Math.ceil(requests.length / ADMIN_PAGE_SIZE));
   const pageRequests = requests.slice(
     (page - 1) * ADMIN_PAGE_SIZE,

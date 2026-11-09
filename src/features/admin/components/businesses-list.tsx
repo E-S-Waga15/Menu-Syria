@@ -4,6 +4,14 @@ import { SafeImage } from "@/components/shared/safe-image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import {
+  useFilterParam,
+  usePageParam,
+  useSearchParam,
+} from "@/lib/url-state";
+
 import {
   CalendarClock,
   ExternalLink,
@@ -26,7 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
@@ -34,11 +42,15 @@ import { AdminSelect } from "@/features/admin/components/admin-select";
 import { AdminViewToggle } from "@/features/admin/components/admin-view-toggle";
 import {
   deleteAdminBusiness,
+  getAdminRestaurants,
+  getAdminStores,
   updateAdminBusinessStatus,
+  type AdminPaginatedResult,
 } from "@/features/admin/services";
 import { daysUntil } from "@/features/notifications/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
 import type { Business, Governorate, Region } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -50,34 +62,58 @@ const ALL = "all";
  * Restaurants and stores share this list: the console asks the same things of
  * both — where are they, is the subscription alive, open it — so the page is
  * parameterised by `kind` rather than forked into two near-identical files.
+ *
+ * Search/filters/page live in the URL and drive a real server-paginated
+ * fetch (see `getAdminRestaurants`/`getAdminStores`) — the SSR page passes
+ * the first page down as `initialData` so there's no loading flash on first
+ * paint, and every filter change after that refetches from the server
+ * instead of slicing a full client-held array.
  */
 export function AdminBusinessesList({
-  businesses,
+  initialData,
   governorates,
   regions,
   kind,
 }: {
-  businesses: Business[];
+  initialData: AdminPaginatedResult<Business>;
   governorates: Governorate[];
   regions: Region[];
   kind: "restaurant" | "store";
 }) {
   const { t, lang } = useI18n();
-  const [businessRows, setBusinessRows] = useState(businesses);
+  const queryClient = useQueryClient();
   const view = useUiStore((s) => s.adminListView);
   const setView = useUiStore((s) => s.setAdminListView);
 
-  const [query, setQuery] = useState("");
-  const [governorateId, setGovernorateId] = useState(ALL);
-  const [regionId, setRegionId] = useState(ALL);
+  const [query, setQuery] = useSearchParam("q");
+  const [governorateId, setGovernorateId] = useFilterParam("governorateId");
+  const [regionId, setRegionId] = useFilterParam("regionId");
   const [pendingToggle, setPendingToggle] = useState<Business | null>(null);
   const [isTogglingAccount, setIsTogglingAccount] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Business | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = usePageParam();
 
   const base = `/${lang}/admin`;
   const adminBusinessBase = kind === "restaurant" ? "restaurants" : "stores";
+  const fetchPage = kind === "restaurant" ? getAdminRestaurants : getAdminStores;
+
+  const listQuery = {
+    page,
+    q: query.trim() || undefined,
+    governorateId: governorateId === ALL ? undefined : governorateId,
+    regionId: regionId === ALL ? undefined : regionId,
+  };
+  const queryKey =
+    kind === "restaurant"
+      ? queryKeys.admin.restaurants(listQuery)
+      : queryKeys.admin.stores(listQuery);
+  const isInitial = page === 1 && !listQuery.q && !listQuery.governorateId && !listQuery.regionId;
+  const { data } = useQuery({
+    queryKey,
+    queryFn: () => fetchPage(listQuery),
+    initialData: isInitial ? initialData : undefined,
+  });
 
   const hasFilters =
     query.trim() !== "" || governorateId !== ALL || regionId !== ALL;
@@ -86,6 +122,23 @@ export function AdminBusinessesList({
     setQuery("");
     setGovernorateId(ALL);
     setRegionId(ALL);
+    setPage(1);
+  };
+
+  /** any filter change starts back at page 1 — a narrowed result set that
+   * keeps the old page number could land past the new last page */
+  const onQueryChange = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const onGovernorateChange = (value: string) => {
+    setGovernorateId(value);
+    setRegionId(ALL);
+    setPage(1);
+  };
+  const onRegionChange = (value: string) => {
+    setRegionId(value);
+    setPage(1);
   };
 
   // regions narrow to the picked governorate
@@ -97,39 +150,17 @@ export function AdminBusinessesList({
     [regions, governorateId],
   );
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return businessRows
-      .map((business) => ({
-        business,
-        days: daysUntil(business.planExpiresAt),
-      }))
-      .filter(({ business }) => {
-        if (governorateId !== ALL && business.governorateId !== governorateId)
-          return false;
-        if (regionId !== ALL && business.regionId !== regionId) return false;
-        if (
-          q &&
-          !business.name.ar.toLowerCase().includes(q) &&
-          !business.name.en.toLowerCase().includes(q)
-        )
-          return false;
-        return true;
-      })
-      .sort((a, b) => a.days - b.days);
-  }, [businessRows, query, governorateId, regionId]);
+  // sorted by urgency within the current page only — the server doesn't take
+  // a `sort` param yet, so this can't reach across pages the way the old
+  // full-list client sort could
+  const rows = (data?.items ?? [])
+    .map((business) => ({ business, days: daysUntil(business.planExpiresAt) }))
+    .sort((a, b) => a.days - b.days);
+  const totalPages = data?.meta.totalPages ?? 1;
+  const total = data?.meta.total ?? 0;
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / ADMIN_PAGE_SIZE));
-  const pageRows = rows.slice((page - 1) * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE);
-  // reset to page 1 when a filter narrows the result set — compared during
-  // render (not an effect), the same re-seed-on-change pattern used
-  // elsewhere for this exact kind of derived reset
-  const filterKey = `${query}|${governorateId}|${regionId}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
+  const refetch = () =>
+    void queryClient.invalidateQueries({ queryKey: ["admin", adminBusinessBase] });
 
   const governorateName = (id: string) =>
     governorates.find((g) => g.id === id)?.name[lang] ?? "";
@@ -141,11 +172,7 @@ export function AdminBusinessesList({
     setIsTogglingAccount(true);
     try {
       const result = await updateAdminBusinessStatus(business.id, nextStatus);
-      setBusinessRows((current) =>
-        current.map((row) =>
-          row.id === business.id ? { ...row, status: nextStatus } : row,
-        ),
-      );
+      refetch();
       toast.success(
         result?.message ??
           (nextStatus === "active"
@@ -166,7 +193,7 @@ export function AdminBusinessesList({
     setIsDeleting(true);
     try {
       const result = await deleteAdminBusiness(business.id);
-      setBusinessRows((current) => current.filter((row) => row.id !== business.id));
+      refetch();
       toast.success(result?.message ?? t.admin.accountDeleted);
       setPendingDelete(null);
     } catch (error) {
@@ -245,23 +272,20 @@ export function AdminBusinessesList({
     <div className="space-y-5">
       <AdminPageHeader
         title={kind === "restaurant" ? t.admin.restaurants : t.admin.stores}
-        count={businesses.length}
+        count={total}
         action={<AdminViewToggle view={view} onChange={setView} />}
       />
 
       <AdminFilterBar
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={onQueryChange}
         placeholder={t.admin.searchBusinesses}
         hasFilters={hasFilters}
         onClear={clear}
       >
         <AdminSelect
           value={governorateId}
-          onChange={(value) => {
-            setGovernorateId(value);
-            setRegionId(ALL);
-          }}
+          onChange={onGovernorateChange}
           label={t.admin.filterByGovernorate}
           items={{
             [ALL]: t.agentsPage.allGovernorates,
@@ -272,7 +296,7 @@ export function AdminBusinessesList({
         />
         <AdminSelect
           value={regionId}
-          onChange={setRegionId}
+          onChange={onRegionChange}
           label={t.admin.filterByRegion}
           items={{
             [ALL]: t.admin.allRegions,
@@ -287,7 +311,7 @@ export function AdminBusinessesList({
         className="text-sm font-semibold text-muted-foreground"
         aria-live="polite"
       >
-        {rows.length}
+        {total}
       </p>
 
       {rows.length === 0 ? (
@@ -296,7 +320,7 @@ export function AdminBusinessesList({
         </p>
       ) : view === "grid" ? (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {pageRows.map(({ business, days }) => (
+          {rows.map(({ business, days }) => (
             <li
               key={business.id}
               className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card transition-colors duration-200 hover:border-primary/35"
@@ -375,7 +399,7 @@ export function AdminBusinessesList({
         </ul>
       ) : (
         <ul className="space-y-2.5">
-          {pageRows.map(({ business, days }) => (
+          {rows.map(({ business, days }) => (
             <li
               key={business.id}
               className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"

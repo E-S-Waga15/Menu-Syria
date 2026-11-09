@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import {
+  useFilterParam,
+  usePageParam,
+  useSearchParam,
+} from "@/lib/url-state";
+
 import { Eye, Power, Store, Trash2 } from "lucide-react";
 
 import {
@@ -16,16 +24,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { SafeImage } from "@/components/shared/safe-image";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { AdminSelect } from "@/features/admin/components/admin-select";
 import { AdminViewToggle } from "@/features/admin/components/admin-view-toggle";
-import { deleteAdminAgent, updateAdminAgentStatus } from "@/features/admin/services";
+import {
+  deleteAdminAgent,
+  getAdminAgents,
+  updateAdminAgentStatus,
+  type AdminPaginatedResult,
+} from "@/features/admin/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
 import type { Agent, Governorate, Region } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -33,28 +47,47 @@ import { useUiStore } from "@/stores/ui-store";
 
 const ALL = "all";
 
-/** the agent network as the console sees it: who they are, where, how many
- * businesses they carry, and the controls over their account */
+/**
+ * The agent network as the console sees it: who they are, where, how many
+ * businesses they carry, and the controls over their account. Search/
+ * filters/page live in the URL and drive a real server-paginated fetch
+ * (`getAdminAgents`) — the SSR page passes the first page as `initialData`.
+ */
 export function AdminAgentsList({
-  agents,
+  initialData,
   governorates,
   regions,
 }: {
-  agents: Agent[];
+  initialData: AdminPaginatedResult<Agent>;
   governorates: Governorate[];
   regions: Region[];
 }) {
   const { t, lang } = useI18n();
+  const queryClient = useQueryClient();
   const view = useUiStore((s) => s.adminListView);
   const setView = useUiStore((s) => s.setAdminListView);
 
-  const [query, setQuery] = useState("");
-  const [governorateId, setGovernorateId] = useState(ALL);
-  const [regionId, setRegionId] = useState(ALL);
-  const [agentRows, setAgentRows] = useState(agents);
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useSearchParam("q");
+  const [governorateId, setGovernorateId] = useFilterParam("governorateId");
+  const [regionId, setRegionId] = useFilterParam("regionId");
+  const [page, setPage] = usePageParam();
 
   const base = `/${lang}/admin`;
+
+  const listQuery = {
+    page,
+    q: query.trim() || undefined,
+    governorateId: governorateId === ALL ? undefined : governorateId,
+    regionId: regionId === ALL ? undefined : regionId,
+  };
+  const isInitial = page === 1 && !listQuery.q && !listQuery.governorateId && !listQuery.regionId;
+  const { data } = useQuery({
+    queryKey: queryKeys.admin.agents(listQuery),
+    queryFn: () => getAdminAgents(listQuery),
+    initialData: isInitial ? initialData : undefined,
+  });
+  const refetch = () =>
+    void queryClient.invalidateQueries({ queryKey: ["admin", "agents"] });
 
   const hasFilters =
     query.trim() !== "" || governorateId !== ALL || regionId !== ALL;
@@ -63,6 +96,23 @@ export function AdminAgentsList({
     setQuery("");
     setGovernorateId(ALL);
     setRegionId(ALL);
+    setPage(1);
+  };
+
+  /** any filter change starts back at page 1 — a narrowed result set that
+   * keeps the old page number could land past the new last page */
+  const onQueryChange = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const onGovernorateChange = (value: string) => {
+    setGovernorateId(value);
+    setRegionId(ALL);
+    setPage(1);
+  };
+  const onRegionChange = (value: string) => {
+    setRegionId(value);
+    setPage(1);
   };
 
   const regionChoices = useMemo(
@@ -73,36 +123,9 @@ export function AdminAgentsList({
     [regions, governorateId],
   );
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return agentRows.filter((agent) => {
-      if (governorateId !== ALL && agent.governorateId !== governorateId)
-        return false;
-      if (regionId !== ALL && !agent.regionIds.includes(regionId)) return false;
-      if (
-        q &&
-        !agent.name.ar.toLowerCase().includes(q) &&
-        !agent.name.en.toLowerCase().includes(q)
-      )
-        return false;
-      return true;
-    });
-  }, [agentRows, query, governorateId, regionId]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_PAGE_SIZE));
-  const pageRows = filtered.slice(
-    (page - 1) * ADMIN_PAGE_SIZE,
-    page * ADMIN_PAGE_SIZE,
-  );
-  // reset to page 1 when a filter narrows the result set — compared during
-  // render (not an effect), the same re-seed-on-change pattern used
-  // elsewhere for this exact kind of derived reset
-  const filterKey = `${query}|${governorateId}|${regionId}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
+  const rows = data?.items ?? [];
+  const totalPages = data?.meta.totalPages ?? 1;
+  const total = data?.meta.total ?? 0;
 
   const [pendingDelete, setPendingDelete] = useState<Agent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -113,7 +136,7 @@ export function AdminAgentsList({
     setIsDeleting(true);
     try {
       const result = await deleteAdminAgent(agent.id);
-      setAgentRows((current) => current.filter((row) => row.id !== agent.id));
+      refetch();
       toast.success(result?.message ?? t.admin.accountDeleted);
       setPendingDelete(null);
     } catch (error) {
@@ -138,11 +161,7 @@ export function AdminAgentsList({
     const nextStatus = agent.status === "active" ? "inactive" : "active";
     try {
       const result = await updateAdminAgentStatus(agent.id, nextStatus);
-      setAgentRows((current) =>
-        current.map((row) =>
-          row.id === agent.id ? { ...row, status: nextStatus } : row,
-        ),
-      );
+      refetch();
       toast.success(
         result?.message ??
           (nextStatus === "active"
@@ -188,23 +207,20 @@ export function AdminAgentsList({
     <div className="space-y-5">
       <AdminPageHeader
         title={t.admin.agents}
-        count={agents.length}
+        count={total}
         action={<AdminViewToggle view={view} onChange={setView} />}
       />
 
       <AdminFilterBar
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={onQueryChange}
         placeholder={t.agentsPage.searchPlaceholder}
         hasFilters={hasFilters}
         onClear={clear}
       >
         <AdminSelect
           value={governorateId}
-          onChange={(value) => {
-            setGovernorateId(value);
-            setRegionId(ALL);
-          }}
+          onChange={onGovernorateChange}
           label={t.admin.filterByGovernorate}
           items={{
             [ALL]: t.agentsPage.allGovernorates,
@@ -215,7 +231,7 @@ export function AdminAgentsList({
         />
         <AdminSelect
           value={regionId}
-          onChange={setRegionId}
+          onChange={onRegionChange}
           label={t.admin.filterByRegion}
           items={{
             [ALL]: t.admin.allRegions,
@@ -230,16 +246,16 @@ export function AdminAgentsList({
         className="text-sm font-semibold text-muted-foreground"
         aria-live="polite"
       >
-        {filtered.length}
+        {total}
       </p>
 
-      {filtered.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border p-14 text-center text-sm text-muted-foreground">
           {t.admin.noResults}
         </p>
       ) : view === "grid" ? (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {pageRows.map((agent) => (
+          {rows.map((agent) => (
             <li
               key={agent.id}
               className="group flex items-start gap-3 rounded-2xl border border-border/60 bg-card p-4 transition-colors duration-200 hover:border-primary/35"
@@ -275,7 +291,7 @@ export function AdminAgentsList({
         </ul>
       ) : (
         <ul className="space-y-2.5">
-          {pageRows.map((agent) => (
+          {rows.map((agent) => (
             <li
               key={agent.id}
               className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3.5"

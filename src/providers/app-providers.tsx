@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { ToastStack } from "@/components/shared/toast-stack";
 import { PushNotificationsPromptModal } from "@/features/notifications/components/push-prompt-modal";
@@ -31,9 +32,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
       disableTransitionOnChange
     >
       <QueryClientProvider client={queryClient}>
-        <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
-        <ToastStack />
-        <PushNotificationsPromptModal />
+        <NuqsAdapter>
+          <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+          <ToastStack />
+          <PushNotificationsPromptModal />
+        </NuqsAdapter>
       </QueryClientProvider>
     </ThemeProvider>
   );

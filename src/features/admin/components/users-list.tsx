@@ -3,6 +3,12 @@
 import { useMemo, useState } from "react";
 
 import {
+  useFilterParam,
+  usePageParam,
+  useSearchParam,
+} from "@/lib/url-state";
+
+import {
   CalendarDays,
   Eye,
   ShieldBan,
@@ -55,10 +61,10 @@ export function AdminUsersList({
   const { t, lang } = useI18n();
 
   const [userRows, setUserRows] = useState(users);
-  const [query, setQuery] = useState("");
-  const [role, setRole] = useState(ALL);
-  const [status, setStatus] = useState(ALL);
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useSearchParam("q");
+  const [role, setRole] = useFilterParam("role");
+  const [status, setStatus] = useFilterParam("status");
+  const [page, setPage] = usePageParam();
   const [pendingChange, setPendingChange] = useState<PendingStatusChange | null>(
     null,
   );
@@ -83,6 +89,21 @@ export function AdminUsersList({
     setPage(1);
   };
 
+  /** any filter change starts back at page 1 — a narrowed result set that
+   * keeps the old page number could land past the new last page */
+  const onQueryChange = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const onRoleChange = (value: string) => {
+    setRole(value);
+    setPage(1);
+  };
+  const onStatusChange = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return userRows.filter((user) => {
@@ -103,15 +124,6 @@ export function AdminUsersList({
     (page - 1) * ADMIN_PAGE_SIZE,
     page * ADMIN_PAGE_SIZE,
   );
-  // reset to page 1 when a filter narrows the result set — compared during
-  // render (not an effect), the same re-seed-on-change pattern used
-  // elsewhere for this exact kind of derived reset
-  const filterKey = `${query}|${role}|${status}`;
-  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  if (lastFilterKey !== filterKey) {
-    setLastFilterKey(filterKey);
-    setPage(1);
-  }
 
   const governorateName = (id?: string) =>
     governorates.find((g) => g.id === id)?.name[lang] ?? "";
@@ -199,20 +211,20 @@ export function AdminUsersList({
 
       <AdminFilterBar
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={onQueryChange}
         placeholder={t.admin.searchUsers}
         hasFilters={hasFilters}
         onClear={clear}
       >
         <AdminSelect
           value={role}
-          onChange={setRole}
+          onChange={onRoleChange}
           label={t.admin.allRoles}
           items={{ [ALL]: t.admin.allRoles, ...roleLabel }}
         />
         <AdminSelect
           value={status}
-          onChange={setStatus}
+          onChange={onStatusChange}
           label={t.admin.allStatuses}
           items={{
             [ALL]: t.admin.allStatuses,

@@ -20,7 +20,9 @@ import {
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
+import { queryKeys } from "@/lib/api/query-keys";
 import { toast } from "@/lib/toast";
+import { useFilterParam, usePageParam } from "@/lib/url-state";
 import { cn } from "@/lib/utils";
 
 const ALL = "all";
@@ -69,11 +71,16 @@ function SubscriptionSection({
 }) {
   const { t, lang } = useI18n();
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<AdminSubscriptionStatus | typeof ALL>("active");
-  const [page, setPage] = useState(1);
+  // one section's filters don't collide with the other's — each key is
+  // prefixed by `kind` so both halves keep independent state in the URL
+  const [status, setStatus] = useFilterParam(`${kind}Status`, "active") as [
+    AdminSubscriptionStatus | typeof ALL,
+    (value: AdminSubscriptionStatus | typeof ALL) => void,
+  ];
+  const [page, setPage] = usePageParam(`${kind}Page`);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
 
-  const queryKey = ["admin", "subscriptions", kind, status, page];
+  const queryKey = queryKeys.admin.subscriptions(kind, status, page);
   const isInitial = status === "active" && page === 1;
   const { data } = useQuery({
     queryKey,

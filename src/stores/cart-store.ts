@@ -19,6 +19,10 @@ export interface CartLine {
   item: CatalogItem;
   options: CartOption[];
   quantity: number;
+  /** a note on this one line only ("بدون بصل") — distinct from the
+   * order-level note the cart sheet also collects. Not live on the backend
+   * yet, see update-backend-orders.md §2. */
+  notes?: string;
 }
 
 const lineKey = (itemId: string, options: CatalogOption[]) =>
@@ -59,6 +63,7 @@ interface CartState {
    * which should only clear that pick, not the whole item */
   removeLineOption: (key: string, optionId: string) => void;
   setQuantity: (key: string, quantity: number) => void;
+  setLineNotes: (key: string, notes: string) => void;
   clear: () => void;
 }
 
@@ -143,12 +148,18 @@ export const useCartStore = create<CartState>()(
                 ),
         })),
 
+      setLineNotes: (key, notes) =>
+        set((state) => ({
+          lines: state.lines.map((l) =>
+            l.key === key ? { ...l, notes: notes || undefined } : l,
+          ),
+        })),
+
       clear: () => set({ lines: [], restaurantId: null }),
     }),
-    // v5: an option now also carries its group's `selectionType` — bumped
-    // so a stale cart from before that field existed resets instead of
-    // showing every pick as an additive add-on
-    { name: "menu-syria-cart", version: 5 },
+    // v6: a line can now carry its own note — bumped so a stale cart from
+    // before that field existed just resets rather than showing `undefined`
+    { name: "menu-syria-cart", version: 6 },
   ),
 );
 

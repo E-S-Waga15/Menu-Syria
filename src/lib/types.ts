@@ -437,7 +437,20 @@ export interface Agent {
   commissionRate: number;
 }
 
-export type OrderStatus = "new" | "preparing" | "ready";
+/**
+ * The real backend state machine (see update-backend-orders.md §2) — a
+ * pending order only ever moves one step to the right, or sideways into
+ * `cancelled`; `delivered` can additionally become `refunded`.
+ * `delivered`/`cancelled`/`refunded` are terminal, no further transition.
+ */
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "delivered"
+  | "cancelled"
+  | "refunded";
 
 export interface OrderLine {
   itemId: string;
@@ -448,6 +461,10 @@ export interface OrderLine {
    * exactly as `GET /orders/:id` names the field. `null`/absent means none
    * were picked (or the item has no option groups). */
   selectedOptions?: { id: string; priceDelta: number }[] | null;
+  /** a note on this one line only ("بدون بصل") — distinct from `Order.notes`,
+   * which is one note for the whole order. Not live on the backend yet, see
+   * update-backend-orders.md §2. */
+  notes?: string;
 }
 
 export interface Order {
@@ -463,6 +480,15 @@ export interface Order {
   total: number;
   status: OrderStatus;
   createdAt: string;
+  /** how the order is meant to reach the customer — absent on an older
+   * dine-in-only order. Not live on the backend yet, see
+   * update-backend-orders.md §2. */
+  fulfillmentMode?: FulfillmentMode;
+  /** only meaningful when `fulfillmentMode` is "delivery" — already folded
+   * into `total`, kept separate so it can be shown as its own line */
+  deliveryFee?: number;
+  /** only meaningful when `fulfillmentMode` is "delivery" */
+  deliveryAddress?: string;
 }
 
 /**
@@ -694,7 +720,78 @@ export type NotificationType =
   | "subscription_renewed"
   | "subscription_expiring"
   | "subscription_expired"
-  | "account_disabled";
+  | "account_disabled"
+  /** a new order was placed on the signed-in business — not live on the
+   * backend yet, see update-backend-orders.md §2 */
+  | "new_order"
+  /** an order's status changed (e.g. the kitchen marked it ready) — not live
+   * on the backend yet, see update-backend-orders.md §2 */
+  | "order_status_changed";
+
+/**
+ * A persistent customer record for one business (`POST/GET /customers`) —
+ * only exists once an owner explicitly creates one or issues an invoice
+ * linked by `customerId`/`customerPhone`. A plain order's free-text
+ * `customerName` never creates one of these on its own.
+ */
+export interface Customer {
+  id: string;
+  businessId: string;
+  name: string;
+  /** required only once a debt is opened; unique per business */
+  phone?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type InvoicePaymentStatus = "unpaid" | "partially_paid" | "paid";
+
+/** One frozen line on an issued invoice — a copy of the order's line at
+ * issue time, not a live reference. */
+export interface InvoiceLine {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+/** `POST /invoices/:id/payments` response row, and the `payments` array on
+ * `GET /invoices/:id` — one entry per payment, append-only. */
+export interface InvoicePayment {
+  id: string;
+  invoiceId: string;
+  amount: number;
+  paidAt: string;
+}
+
+/**
+ * `POST /invoices`, `GET /invoices`, `GET /invoices/:id` — one per order,
+ * 1:1. `remaining` is always server-computed (`totalAmount - amountPaid`),
+ * never written directly by this side.
+ */
+export interface Invoice {
+  id: string;
+  number: number;
+  businessId: string;
+  orderId: string;
+  customerId?: string | null;
+  lines: InvoiceLine[];
+  totalAmount: number;
+  amountPaid: number;
+  remaining: number;
+  currency: CurrencyCode;
+  paymentStatus: InvoicePaymentStatus;
+  /** free text, e.g. "cash" */
+  paymentMethod?: string;
+  businessName: string;
+  businessAddress?: string;
+  customerName?: string;
+  customerPhone?: string;
+  issuedAt: string;
+  updatedAt: string;
+  /** only present on `GET /invoices/:id` */
+  payments?: InvoicePayment[];
+}
 
 /** `GET /notifications` — a real, server-stored notice for the signed-in
  * user (whichever role); `message` arrives as one finished sentence, not a

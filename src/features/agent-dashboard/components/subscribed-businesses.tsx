@@ -12,10 +12,12 @@ import {
   Plus,
 } from "lucide-react";
 
+import { ADMIN_PAGE_SIZE, Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { daysUntil } from "@/features/notifications/services";
 import { fmt, useI18n } from "@/i18n/client";
 import type { Business } from "@/lib/types";
+import { usePageParam } from "@/lib/url-state";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -45,9 +47,12 @@ export function SubscribedBusinesses({
   const base = `/${lang}/agent`;
   const isRestaurant = kind === "restaurant";
 
+  const [page, setPage] = usePageParam();
   const rows = [...businesses]
     .map((business) => ({ business, days: daysUntil(business.planExpiresAt) }))
     .sort((a, b) => a.days - b.days);
+  const totalPages = Math.max(1, Math.ceil(rows.length / ADMIN_PAGE_SIZE));
+  const pageRows = rows.slice((page - 1) * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE);
 
   /** the same status line in both layouts, so they cannot drift */
   const expiryLine = (days: number) => {
@@ -123,7 +128,7 @@ export function SubscribedBusinesses({
         </p>
       ) : view === "grid" ? (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {rows.map(({ business, days }) => (
+          {pageRows.map(({ business, days }) => (
             <li key={business.id}>
               <Link
                 href={`${base}/subscriptions/${business.id}`}
@@ -162,7 +167,7 @@ export function SubscribedBusinesses({
         </ul>
       ) : (
         <ul className="space-y-3">
-          {rows.map(({ business, days }) => (
+          {pageRows.map(({ business, days }) => (
             <li key={business.id}>
               <Link
                 href={`${base}/subscriptions/${business.id}`}
@@ -188,6 +193,8 @@ export function SubscribedBusinesses({
           ))}
         </ul>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }
