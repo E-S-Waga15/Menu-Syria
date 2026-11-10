@@ -4,6 +4,7 @@ import { ChefHat } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { OrdersKanban } from "@/features/restaurant-dashboard/components/orders-kanban";
+import { PlanFeatureGate } from "@/features/restaurant-dashboard/components/plan-feature-gate";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { isLocale } from "@/i18n/config";
 
@@ -14,18 +15,20 @@ export default async function DashboardOrdersPage({
   const t = isLocale(lang) ? await getDictionary(lang) : undefined;
 
   return (
-    <div className="space-y-5">
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          render={<Link href={`/${lang}/dashboard/kitchen`} />}
-        >
-          <ChefHat className="size-4" />
-          {t?.dashboard.kitchenScreen}
-        </Button>
+    <PlanFeatureGate feature="cart">
+      <div className="space-y-5">
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            render={<Link href={`/${lang}/dashboard/kitchen`} />}
+          >
+            <ChefHat className="size-4" />
+            {t?.dashboard.kitchenScreen}
+          </Button>
+        </div>
+        <OrdersKanban />
       </div>
-      <OrdersKanban />
-    </div>
+    </PlanFeatureGate>
   );
 }

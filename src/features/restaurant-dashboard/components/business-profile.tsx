@@ -1735,7 +1735,7 @@ function agentRegionNames(
 /** Same call/chat card layout as `AgentContactCard`, for a business with no
  * agent — the platform's own phone and email, each copyable, plus the same
  * call/WhatsApp buttons. */
-function PlatformContactCard({ t }: { t: I18n["t"] }) {
+export function PlatformContactCard({ t }: { t: I18n["t"] }) {
   const copy = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -1813,7 +1813,7 @@ function PlatformContactCard({ t }: { t: I18n["t"] }) {
   );
 }
 
-function AgentContactCard({
+export function AgentContactCard({
   agent,
   governorates,
   regions,

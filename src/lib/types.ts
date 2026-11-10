@@ -152,8 +152,17 @@ export interface Business {
    * public storefront reads. Absent/`null` means the business signed up
    * without an agent (or predates this field). */
   agent?: BusinessAgent | null;
-  /** order channels the plan covers; omitted means both are available */
+  /** order channels the plan covers; omitted means both are available.
+   * `orderChannels.includes("platform")` is the single source of truth for
+   * whether the owner's current plan unlocks the whole order-management
+   * suite (the platform-order board, kitchen screen, table reservations) —
+   * see `PlanFeatureGate`. */
   orderChannels?: OrderChannel[];
+  /** whether the current plan includes statistics/analytics — a combined
+   * business-type + plan flag the backend computes server-side, read
+   * directly rather than cross-referencing a separate plan object. Absent
+   * on an older read means unknown, treated as not included. */
+  hasStatistics?: boolean;
   /**
    * Opening hours, index 0 = Sunday. `null` for a day the place is shut.
    * Omitted entirely means the owner has not published hours — a different
