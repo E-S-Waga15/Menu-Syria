@@ -20,6 +20,17 @@ import type {
   WhatsAppOrderItem,
 } from "@/lib/types";
 
+/** The real `/public/orders/:id` endpoint answers `businessName` as a plain
+ * string (the project has no bilingual business names) — accept either that
+ * or an `{ar,en}` shape, same defensive pattern as every other mapper here. */
+const toLocalized = (value: unknown): LocalizedText => {
+  if (value && typeof value === "object" && "ar" in value && "en" in value) {
+    return value as LocalizedText;
+  }
+  const text = typeof value === "string" ? value : "";
+  return { ar: text, en: text };
+};
+
 export interface PublicMenu {
   restaurant: Restaurant;
   categories: MenuCategory[];
@@ -276,7 +287,7 @@ export async function getPublicOrderTracking(
   if (!raw) return undefined;
   return {
     id: String(raw.id),
-    businessName: (raw.businessName as LocalizedText) ?? { ar: "", en: "" },
+    businessName: toLocalized(raw.businessName),
     businessSlug: String(raw.businessSlug ?? ""),
     businessLogoUrl:
       typeof raw.businessLogoUrl === "string" ? raw.businessLogoUrl : undefined,
