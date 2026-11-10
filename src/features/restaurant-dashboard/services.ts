@@ -44,6 +44,7 @@ import type {
   MenuCategory,
   MenuItem,
   Order,
+  OrderLine,
   OrderStatus,
   OverviewStats,
   PeakTimesStats,
@@ -127,8 +128,69 @@ function normalizeItem(raw: Raw, businessId: string): WithMessage<MenuItem> {
   };
 }
 
+function normalizeOrderLine(raw: Raw): OrderLine {
+  const item = (raw.item ?? {}) as Raw;
+  const options = raw.selectedOptions ?? item.selectedOptions;
+  return {
+    itemId: String(raw.itemId ?? item.id ?? ""),
+    name: toLocalized(item.name ?? raw.name),
+    quantity: toNumber(raw.quantity),
+    price: toNumber(raw.unitPrice ?? raw.price ?? item.price),
+    selectedOptions: Array.isArray(options)
+      ? (options as Raw[]).map((o) => ({
+          id: String(o.id ?? ""),
+          priceDelta: toNumber(o.priceDelta),
+        }))
+      : null,
+    notes: typeof raw.notes === "string" && raw.notes ? raw.notes : undefined,
+  };
+}
+
+/** The real `/me/orders`/`/orders/:id` rows are the raw DB shape
+ * (`orderItems`, string decimals, a plain-string item `name`) — this maps
+ * them onto the domain `Order` the dashboard actually reads (`lines`,
+ * numeric `total`, `{ar,en}` line names), same as every other normalizer
+ * here, rather than passing the raw row through untouched. */
 function normalizeOrder(raw: Raw): WithMessage<Order> {
-  return raw as unknown as WithMessage<Order>;
+  // `GET /me/orders` already answers this shape pre-normalized (`lines`,
+  // numeric `total`) while `GET /orders/:id` and every write endpoint
+  // (`/items`, `/driver`, `/delivery-status`, `/status`) still answer the
+  // raw DB row (`orderItems`, string `totalAmount`) — every fallback below
+  // accepts both so a mutation's own response normalizes the same as a list
+  // fetch instead of silently dropping `lines`/`total` until the next refetch.
+  const lineRows = Array.isArray(raw.orderItems)
+    ? (raw.orderItems as Raw[])
+    : Array.isArray(raw.items)
+      ? (raw.items as Raw[])
+      : Array.isArray(raw.lines)
+        ? (raw.lines as Raw[])
+        : [];
+  const table = (raw.table ?? null) as Raw | null;
+  const tableNumber = table ? toNumber(table.tableNumber ?? table.number) : 0;
+  return {
+    id: String(raw.id),
+    number:
+      typeof raw.number === "string" || typeof raw.number === "number"
+        ? raw.number
+        : String(raw.id ?? "").slice(0, 8).toUpperCase(),
+    restaurantId: String(raw.businessId ?? raw.restaurantId ?? ""),
+    tableNumber: tableNumber || undefined,
+    customerName: typeof raw.customerName === "string" && raw.customerName ? raw.customerName : undefined,
+    lines: lineRows.map(normalizeOrderLine),
+    notes: typeof raw.notes === "string" && raw.notes ? raw.notes : undefined,
+    total: toNumber(raw.totalAmount ?? raw.total),
+    status: (raw.status as OrderStatus) ?? "pending",
+    createdAt: String(raw.createdAt ?? ""),
+    fulfillmentMode: (raw.fulfillmentMode as FulfillmentMode | null) ?? undefined,
+    deliveryFee: raw.deliveryFee != null ? toNumber(raw.deliveryFee) : undefined,
+    deliveryAddress:
+      typeof raw.deliveryAddress === "string" && raw.deliveryAddress
+        ? raw.deliveryAddress
+        : undefined,
+    driverId: raw.driverId ? String(raw.driverId) : undefined,
+    deliveryStatus: (raw.deliveryStatus as DeliveryStatus | null) ?? undefined,
+    message: typeof raw.message === "string" ? raw.message : undefined,
+  } as WithMessage<Order>;
 }
 
 /** Shared paginated-list shape — same `{items, meta}` contract the admin
