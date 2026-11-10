@@ -9,6 +9,8 @@ import {
   Bell,
   Building2,
   ChartNoAxesCombined,
+  ChefHat,
+  ClipboardList,
   LayoutDashboard,
   LayoutGrid,
   LifeBuoy,
@@ -18,6 +20,7 @@ import {
   Tag,
   Settings,
   ShoppingBag,
+  Table2,
   UtensilsCrossed,
   Users,
 } from "lucide-react";
@@ -77,8 +80,18 @@ export function RestaurantDashboardShell({
       icon: LayoutGrid,
     },
     { href: `${base}/offers`, label: t.offers.title, icon: Tag },
-    // Orders and dining-table management are hidden for now — not part of
-    // this release's plan yet, kept in the codebase to turn back on later
+    { href: `${base}/orders`, label: t.dashboard.orders, icon: ClipboardList },
+    {
+      href: `${base}/kitchen`,
+      label: t.dashboard.kitchenScreen,
+      icon: ChefHat,
+    },
+    // Tables/reservations are a restaurant-only concept — a store has no
+    // dine-in floor, so the nav item is left out entirely rather than shown
+    // locked (not a plan upsell, just not applicable to this business type).
+    ...(isStore
+      ? []
+      : [{ href: `${base}/tables`, label: t.dashboard.tables, icon: Table2 }]),
     {
       href: `${base}/whatsapp-orders`,
       label: t.dashboard.whatsappOrders,
