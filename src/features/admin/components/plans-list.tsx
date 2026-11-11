@@ -40,6 +40,7 @@ import {
   updateAdminPlan,
 } from "@/features/admin/services";
 import { RowActions, type RowAction } from "@/components/shared/row-actions";
+import { Price } from "@/components/shared/price";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
@@ -248,17 +249,20 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
 
               <div className="mt-3">
                 {cycle === "yearly" && (
-                  <span
+                  <Price
+                    amount={plan.yearlyOriginalPrice}
+                    currency={plan.currency}
+                    lang={lang}
                     className="block text-sm text-muted-foreground line-through"
-                    dir="ltr"
-                  >
-                    {formatPrice(plan.yearlyOriginalPrice, plan.currency)}
-                  </span>
+                  />
                 )}
                 <p className="flex items-baseline gap-1.5">
-                  <span className="font-heading text-2xl font-bold text-primary">
-                    {formatPrice(price, plan.currency)}
-                  </span>
+                  <Price
+                    amount={price}
+                    currency={plan.currency}
+                    lang={lang}
+                    className="font-heading text-2xl font-bold text-primary"
+                  />
                   <span className="text-xs font-semibold text-muted-foreground">
                     {cycle === "monthly" ? t.admin.pricePerMonth : t.admin.pricePerYear}
                   </span>
@@ -287,9 +291,12 @@ export function AdminPlansList({ plans }: { plans: Plan[] }) {
                   {t.admin.agentPriceLabel}
                 </span>
                 <span className="flex items-baseline gap-1.5">
-                  <span className="text-sm font-bold" dir="ltr">
-                    {formatPrice(agentPrice, t.common.currency)}
-                  </span>
+                  <Price
+                    amount={agentPrice}
+                    currency={t.common.currency}
+                    lang={lang}
+                    className="text-sm font-bold"
+                  />
                   <span className="text-[11px] font-semibold text-muted-foreground">
                     {fmt(t.admin.agentDiscountBadge, {
                       percent: plan.agentDiscountPercent ?? 0,

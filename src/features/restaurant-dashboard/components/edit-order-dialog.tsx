@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Price } from "@/components/shared/price";
 import { useOrderMutations } from "@/features/restaurant-dashboard/hooks/use-orders";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { toast } from "@/lib/toast";
 import type { Order } from "@/lib/types";
@@ -92,9 +92,12 @@ export function EditOrderDialog({
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{line.name[lang]}</p>
-                  <p className="text-xs text-muted-foreground" dir="ltr">
-                    {formatPrice(line.price, t.common.currency, lang)}
-                  </p>
+                  <Price
+                    amount={line.price}
+                    currency={t.common.currency}
+                    lang={lang}
+                    className="text-xs text-muted-foreground"
+                  />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Button
@@ -132,9 +135,12 @@ export function EditOrderDialog({
 
           <div className="flex items-center justify-between border-t border-dashed border-border pt-3">
             <span className="font-bold">{t.dashboard.orderTotal}</span>
-            <span className="font-bold text-primary" dir="ltr">
-              {formatPrice(total, t.common.currency, lang)}
-            </span>
+            <Price
+              amount={total}
+              currency={t.common.currency}
+              lang={lang}
+              className="font-bold text-primary"
+            />
           </div>
         </div>
         <DialogFooter className="px-4 pb-4">

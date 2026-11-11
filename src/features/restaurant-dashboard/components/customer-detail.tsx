@@ -11,13 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { Pagination } from "@/components/shared/pagination";
+import { Price } from "@/components/shared/price";
 import { CustomerDialog } from "@/features/restaurant-dashboard/components/customer-dialog";
 import {
   getCustomer,
   getInvoices,
   updateCustomer,
 } from "@/features/restaurant-dashboard/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -115,9 +115,12 @@ export function CustomerDetail({ id }: { id: string }) {
                 <span className="flex-1 text-sm font-bold">
                   {fmt(t.dashboard.invoiceNumber, { number: invoice.number })}
                 </span>
-                <span className="text-xs font-semibold text-muted-foreground" dir="ltr">
-                  {formatPrice(invoice.totalAmount, invoice.currency, lang)}
-                </span>
+                <Price
+                  amount={invoice.totalAmount}
+                  currency={invoice.currency}
+                  lang={lang}
+                  className="text-xs font-semibold text-muted-foreground"
+                />
                 <Badge className={cn("shrink-0", PAYMENT_STATUS_STYLE[invoice.paymentStatus])}>
                   {invoice.paymentStatus === "paid"
                     ? t.dashboard.paymentStatusPaid

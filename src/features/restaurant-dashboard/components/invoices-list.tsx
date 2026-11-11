@@ -7,12 +7,12 @@ import { Receipt } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/shared/pagination";
+import { Price } from "@/components/shared/price";
 import { AdminFilterBar } from "@/features/admin/components/admin-filter-bar";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminSelect } from "@/features/admin/components/admin-select";
 import { DeliveredOrdersPanel } from "@/features/restaurant-dashboard/components/delivered-orders-panel";
 import { getInvoices } from "@/features/restaurant-dashboard/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { InvoicePaymentStatus } from "@/lib/types";
@@ -134,9 +134,12 @@ export function InvoicesList() {
                 <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
                   {dateFormat.format(new Date(invoice.issuedAt))}
                 </span>
-                <span className="shrink-0 text-xs font-semibold" dir="ltr">
-                  {formatPrice(invoice.totalAmount, invoice.currency, lang)}
-                </span>
+                <Price
+                  amount={invoice.totalAmount}
+                  currency={invoice.currency}
+                  lang={lang}
+                  className="shrink-0 text-xs font-semibold"
+                />
                 <Badge className={cn("shrink-0", PAYMENT_STATUS_STYLE[invoice.paymentStatus])}>
                   {invoice.paymentStatus === "paid"
                     ? t.dashboard.paymentStatusPaid

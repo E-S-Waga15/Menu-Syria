@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { offerAsCatalogItem, offerDiscount } from "@/features/offers/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { fmt, useI18n } from "@/i18n/client";
 import type { Offer, OfferBadge, RestaurantTheme } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -180,16 +180,20 @@ export function OfferModal({
 
         <div className="space-y-5 p-5" dir={dir}>
           <div>
-            {/* no `dir` override — see offer-card.tsx's own note: forcing
-                ltr here is what put the currency in front of the number */}
             <p className="flex items-baseline gap-2.5">
-              <span className="font-heading text-2xl font-bold text-[var(--menu-primary)]">
-                {formatPrice(offer.price, t.common.currency)}
-              </span>
+              <Price
+                amount={offer.price}
+                currency={t.common.currency}
+                lang={lang}
+                className="font-heading text-2xl font-bold text-[var(--menu-primary)]"
+              />
               {offer.originalPrice > offer.price && (
-                <span className="text-sm font-semibold text-muted-foreground line-through">
-                  {formatPrice(offer.originalPrice, t.common.currency)}
-                </span>
+                <Price
+                  amount={offer.originalPrice}
+                  currency={t.common.currency}
+                  lang={lang}
+                  className="text-sm font-semibold text-muted-foreground line-through"
+                />
               )}
             </p>
 
@@ -236,9 +240,7 @@ export function OfferModal({
             className="h-12 w-full bg-[var(--menu-primary)] text-base font-bold text-white hover:opacity-90"
           >
             {t.offers.orderOffer}
-            <span className="ms-auto">
-              {formatPrice(offer.price, t.common.currency)}
-            </span>
+            <Price amount={offer.price} currency={t.common.currency} lang={lang} className="ms-auto" />
           </Button>
         </div>
       </DialogContent>

@@ -17,7 +17,7 @@ import {
   type AdminSubscriptionStatus,
   type AdminSubscriptionsPage,
 } from "@/features/admin/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -180,9 +180,12 @@ function SubscriptionSection({
                   {dateFormat.format(new Date(row.endDate))}
                 </span>
 
-                <span className="shrink-0 text-xs font-semibold" dir="ltr">
-                  {formatPrice(row.amountPaid, row.currency, lang)}
-                </span>
+                <Price
+                  amount={row.amountPaid}
+                  currency={row.currency}
+                  lang={lang}
+                  className="shrink-0 text-xs font-semibold"
+                />
 
                 <Badge
                   className={cn(

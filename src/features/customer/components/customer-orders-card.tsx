@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { Compass, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { fmt, useI18n } from "@/i18n/client";
 import { useCartStore } from "@/stores/cart-store";
 import { useOrderHistoryStore } from "@/stores/order-history-store";
@@ -79,12 +79,12 @@ export function CustomerOrdersCard({ customerId }: { customerId: string }) {
                     })}
                   </p>
                 </div>
-                <span
+                <Price
+                  amount={order.total}
+                  currency={t.common.currency}
+                  lang={lang}
                   className="shrink-0 font-heading text-sm font-bold"
-                  dir="ltr"
-                >
-                  {formatPrice(order.total, t.common.currency)}
-                </span>
+                />
               </div>
               <div className="mt-3 flex gap-2">
                 {order.serverId && (

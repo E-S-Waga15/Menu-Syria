@@ -22,7 +22,7 @@ import {
 import { QuickAccess } from "@/components/shared/quick-access";
 import { StatCard } from "@/features/restaurant-dashboard/components/stat-card";
 import { daysUntil } from "@/features/notifications/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { fmt, useI18n } from "@/i18n/client";
 import type { AdminStats } from "@/features/admin/services";
 import type { Business } from "@/lib/types";
@@ -118,7 +118,8 @@ export function AdminControlCenter({
         />
         <StatCard
           label={t.admin.monthlyRevenue}
-          value={formatPrice(stats.monthlyRevenue, t.common.currency)}
+          value={<Price amount={stats.monthlyRevenue} currency={t.common.currency} lang={lang} />}
+          numeric={false}
           icon={TrendingUp}
           accent="berry"
           badges={[{ icon: TrendingUp, text: "+21%", tone: "success" }]}

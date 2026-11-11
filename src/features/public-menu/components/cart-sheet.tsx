@@ -24,6 +24,7 @@ import { qrFileName } from "@/lib/qr-filename";
 
 import { WhatsAppIcon } from "@/components/shared/brand-icons";
 import { FieldError } from "@/components/shared/field-error";
+import { Price } from "@/components/shared/price";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -588,12 +589,12 @@ export function CartSheet({
                             </span>
                           )}
                         </p>
-                        <p className="mt-0.5 text-sm font-bold text-[var(--menu-primary)]">
-                          {formatPrice(
-                            lineUnitPrice(line) * line.quantity,
-                            t.common.currency,
-                          )}
-                        </p>
+                        <Price
+                          amount={lineUnitPrice(line) * line.quantity}
+                          currency={t.common.currency}
+                          lang={lang}
+                          className="mt-0.5 text-sm font-bold text-[var(--menu-primary)]"
+                        />
                       </div>
                     </button>
                     {line.item.quantityLocked ? (
@@ -937,17 +938,23 @@ export function CartSheet({
                     <span className="text-muted-foreground">
                       {copy.cartSubtotal}
                     </span>
-                    <span className="font-semibold">
-                      {formatPrice(subtotal, t.common.currency)}
-                    </span>
+                    <Price
+                      amount={subtotal}
+                      currency={t.common.currency}
+                      lang={lang}
+                      className="font-semibold"
+                    />
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
                       {copy.cartDeliveryFee}
                     </span>
-                    <span className="font-semibold">
-                      {formatPrice(deliveryFee, t.common.currency)}
-                    </span>
+                    <Price
+                      amount={deliveryFee}
+                      currency={t.common.currency}
+                      lang={lang}
+                      className="font-semibold"
+                    />
                   </div>
                 </>
               )}
@@ -967,9 +974,12 @@ export function CartSheet({
                 <span className="text-sm font-semibold text-muted-foreground">
                   {copy.cartTotal}
                 </span>
-                <span className="font-heading text-xl font-bold text-[var(--menu-primary)]">
-                  {formatPrice(total, t.common.currency)}
-                </span>
+                <Price
+                  amount={total}
+                  currency={t.common.currency}
+                  lang={lang}
+                  className="font-heading text-xl font-bold text-[var(--menu-primary)]"
+                />
               </div>
             </div>
 

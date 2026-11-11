@@ -33,6 +33,7 @@ import {
   type SubscriptionDurationInput,
   type SubscriptionDurationType,
 } from "@/features/admin/services";
+import { Price } from "@/components/shared/price";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import type { Plan } from "@/lib/types";
@@ -163,16 +164,15 @@ export function SubscriptionApprovalDialog({
                   {plans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
                       {plan.name[lang]} —{" "}
-                      {formatPrice(plan.priceMonthly, plan.currency, lang)}
+                      <Price amount={plan.priceMonthly} currency={plan.currency} lang={lang} />
                       {t.admin.pricePerMonth}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {selectedPlan && (
-                <p className="text-xs text-muted-foreground">
-                  {formatPrice(selectedPlan.priceYearly, selectedPlan.currency, lang)}
-                  {" "}
+                <p className="flex items-baseline gap-1 text-xs text-muted-foreground">
+                  <Price amount={selectedPlan.priceYearly} currency={selectedPlan.currency} lang={lang} />
                   {t.admin.pricePerYear}
                 </p>
               )}

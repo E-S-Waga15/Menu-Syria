@@ -18,6 +18,8 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { Price } from "@/components/shared/price";
 import {
   QuickAccess,
   type QuickAccessItem,
@@ -32,10 +34,8 @@ import {
   getMyRestaurant,
   getOverviewStats,
 } from "@/features/restaurant-dashboard/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 const RESTAURANT_ID = "r1";
 
@@ -236,9 +236,12 @@ export function DashboardOverview() {
             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
               {analytics.bestSeller.description[lang]}
             </p>
-            <p className="mt-3 text-lg font-bold text-primary" dir="ltr">
-              {formatPrice(analytics.bestSeller.price, t.common.currency)}
-            </p>
+            <Price
+              amount={analytics.bestSeller.price}
+              currency={t.common.currency}
+              lang={lang}
+              className="mt-3 text-lg font-bold text-primary"
+            />
           </div>
         </section>
       </div>

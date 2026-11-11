@@ -17,7 +17,7 @@ import { RowActions, type RowAction } from "@/components/shared/row-actions";
 import { SafeImage } from "@/components/shared/safe-image";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { ItemStatistics, MenuItem } from "@/lib/types";
@@ -130,9 +130,12 @@ function ItemEntryBody(props: MenuItemViewProps) {
         )}
         <div className="min-w-0 flex-1 pt-1">
           <p className="truncate text-sm font-bold">{item.name[lang]}</p>
-          <p className="mt-0.5 text-sm font-semibold text-primary">
-            {formatPrice(item.price, item.currency ?? "SYP", lang)}
-          </p>
+          <Price
+            amount={item.price}
+            currency={item.currency ?? "SYP"}
+            lang={lang}
+            className="mt-0.5 text-sm font-semibold text-primary"
+          />
         </div>
         <div
           onMouseDown={(e) => e.stopPropagation()}

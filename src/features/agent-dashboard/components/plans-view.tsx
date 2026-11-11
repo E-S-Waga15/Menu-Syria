@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { FetchError } from "@/components/shared/fetch-error";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { getAgentPlans } from "@/features/agent-dashboard/services";
+import { Price } from "@/components/shared/price";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -98,9 +99,12 @@ export function AgentPlansView() {
 
               <div className="mt-3">
                 <p className="flex items-baseline gap-1.5">
-                  <span className="font-heading text-2xl font-bold text-primary">
-                    {formatPrice(price, plan.currency)}
-                  </span>
+                  <Price
+                    amount={price}
+                    currency={plan.currency}
+                    lang={lang}
+                    className="font-heading text-2xl font-bold text-primary"
+                  />
                   <span className="text-xs font-semibold text-muted-foreground">
                     {cycle === "monthly" ? t.admin.pricePerMonth : t.admin.pricePerYear}
                   </span>

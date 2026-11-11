@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, MessageCircle, Printer, Receipt } from "luci
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { Price } from "@/components/shared/price";
 import { InvoicePaymentDialog } from "@/features/restaurant-dashboard/components/invoice-payment-dialog";
 import { addInvoicePayment, getInvoice } from "@/features/restaurant-dashboard/services";
 import { formatPrice } from "@/features/public-menu/lib/format";
@@ -136,9 +137,12 @@ export function InvoiceDetail({ id }: { id: string }) {
               <span>
                 {line.quantity}× {line.name}
               </span>
-              <span dir="ltr" className="text-muted-foreground">
-                {formatPrice(line.lineTotal, invoice.currency, lang)}
-              </span>
+              <Price
+                amount={line.lineTotal}
+                currency={invoice.currency}
+                lang={lang}
+                className="text-muted-foreground"
+              />
             </li>
           ))}
         </ul>
@@ -146,19 +150,25 @@ export function InvoiceDetail({ id }: { id: string }) {
         <div className="mt-4 space-y-1.5 border-t border-dashed border-border pt-4 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">{t.dashboard.totalAmount}</span>
-            <span className="font-semibold" dir="ltr">
-              {formatPrice(invoice.totalAmount, invoice.currency, lang)}
-            </span>
+            <Price
+              amount={invoice.totalAmount}
+              currency={invoice.currency}
+              lang={lang}
+              className="font-semibold"
+            />
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">{t.dashboard.amountPaidLabel}</span>
-            <span dir="ltr">{formatPrice(invoice.amountPaid, invoice.currency, lang)}</span>
+            <Price amount={invoice.amountPaid} currency={invoice.currency} lang={lang} />
           </div>
           <div className="flex justify-between">
             <span className="font-bold">{t.dashboard.remainingAmount}</span>
-            <span className="font-bold text-primary" dir="ltr">
-              {formatPrice(invoice.remaining, invoice.currency, lang)}
-            </span>
+            <Price
+              amount={invoice.remaining}
+              currency={invoice.currency}
+              lang={lang}
+              className="font-bold text-primary"
+            />
           </div>
         </div>
 
@@ -191,9 +201,12 @@ export function InvoiceDetail({ id }: { id: string }) {
               key={payment.id}
               className="flex items-center justify-between rounded-xl border border-border/60 bg-card px-4 py-2.5 text-sm"
             >
-              <span dir="ltr" className="font-semibold">
-                {formatPrice(payment.amount, invoice.currency, lang)}
-              </span>
+              <Price
+                amount={payment.amount}
+                currency={invoice.currency}
+                lang={lang}
+                className="font-semibold"
+              />
               <span className="text-xs text-muted-foreground">
                 {dateFormat.format(new Date(payment.paidAt))}
               </span>

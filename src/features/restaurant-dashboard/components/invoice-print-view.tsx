@@ -7,8 +7,8 @@ import { Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { Price } from "@/components/shared/price";
 import { getInvoice } from "@/features/restaurant-dashboard/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 
@@ -95,9 +95,7 @@ export function InvoicePrintView({ id }: { id: string }) {
             <span className="min-w-0 flex-1 truncate">
               {line.quantity}× {line.name}
             </span>
-            <span dir="ltr" className="shrink-0">
-              {formatPrice(line.lineTotal, invoice.currency, lang)}
-            </span>
+            <Price amount={line.lineTotal} currency={invoice.currency} lang={lang} className="shrink-0" />
           </div>
         ))}
 
@@ -105,18 +103,21 @@ export function InvoicePrintView({ id }: { id: string }) {
 
         <div className="flex justify-between">
           <span>{t.dashboard.totalAmount}</span>
-          <span dir="ltr" className="font-bold">
-            {formatPrice(invoice.totalAmount, invoice.currency, lang)}
-          </span>
+          <Price
+            amount={invoice.totalAmount}
+            currency={invoice.currency}
+            lang={lang}
+            className="font-bold"
+          />
         </div>
         <div className="flex justify-between">
           <span>{t.dashboard.amountPaidLabel}</span>
-          <span dir="ltr">{formatPrice(invoice.amountPaid, invoice.currency, lang)}</span>
+          <Price amount={invoice.amountPaid} currency={invoice.currency} lang={lang} />
         </div>
         {invoice.remaining > 0 && (
           <div className="flex justify-between font-bold">
             <span>{t.dashboard.remainingAmount}</span>
-            <span dir="ltr">{formatPrice(invoice.remaining, invoice.currency, lang)}</span>
+            <Price amount={invoice.remaining} currency={invoice.currency} lang={lang} />
           </div>
         )}
         {invoice.paymentMethod && (

@@ -1,13 +1,11 @@
 "use client";
 
 import { FadeImage } from "@/components/shared/fade-image";
+import { Price } from "@/components/shared/price";
 
 import { Plus } from "lucide-react";
 
-import {
-  formatPrice,
-  type StorefrontCopy,
-} from "@/features/public-menu/lib/format";
+import type { StorefrontCopy } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import type { CatalogItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -105,9 +103,12 @@ export function DishCard({
           {item.name[lang]}
         </h3>
         <div className="mt-3 flex items-center justify-between gap-2">
-          <p className="text-sm font-bold text-[var(--menu-primary)] md:text-base">
-            {formatPrice(item.price, item.currency ?? "SYP", lang)}
-          </p>
+          <Price
+            amount={item.price}
+            currency={item.currency ?? "SYP"}
+            lang={lang}
+            className="text-sm font-bold text-[var(--menu-primary)] md:text-base"
+          />
           <button
             type="button"
             disabled={!item.isAvailable}

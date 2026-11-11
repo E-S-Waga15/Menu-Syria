@@ -6,9 +6,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Receipt } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Price } from "@/components/shared/price";
 import { IssueInvoiceDialog } from "@/features/restaurant-dashboard/components/issue-invoice-dialog";
 import { getInvoices, getMyOrders } from "@/features/restaurant-dashboard/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { Order } from "@/lib/types";
@@ -66,9 +66,12 @@ export function DeliveredOrdersPanel() {
                   {order.customerName ?? "—"}
                 </p>
               </div>
-              <span className="shrink-0 text-xs font-semibold" dir="ltr">
-                {formatPrice(order.total, t.common.currency, lang)}
-              </span>
+              <Price
+                amount={order.total}
+                currency={t.common.currency}
+                lang={lang}
+                className="shrink-0 text-xs font-semibold"
+              />
               <Button size="sm" variant="outline" onClick={() => setInvoicing(order)}>
                 {t.dashboard.issueInvoice}
               </Button>

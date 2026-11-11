@@ -34,7 +34,7 @@ import {
   getAdminAgentLedger,
   updateAdminAgent,
 } from "@/features/admin/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { StatCard } from "@/features/restaurant-dashboard/components/stat-card";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
@@ -215,19 +215,22 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label={t.admin.credit}
-          value={formatPrice(credit, t.common.currency)}
+          value={<Price amount={credit} currency={t.common.currency} lang={lang} />}
+          numeric={false}
           icon={ArrowUpCircle}
           accent="success"
         />
         <StatCard
           label={t.admin.debit}
-          value={formatPrice(debit, t.common.currency)}
+          value={<Price amount={debit} currency={t.common.currency} lang={lang} />}
+          numeric={false}
           icon={ArrowDownCircle}
           accent="zest"
         />
         <StatCard
           label={t.admin.balance}
-          value={formatPrice(balance, t.common.currency)}
+          value={<Price amount={balance} currency={t.common.currency} lang={lang} />}
+          numeric={false}
           icon={Wallet}
           accent="berry"
         />
@@ -279,13 +282,12 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
               </div>
               <p
                 className={cn(
-                  "shrink-0 font-bold",
+                  "shrink-0 flex items-baseline gap-0.5 font-bold",
                   tx.amount >= 0 ? "text-success" : "text-destructive",
                 )}
-                dir="ltr"
               >
                 {tx.amount >= 0 ? "+" : "−"}
-                {formatPrice(Math.abs(tx.amount), t.common.currency)}
+                <Price amount={Math.abs(tx.amount)} currency={t.common.currency} lang={lang} />
               </p>
             </div>
           ))}
@@ -306,9 +308,12 @@ export function AdminAgentLedger({ agentId }: { agentId: string }) {
                   tx.amount >= 0 ? "bg-success" : "bg-zest",
                 )}
               />
-              <p className="text-sm font-bold" dir="ltr">
-                {formatPrice(tx.amount, t.common.currency)}
-              </p>
+              <Price
+                amount={tx.amount}
+                currency={t.common.currency}
+                lang={lang}
+                className="text-sm font-bold"
+              />
               <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
                 {tx.restaurantName[lang]} · <span dir="ltr">{tx.date}</span>
               </p>

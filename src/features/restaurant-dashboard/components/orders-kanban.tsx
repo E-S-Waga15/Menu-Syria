@@ -36,10 +36,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { Price } from "@/components/shared/price";
 import { EditOrderDialog } from "@/features/restaurant-dashboard/components/edit-order-dialog";
 import { useOrderMutations } from "@/features/restaurant-dashboard/hooks/use-orders";
 import { getMyDrivers, getMyOrders } from "@/features/restaurant-dashboard/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { Order, OrderStatus } from "@/lib/types";
@@ -240,15 +240,12 @@ export function OrdersKanban() {
                           <span className="truncate">
                             {line.quantity}× {line.name[lang]}
                           </span>
-                          <span
+                          <Price
+                            amount={line.price * line.quantity}
+                            currency={t.common.currency}
+                            lang={lang}
                             className="shrink-0 text-muted-foreground"
-                            dir="ltr"
-                          >
-                            {formatPrice(
-                              line.price * line.quantity,
-                              t.common.currency,
-                            )}
-                          </span>
+                          />
                         </div>
                         {line.selectedOptions && line.selectedOptions.length > 0 && (
                           <p className="truncate text-xs text-muted-foreground">
@@ -273,16 +270,17 @@ export function OrdersKanban() {
                   {order.fulfillmentMode === "delivery" && !!order.deliveryFee && (
                     <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                       <span>{t.dashboard.deliveryFeeLabel}</span>
-                      <span dir="ltr">
-                        {formatPrice(order.deliveryFee, t.common.currency)}
-                      </span>
+                      <Price amount={order.deliveryFee} currency={t.common.currency} lang={lang} />
                     </div>
                   )}
 
                   <div className="mt-3 flex items-center justify-between gap-2 border-t border-dashed border-border pt-3">
-                    <span className="font-bold text-primary" dir="ltr">
-                      {formatPrice(order.total, t.common.currency)}
-                    </span>
+                    <Price
+                      amount={order.total}
+                      currency={t.common.currency}
+                      lang={lang}
+                      className="font-bold text-primary"
+                    />
                     <div className="flex items-center gap-1.5">
                       {order.status === "pending" && (
                         <Button

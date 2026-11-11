@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Check, Minus, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Price } from "@/components/shared/price";
 import {
   Carousel,
   CarouselContent,
@@ -367,9 +368,12 @@ export function DishModal({
 
         <div className="space-y-5 p-5" dir={dir}>
           <div>
-            <p className="text-xl font-bold text-[var(--menu-primary)]">
-              {formatPrice(item.price, item.currency ?? "SYP", lang)}
-            </p>
+            <Price
+              amount={item.price}
+              currency={item.currency ?? "SYP"}
+              lang={lang}
+              className="text-xl font-bold text-[var(--menu-primary)]"
+            />
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {item.description[lang]}
             </p>
@@ -468,9 +472,9 @@ export function DishModal({
                             replaces the price outright, so it's just the
                             number, no sign implying addition */}
                         {option.priceDelta !== 0 && (
-                          <span className="shrink-0 text-xs font-bold text-[var(--menu-primary)]">
+                          <span className="inline-flex shrink-0 items-baseline gap-0.5 text-xs font-bold text-[var(--menu-primary)]">
                             {!isSingle && option.priceDelta > 0 && "+"}
-                            {formatPrice(option.priceDelta, item.currency ?? "SYP", lang)}
+                            <Price amount={option.priceDelta} currency={item.currency ?? "SYP"} lang={lang} />
                           </span>
                         )}
                       </button>
@@ -525,13 +529,11 @@ export function DishModal({
             className="flex h-12 flex-1 transform-gpu items-center justify-between gap-2 rounded-full bg-[var(--menu-primary)] px-5 text-sm font-bold text-white transition-[scale] duration-200 ease-smooth hover:scale-[1.01] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
           >
             <span>{copy.addToCart}</span>
-            <span>
-              {formatPrice(
-                unitPrice * (item.quantityLocked ? 1 : quantity),
-                item.currency ?? "SYP",
-                lang,
-              )}
-            </span>
+            <Price
+              amount={unitPrice * (item.quantityLocked ? 1 : quantity)}
+              currency={item.currency ?? "SYP"}
+              lang={lang}
+            />
           </button>
         </div>
       </DialogContent>

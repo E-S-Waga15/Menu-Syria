@@ -17,8 +17,8 @@ import {
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { SafeImage } from "@/components/shared/safe-image";
 import { Logo } from "@/components/shared/logo";
+import { Price } from "@/components/shared/price";
 import { getPublicOrderTracking } from "@/features/public-menu/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { fmt, useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/lib/types";
@@ -210,18 +210,24 @@ export function OrderTrackingView({ id }: { id: string }) {
               <span className="truncate">
                 {item.quantity}× {item.name}
               </span>
-              <span dir="ltr" className="shrink-0 text-muted-foreground">
-                {formatPrice(item.lineTotal, order.currency, lang)}
-              </span>
+              <Price
+                amount={item.lineTotal}
+                currency={order.currency}
+                lang={lang}
+                className="shrink-0 text-muted-foreground"
+              />
             </li>
           ))}
         </ul>
 
         <div className="mt-4 flex items-center justify-between border-t border-dashed border-border pt-4">
           <span className="font-bold">{t.orderTracking.total}</span>
-          <span className="font-bold text-primary" dir="ltr">
-            {formatPrice(order.totalAmount, order.currency, lang)}
-          </span>
+          <Price
+            amount={order.totalAmount}
+            currency={order.currency}
+            lang={lang}
+            className="font-bold text-primary"
+          />
         </div>
       </div>
 

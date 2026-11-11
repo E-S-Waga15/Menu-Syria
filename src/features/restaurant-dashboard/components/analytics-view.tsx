@@ -25,7 +25,7 @@ import {
   getOverviewStats,
   getPeakTimes,
 } from "@/features/restaurant-dashboard/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/fmt";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -60,7 +60,7 @@ const DAY_WINDOWS = [7, 30, 90] as const;
  * each endpoint below actually provides.
  */
 export function AnalyticsView() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [days, setDays] = useState<(typeof DAY_WINDOWS)[number]>(7);
 
   const businessQuery = useQuery({
@@ -205,9 +205,12 @@ export function AnalyticsView() {
                   </p>
                 </div>
                 <div className="shrink-0 text-end">
-                  <p className="text-sm font-bold text-primary" dir="ltr">
-                    {formatPrice(item.revenue, t.common.currency)}
-                  </p>
+                  <Price
+                    amount={item.revenue}
+                    currency={t.common.currency}
+                    lang={lang}
+                    className="text-sm font-bold text-primary"
+                  />
                   <Badge
                     className={cn(
                       "mt-1",

@@ -17,8 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Price } from "@/components/shared/price";
 import { StatCard } from "@/features/restaurant-dashboard/components/stat-card";
-import { formatPrice } from "@/features/public-menu/lib/format";
 import { getItemStatistics } from "@/features/restaurant-dashboard/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -96,7 +96,8 @@ export function ItemStatsModal({
               />
               <StatCard
                 label={t.dashboard.itemRevenue}
-                value={formatPrice(stats.revenue, item?.currency ?? "SYP", lang)}
+                value={<Price amount={stats.revenue} currency={item?.currency ?? "SYP"} lang={lang} />}
+                numeric={false}
                 icon={Wallet}
                 accent="berry"
               />

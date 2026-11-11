@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Price } from "@/components/shared/price";
 import { formatPrice } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import type { MenuItem } from "@/lib/types";
@@ -70,9 +71,12 @@ export function ItemPreviewModal({
 
         <div className="space-y-4 p-5" dir={dir}>
           <div>
-            <p className="text-lg font-bold text-primary">
-              {formatPrice(item.price, item.currency ?? "SYP", lang)}
-            </p>
+            <Price
+              amount={item.price}
+              currency={item.currency ?? "SYP"}
+              lang={lang}
+              className="text-lg font-bold text-primary"
+            />
             {item.description[lang] && (
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {item.description[lang]}

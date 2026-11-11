@@ -2,10 +2,8 @@
 
 import { ShoppingBag } from "lucide-react";
 
-import {
-  formatPrice,
-  type StorefrontCopy,
-} from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
+import type { StorefrontCopy } from "@/features/public-menu/lib/format";
 import { useI18n } from "@/i18n/client";
 import {
   selectCartCount,
@@ -15,8 +13,7 @@ import {
 import { useUiStore } from "@/stores/ui-store";
 
 export function FloatingCartBar({ copy }: { copy: StorefrontCopy }) {
-  const { t } = useI18n();
-  void t;
+  const { t, lang } = useI18n();
   const count = useCartStore(selectCartCount);
   const total = useCartStore(selectCartTotal);
   const setCartSheetOpen = useUiStore((s) => s.setCartSheetOpen);
@@ -42,9 +39,7 @@ export function FloatingCartBar({ copy }: { copy: StorefrontCopy }) {
           </span>
           <span className="text-sm font-bold">{copy.viewOrder}</span>
         </span>
-        <span className="text-sm font-bold">
-          {formatPrice(total, t.common.currency)}
-        </span>
+        <Price amount={total} currency={t.common.currency} lang={lang} className="text-sm font-bold" />
       </button>
     </div>
   );

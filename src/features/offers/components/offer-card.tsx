@@ -9,7 +9,7 @@ import { Tag } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { offerDiscount } from "@/features/offers/services";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { fmt, useI18n } from "@/i18n/client";
 import type { Offer, OfferBadge } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -136,13 +136,13 @@ export function OfferCard({
           {footnote && <div className="mt-1.5 min-w-0">{footnote}</div>}
         </div>
 
-        {/* no `dir` override: the prices follow the page direction, so the
-            currency lands after the figure exactly as it does on a menu
-            card — `dir="ltr"` here put it in front of the number in Arabic */}
         <p className="shrink-0 text-end">
-          <span className="block font-heading text-lg font-bold text-zest">
-            {formatPrice(offer.price, t.common.currency)}
-          </span>
+          <Price
+            amount={offer.price}
+            currency={t.common.currency}
+            lang={lang}
+            className="block font-heading text-lg font-bold text-zest"
+          />
           {offer.originalPrice > offer.price && (
             /* The rule through the old price is drawn rather than set with
                `line-through`: a text decoration sits wherever the font's own
@@ -150,7 +150,7 @@ export function OfferCard({
                pixels — neither can be placed exactly. Drawn, it sits 2px below
                the middle of the figure at a hairline 1.5px. */
             <span className="relative inline-block text-[13px] font-semibold text-white">
-              {formatPrice(offer.originalPrice, t.common.currency)}
+              <Price amount={offer.originalPrice} currency={t.common.currency} lang={lang} />
               <span
                 aria-hidden
                 className="absolute inset-x-0 top-1/2 mt-[2px] h-[1.5px] bg-zest"

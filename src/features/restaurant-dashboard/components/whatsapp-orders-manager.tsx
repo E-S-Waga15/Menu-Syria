@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { getMyWhatsAppOrders } from "@/features/restaurant-dashboard/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
@@ -125,9 +125,12 @@ function OrderCard({ order }: { order: WhatsAppOrder }) {
               <span className="truncate">
                 {item.quantity}× {item.name}
               </span>
-              <span className="shrink-0 text-muted-foreground" dir="ltr">
-                {formatPrice(item.unitPrice * item.quantity, order.currency, lang)}
-              </span>
+              <Price
+                amount={item.unitPrice * item.quantity}
+                currency={order.currency}
+                lang={lang}
+                className="shrink-0 text-muted-foreground"
+              />
             </div>
             {item.options && item.options.length > 0 && (
               <p className="truncate text-xs text-muted-foreground">
@@ -161,18 +164,24 @@ function OrderCard({ order }: { order: WhatsAppOrder }) {
             <span className="text-xs font-semibold text-muted-foreground">
               {t.restaurant.deliveryFeeTileLabel}
             </span>
-            <span className="text-xs font-semibold" dir="ltr">
-              {formatPrice(order.deliveryFee, order.currency, lang)}
-            </span>
+            <Price
+              amount={order.deliveryFee}
+              currency={order.currency}
+              lang={lang}
+              className="text-xs font-semibold"
+            />
           </div>
         )}
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-muted-foreground">
             {t.dashboard.orderTotal}
           </span>
-          <span className="font-bold text-primary" dir="ltr">
-            {formatPrice(order.total, order.currency, lang)}
-          </span>
+          <Price
+            amount={order.total}
+            currency={order.currency}
+            lang={lang}
+            className="font-bold text-primary"
+          />
         </div>
       </div>
     </li>

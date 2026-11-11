@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { offerSchema, type OfferValues } from "@/features/offers/schemas";
-import { formatPrice } from "@/features/public-menu/lib/format";
+import { Price } from "@/components/shared/price";
 import { fmt, useI18n } from "@/i18n/client";
 import { ApiError } from "@/lib/api/client";
 import { uploadImageWithProgress } from "@/lib/api/upload";
@@ -335,12 +335,7 @@ export function OfferDialog({
           {saving > 0 && (
             <p className="flex items-center justify-between rounded-xl border border-success/30 bg-success/10 px-4 py-2.5 text-sm font-bold text-success">
               <span>{fmt(t.offers.discount, { percent: saving })}</span>
-              <span>
-                {formatPrice(
-                  Number(originalPrice) - Number(price),
-                  t.common.currency,
-                )}
-              </span>
+              <Price amount={Number(originalPrice) - Number(price)} currency={t.common.currency} lang={lang} />
             </p>
           )}
 
