@@ -15,7 +15,7 @@ export default async function DashboardOrdersPage({
   const t = isLocale(lang) ? await getDictionary(lang) : undefined;
 
   return (
-    <PlanFeatureGate feature="cart">
+    <PlanFeatureGate>
       <div className="space-y-5">
         <div className="flex justify-end">
           <Button

@@ -1,10 +1,7 @@
 import { AnalyticsViewLazy } from "@/features/restaurant-dashboard/components/analytics-view-lazy";
-import { PlanFeatureGate } from "@/features/restaurant-dashboard/components/plan-feature-gate";
 
+// Not gated: analytics stays available on every plan, unlike Orders/Kitchen/
+// Tables below it in the sidebar — see PlanFeatureGate for those.
 export default function DashboardAnalyticsPage() {
-  return (
-    <PlanFeatureGate feature="statistics">
-      <AnalyticsViewLazy />
-    </PlanFeatureGate>
-  );
+  return <AnalyticsViewLazy />;
 }

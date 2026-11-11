@@ -16,31 +16,22 @@ import { getGovernorates, getRegions } from "@/features/marketing/services";
 import { useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
 
-/** The two plan-gated feature clusters in this dashboard today. `cart` is
- * the whole order-management suite (platform orders, kitchen screen, table
- * reservations) — all three ride on the same `orderChannels` flag, since
- * the backend has no separate boolean for each one. `statistics` is its
- * own `Business.hasStatistics` flag. */
-type GatedFeature = "cart" | "statistics";
-
 /**
  * Wraps a dashboard page's real content, showing it only once the business's
- * current plan actually includes `feature`. Locked out, it shows why plus
- * exactly who to contact to upgrade — the business's own agent if it has
- * one (`AgentContactCard`, same component the support page uses), or the
- * platform's own support channels otherwise (`PlatformContactCard`) — so
- * the asker never has to guess which applies.
+ * current plan includes the order-management suite (platform orders, kitchen
+ * screen, table reservations — all three ride on the same `orderChannels`
+ * flag, since the backend has no separate boolean per page). Analytics is
+ * deliberately not gated — it stays available on every plan.
+ *
+ * Locked out, it shows why plus exactly who to contact to upgrade — the
+ * business's own agent if it has one (`AgentContactCard`, same component the
+ * support page uses), or the platform's own support channels otherwise
+ * (`PlatformContactCard`) — so the asker never has to guess which applies.
  *
  * Reads `queryKeys.me.business`, the same query key the dashboard shell
  * already warms on every page — this never fires an extra network request.
  */
-export function PlanFeatureGate({
-  feature,
-  children,
-}: {
-  feature: GatedFeature;
-  children: ReactNode;
-}) {
+export function PlanFeatureGate({ children }: { children: ReactNode }) {
   const { t, lang } = useI18n();
 
   const { data: restaurant, isLoading } = useQuery({
@@ -58,17 +49,12 @@ export function PlanFeatureGate({
 
   if (isLoading || !restaurant) return <LoadingSpinner />;
 
-  const unlocked =
-    feature === "cart"
-      ? (restaurant.orderChannels?.includes("platform") ?? true)
-      : (restaurant.hasStatistics ?? false);
+  const unlocked = restaurant.orderChannels?.includes("platform") ?? true;
 
   if (unlocked) return <>{children}</>;
 
-  const title =
-    feature === "cart" ? t.dashboard.ordersFeatureLocked : t.dashboard.statisticsLocked;
-  const body =
-    feature === "cart" ? t.dashboard.upgradeForOrders : t.dashboard.upgradeForStatistics;
+  const title = t.dashboard.ordersFeatureLocked;
+  const body = t.dashboard.upgradeForOrders;
 
   return (
     <div className="space-y-5">

@@ -3,7 +3,7 @@ import { TablesBoard } from "@/features/restaurant-dashboard/components/tables-b
 
 export default function DashboardTablesPage() {
   return (
-    <PlanFeatureGate feature="cart">
+    <PlanFeatureGate>
       <TablesBoard />
     </PlanFeatureGate>
   );

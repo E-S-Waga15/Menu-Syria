@@ -6,7 +6,7 @@ export default async function DashboardKitchenPage({
 }: PageProps<"/[lang]/dashboard/kitchen">) {
   const { lang } = await params;
   return (
-    <PlanFeatureGate feature="cart">
+    <PlanFeatureGate>
       <KitchenScreen dashboardBase={`/${lang}/dashboard`} />
     </PlanFeatureGate>
   );
