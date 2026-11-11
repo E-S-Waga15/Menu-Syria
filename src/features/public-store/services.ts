@@ -73,9 +73,18 @@ function normalizePublicProduct(raw: RawRecord, storeId: string): StoreProduct {
   };
 }
 
+/** `GET /stores` now answers `{ items, meta }` (same pagination contract as
+ * every other list endpoint, see update-backend-orders.md §1) — every
+ * caller here wants the full list, not one page, so this asks for the
+ * highest limit the backend accepts (100) and unwraps `items` rather than
+ * paginating. A bare array is also accepted so this keeps working if the
+ * endpoint is ever rolled back. Once the store directory outgrows 100
+ * entries this needs real pagination, same as the admin console already
+ * has — see update-backend-orders.md. */
 export async function getStores(): Promise<Store[]> {
   if (IS_MOCK) return mockDelay(stores, 200);
-  return apiFetch("/stores");
+  const raw = await apiFetch<Store[] | { items: Store[] }>("/stores?limit=100");
+  return Array.isArray(raw) ? raw : raw.items;
 }
 
 export async function getStoreBySlug(
