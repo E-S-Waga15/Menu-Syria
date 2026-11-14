@@ -233,7 +233,7 @@ Read back the same four fields on `GET /me/tables`. No auto-release job needed f
 
 ### 3. An authenticated order-creation endpoint for the dashboard's own "new order" entry
 
-**Why:** every real order today comes from the public guest cart. The dashboard now has its own "+ طلب جديد" dialog (pick items from the real menu, optional customer name/phone, dine-in/pickup/delivery) for a phone-in or walk-in sale the owner/cashier types in themselves — this needs an authenticated equivalent of the public order-placement endpoint, since the public one is tied to a guest + a slug, not a signed-in owner.
+**Why:** every real order today comes from the public guest cart. The dashboard now has its own "+ طلب جديد" dialog (pick items from the real menu, optional customer name/phone, dine-in/pickup/delivery) for a phone-in or walk-in sale the owner/cashier types in themselves — this needs an authenticated equivalent of the public order-placement endpoint, since the public one is tied to a guest + a slug, not a signed-in owner. The moment this call succeeds, the frontend auto-issues the invoice (if `invoicingEnabled`, §1) and opens the print view right away — the cashier is standing at the counter with the customer, so the printed slip (receipt or invoice) needs to come out immediately, not after a page reload.
 
 ```jsonc
 // POST /me/orders — authenticated as the business owner/staff

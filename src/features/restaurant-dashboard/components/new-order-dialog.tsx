@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Price } from "@/components/shared/price";
 import { ALL_CATEGORIES } from "@/features/restaurant-dashboard/components/menu-category-bar";
+import { openOrderPrint } from "@/features/restaurant-dashboard/lib/print-order";
 import {
   createDashboardOrder,
   getMyMenu,
@@ -41,12 +42,16 @@ const EMPTY_QUANTITIES: Record<string, number> = {};
 
 /**
  * The owner/cashier's own "type the order in myself" path — a phone-in or
- * walk-in customer, not the public cart. Picks straight from the real menu
- * (`getMyMenu`, same data `MenuCategoryBar` reads) so prices are never
- * guessed. On success, auto-issues an invoice when the business has
- * `invoicingEnabled` — a dashboard-created order is already authenticated,
- * unlike a public cart order, so this is the one creation path that *can*
- * do that client-side today (see update-backend-orders.md).
+ * walk-in customer standing right at the counter, not the public cart.
+ * Picks straight from the real menu (`getMyMenu`, same data
+ * `MenuCategoryBar` reads) so prices are never guessed. On success:
+ * auto-issues an invoice when the business has `invoicingEnabled` (a
+ * dashboard-created order is already authenticated, unlike a public cart
+ * order, so this is the one creation path that *can* do that client-side
+ * today — see update-backend-orders.md), then immediately opens the print
+ * view (invoice or plain receipt, same routing `openOrderPrint` uses
+ * everywhere else) — the cashier hands the customer a printed slip and
+ * charges them on the spot, same as any till.
  */
 export function NewOrderDialog({
   open,
@@ -139,7 +144,8 @@ export function NewOrderDialog({
       });
       if (business?.invoicingEnabled) {
         try {
-          await issueInvoice({ orderId: order.id });
+          const invoice = await issueInvoice({ orderId: order.id });
+          order.invoiceId = invoice.id;
         } catch {
           // the order itself is real either way — a failed auto-invoice
           // isn't worth blocking the cashier's flow over, just less tidy
@@ -149,6 +155,11 @@ export function NewOrderDialog({
       toast.success(t.dashboard.orderCreated);
       onOpenChange(false);
       reset();
+      // print immediately — the whole point of a walk-in/phone order is
+      // handing the customer a slip and charging them right at the counter
+      void openOrderPrint(order, business, lang, () =>
+        toast.error(t.dashboard.orderHasNoInvoiceYet),
+      );
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
     } finally {
