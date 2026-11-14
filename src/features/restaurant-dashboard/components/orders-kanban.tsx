@@ -9,6 +9,7 @@ import {
   ChefHat,
   CircleCheck,
   MapPin,
+  Printer,
   Receipt,
   SquarePen,
   Truck,
@@ -39,9 +40,15 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { Price } from "@/components/shared/price";
 import { EditOrderDialog } from "@/features/restaurant-dashboard/components/edit-order-dialog";
 import { useOrderMutations } from "@/features/restaurant-dashboard/hooks/use-orders";
-import { getMyDrivers, getMyOrders } from "@/features/restaurant-dashboard/services";
+import { openOrderPrint } from "@/features/restaurant-dashboard/lib/print-order";
+import {
+  getMyDrivers,
+  getMyOrders,
+  getMyRestaurant,
+} from "@/features/restaurant-dashboard/services";
 import { fmt, useI18n } from "@/i18n/client";
 import { queryKeys } from "@/lib/api/query-keys";
+import { toast } from "@/lib/toast";
 import type { Order, OrderStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -89,6 +96,12 @@ export function OrdersKanban() {
     queryFn: getMyDrivers,
   });
   const drivers = driversData ?? [];
+  // same query key the dashboard shell already warms — never an extra
+  // network request, just reading `invoicingEnabled` off the cache
+  const { data: business } = useQuery({
+    queryKey: queryKeys.me.business,
+    queryFn: getMyRestaurant,
+  });
 
   const { advance, cancel, isPending, assignDriver, advanceDelivery } = useOrderMutations();
   const [cancelling, setCancelling] = useState<Order | null>(null);
@@ -282,6 +295,19 @@ export function OrdersKanban() {
                       className="font-bold text-primary"
                     />
                     <div className="flex items-center gap-1.5">
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="text-muted-foreground hover:bg-surface-container-high"
+                        aria-label={t.dashboard.printReceipt}
+                        onClick={() =>
+                          void openOrderPrint(order, business, lang, () =>
+                            toast.error(t.dashboard.orderHasNoInvoiceYet),
+                          )
+                        }
+                      >
+                        <Printer className="size-3.5" />
+                      </Button>
                       {order.status === "pending" && (
                         <Button
                           size="icon-sm"

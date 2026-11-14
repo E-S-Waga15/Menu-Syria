@@ -340,6 +340,24 @@ export async function getMyOrders(): Promise<Order[]> {
   return raw.map(normalizeOrder);
 }
 
+/** One order by id — the plain print receipt (`OrderPrintView`) and the
+ * history tab's detail needs read this directly rather than filtering the
+ * full `getMyOrders()` list. */
+export async function getOrder(id: string): Promise<Order | undefined> {
+  if (IS_MOCK) return mockDelay(orders.find((o) => o.id === id));
+  const raw = await apiGetOrUndefined<Raw>(`/orders/${id}`);
+  return raw ? normalizeOrder(raw) : undefined;
+}
+
+/** `GET /invoices` has no `orderId` filter (see update-backend-orders.md),
+ * so an order without its own `invoiceId` is matched against a page of
+ * recent invoices client-side instead. Good enough at today's per-business
+ * scale. */
+export async function resolveOrderInvoiceId(orderId: string): Promise<string | undefined> {
+  const { items } = await getInvoices({ limit: 100 });
+  return items.find((inv) => inv.orderId === orderId)?.id;
+}
+
 /** Orders placed through the plain "order via WhatsApp" button — logged by
  * `recordWhatsAppOrder` (public-menu/services.ts), read back here for the
  * dashboard's own WhatsApp-orders page. Not yet a real backend endpoint,
@@ -614,6 +632,68 @@ export async function deleteItem(
 // Writes — orders
 // ---------------------------------------------------------------------------
 
+export interface DashboardOrderLineInput {
+  itemId: string;
+  quantity: number;
+}
+
+export interface CreateDashboardOrderInput {
+  customerName?: string;
+  customerPhone?: string;
+  fulfillmentMode: FulfillmentMode;
+  tableNumber?: number;
+  deliveryAddress?: string;
+  deliveryFee?: number;
+  notes?: string;
+  items: DashboardOrderLineInput[];
+}
+
+/**
+ * A phone-in or walk-in order the owner/cashier types in themselves from
+ * `/dashboard/orders`' own "new order" dialog — distinct from
+ * `placeExternalOrder` (public-menu/services.ts), which is the unauthenticated
+ * guest-cart endpoint tied to a slug. This one is authenticated and has no
+ * real backend endpoint yet (`POST /me/orders`), see
+ * update-backend-orders.md. Prices/line totals are resolved from the
+ * owner's own menu (never trusted from the caller), same rule the real
+ * order-placement endpoint already follows server-side.
+ */
+export async function createDashboardOrder(
+  input: CreateDashboardOrderInput,
+): Promise<WithMessage<Order>> {
+  if (IS_MOCK) {
+    const lines = input.items.map((line) => {
+      const item = menuItems.find((i) => i.id === line.itemId);
+      return {
+        itemId: line.itemId,
+        name: item?.name ?? { ar: "", en: "" },
+        quantity: line.quantity,
+        price: item?.price ?? 0,
+      };
+    });
+    const itemsTotal = lines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+    const order: Order = {
+      id: `o${Date.now()}`,
+      number: `D${Date.now().toString().slice(-6)}`,
+      restaurantId: restaurants[0]!.id,
+      tableNumber: input.tableNumber,
+      customerName: input.customerName,
+      lines,
+      notes: input.notes,
+      total: itemsTotal + (input.deliveryFee ?? 0),
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      fulfillmentMode: input.fulfillmentMode,
+      deliveryFee: input.deliveryFee,
+      deliveryAddress: input.deliveryAddress,
+      source: "dashboard",
+    };
+    return mockDelay(order);
+  }
+  const raw = await apiFetch<Raw>("/me/orders", { method: "POST", body: input });
+  return normalizeOrder(raw);
+}
+
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus,
@@ -790,6 +870,10 @@ export interface BusinessProfileInput {
   /** index 0 = Sunday; `null` for a day the business is closed. Always sent
    * as the full 7-entry array — see update.md for the requested endpoint. */
   openingHours?: (DayHours | null)[];
+  /** owner-level choice: every new order becomes a real invoice the moment
+   * it's placed (on), or orders only ever get a plain print receipt (off,
+   * the default). See update-backend-orders.md. */
+  invoicingEnabled?: boolean;
 }
 
 export async function updateBusinessProfile(

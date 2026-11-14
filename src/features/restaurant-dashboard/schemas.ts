@@ -90,25 +90,6 @@ export const customerFormSchema = (v: ValidationMessages) =>
   });
 export type CustomerFormValues = z.infer<ReturnType<typeof customerFormSchema>>;
 
-/**
- * Issuing an invoice for a `delivered` order. Linking to a persistent
- * customer (required for debt tracking across visits) is optional — leaving
- * both `customerId` and `phone` blank still issues the invoice, just without
- * a durable customer record behind it (see `IssueInvoiceInput`).
- */
-export const issueInvoiceFormSchema = (v: ValidationMessages) =>
-  z.object({
-    customerId: z.string(),
-    phone: z
-      .string()
-      .refine((value) => value.trim() === "" || isSyrianPhone(value), v.phoneInvalid),
-    paymentMethod: z.string().trim(),
-    amountPaid: z
-      .string()
-      .refine((value) => value.trim() === "" || /^\d+$/.test(value), v.numbersOnly),
-  });
-export type IssueInvoiceFormValues = z.infer<ReturnType<typeof issueInvoiceFormSchema>>;
-
 export const invoicePaymentFormSchema = (v: ValidationMessages) =>
   z.object({
     amount: z

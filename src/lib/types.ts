@@ -163,6 +163,14 @@ export interface Business {
    * directly rather than cross-referencing a separate plan object. Absent
    * on an older read means unknown, treated as not included. */
   hasStatistics?: boolean;
+  /** an owner-level choice, not a plan entitlement — when on, every new
+   * order (platform or dashboard-created) becomes a real `Invoice` the
+   * moment it's placed, with the usual paid/unpaid/debt tracking. When off
+   * (the default — right for most restaurants that just want a printed
+   * receipt and nothing more), orders never touch the invoicing system at
+   * all; printing one shows a plain receipt instead. Toggled from
+   * `/dashboard/settings`. */
+  invoicingEnabled?: boolean;
   /**
    * Opening hours, index 0 = Sunday. `null` for a day the place is shut.
    * Omitted entirely means the owner has not published hours — a different
@@ -504,6 +512,19 @@ export interface Order {
   /** defaults to "unassigned" when `driverId` is absent — see
    * `DeliveryStatus`. Not live on the backend yet. */
   deliveryStatus?: DeliveryStatus;
+  /** set once this order has a real invoice — only meaningful when the
+   * business has `invoicingEnabled`. Read directly if the backend sends it;
+   * otherwise resolved by matching `Invoice.orderId` client-side (see
+   * `resolveOrderInvoiceId` in restaurant-dashboard/services.ts). Absent
+   * means no invoice exists for this order (e.g. invoicing is off, so it
+   * only ever gets a plain print receipt). */
+  invoiceId?: string;
+  /** who/what created the order — a guest through the public storefront
+   * cart, or the business itself from the dashboard's own "new order"
+   * dialog (a phone-in or walk-in order). Absent means an older order
+   * predating this field, treated as a platform order. Not live on the
+   * backend yet, see update-backend-orders.md. */
+  source?: "platform" | "dashboard";
 }
 
 /**

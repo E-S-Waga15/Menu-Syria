@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { FieldError } from "@/components/shared/field-error";
+import { Price } from "@/components/shared/price";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,8 +21,7 @@ import {
   invoicePaymentFormSchema,
   type InvoicePaymentFormValues,
 } from "@/features/restaurant-dashboard/schemas";
-import { formatPrice } from "@/features/public-menu/lib/format";
-import { fmt, useI18n } from "@/i18n/client";
+import { useI18n } from "@/i18n/client";
 import type { Invoice } from "@/lib/types";
 
 export function InvoicePaymentDialog({
@@ -42,6 +42,7 @@ export function InvoicePaymentDialog({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<InvoicePaymentFormValues>({
     resolver: zodResolver(invoicePaymentFormSchema(t.validation)),
@@ -74,8 +75,48 @@ export function InvoicePaymentDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit(submit)} noValidate>
           <div className="space-y-4 px-4 pb-2">
+            {invoice && (
+              <div className="space-y-2 rounded-xl bg-surface-container-low p-3.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{t.dashboard.invoiceTotalLabel}</span>
+                  <Price amount={invoice.totalAmount} currency={invoice.currency} lang={lang} />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {t.dashboard.invoicePaidSoFarLabel}
+                  </span>
+                  <Price amount={invoice.amountPaid} currency={invoice.currency} lang={lang} />
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full rounded-full bg-success"
+                    style={{
+                      width: `${invoice.totalAmount > 0 ? Math.min(100, (invoice.amountPaid / invoice.totalAmount) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-sm font-bold">
+                  <span>{t.dashboard.remainingAmount}</span>
+                  <Price amount={invoice.remaining} currency={invoice.currency} lang={lang} className="text-primary" />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <Label htmlFor="payment-amount">{t.dashboard.paymentAmount}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="payment-amount">{t.dashboard.paymentAmount}</Label>
+                {invoice && (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-primary hover:underline"
+                    onClick={() =>
+                      setValue("amount", String(invoice.remaining), { shouldValidate: true })
+                    }
+                  >
+                    {t.dashboard.payFullAmount}
+                  </button>
+                )}
+              </div>
               <Input
                 id="payment-amount"
                 dir="ltr"
@@ -84,13 +125,6 @@ export function InvoicePaymentDialog({
                 {...register("amount")}
               />
               <FieldError message={errors.amount?.message} />
-              {invoice && (
-                <p className="text-xs text-muted-foreground">
-                  {fmt(t.dashboard.paymentAmountMax, {
-                    amount: formatPrice(invoice.remaining, invoice.currency, lang),
-                  })}
-                </p>
-              )}
             </div>
           </div>
           <DialogFooter className="px-4 pb-4">

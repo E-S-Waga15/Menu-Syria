@@ -19,6 +19,8 @@
 - `normalizeOrder` in `restaurant-dashboard/services.ts` was a blind pass-through cast. `GET /me/orders` answers an already-normalized shape (`lines`, numeric `total`), while `GET /orders/:id` and every order write endpoint (`/items`, `/driver`, `/delivery-status`, `/status`) answer the raw DB row (`orderItems`, string `totalAmount`, a plain-string item name) — two different shapes for the same entity. Now mapped properly, same as every other entity.
 - `/drivers` briefly looked like it was mangling Arabic names into `????` — turned out to be a local shell/argv-encoding artifact in how the test command was invoked, not a real backend issue; reproduced cleanly with proper UTF-8 piping afterward.
 
+**Update (2026-11-14):** three more gaps found live-testing Phase 2 — no order history view, no way to key in a phone/walk-in order from the dashboard, and invoicing was always-manual with no on/off switch. All three built on the frontend (mock data) — see the new "🆕 New ask: order history, manual dashboard orders, and an opt-in invoicing switch" section below for the concrete asks: an `invoicingEnabled` field on the business profile, server-side auto-invoicing for public cart orders when that's on, and a new authenticated `POST /me/orders` for the dashboard's own order-entry dialog.
+
 **New, separate from Phase 2 — plan-gated dashboard navigation (2026-11-10):** the dashboard now shows Orders/Kitchen/Tables/Analytics in the sidebar for every plan, but gates the page content itself behind an upgrade prompt when the current plan doesn't include it — naming the business's own agent to contact if it has one, or platform support otherwise. This reads two fields already confirmed present on `GET /me/restaurant`: `orderChannels` (gates Orders/Kitchen/Tables — unlocked when it includes `"platform"`) and `hasStatistics` (gates Analytics). Both already behaved correctly when we tested a plan upgrade live (`orderChannels` went from `["whatsapp"]` to `["platform","whatsapp"]` after the plan change) — no new backend work needed for this, just flagging the dependency: if either field's meaning ever changes, or a `GET /me/store` response doesn't carry the same two fields, the gate would silently show the wrong state.
 
 This is a separate handoff from `update.md` (which stays for the ongoing day-to-day asks) because everything here traces back to one internal report ("نظام الطلبات على منيو سوريا", تشرين الثاني 2026) that audited the whole order flow end to end and laid out a 4-phase plan. §1–§2 and the Phase 2 section below are asks the frontend has already built against (mock data today, real data the moment these ship). §4–§5 (invoicing, debt) are superseded by the 2026-11-09 "Update" note above — the real API already exists and the frontend is built against it. Thermal printing is done and needs no backend work at all (see its own section). Nothing from the original report remains unaddressed on the frontend side at this point.
@@ -207,6 +209,54 @@ PATCH /orders/:id/delivery-status     → Order         body: { deliveryStatus: 
 // sending all four reservation fields as null clears the reservation (the frontend's "cancel reservation" action)
 ```
 Read back the same four fields on `GET /me/tables`. No auto-release job needed from you unless you'd rather enforce it server-side too (e.g. to stop a double-booking at write time) — the frontend already treats an expired reservation as free on its own.
+
+---
+
+## 🆕 New ask: order history, manual dashboard orders, and an opt-in invoicing switch
+
+**Status (2026-11-14): frontend built against mock data, ready to switch the moment each piece below ships.** Per a follow-up round of feedback after live-testing Phase 2: the dashboard had no way to see a past order once it left the live board, no way for the owner/cashier to type in a phone or walk-in order themselves, and invoicing had no on/off switch — it was always a manual "pick a delivered order" step. All three are addressed below. (Unrelated to the report's own "Phase 3/4" sections further down this doc, which are about the original invoicing/debt proposal — already superseded, see the 2026-11-09 update note at the top.)
+
+### 1. An owner-level invoicing switch — new field on the business profile
+
+**Why:** not every business wants debt/payment tracking — most just want a plain printed receipt. This is now a single on/off choice from `/dashboard/settings`, not a plan entitlement: when off (the default), the frontend never shows the invoicing UI at all and prints a plain receipt for every order; when on, **every new order becomes a real invoice automatically the moment it's placed** — no more manual "issue invoice from a delivered order" step (that UI has been removed from the frontend entirely).
+
+```jsonc
+// PATCH /businesses/:id (or wherever the rest of the profile fields already go) — new field
+{ "invoicingEnabled": true }
+// GET /me/restaurant / GET /me/store — read back the same field
+{ "invoicingEnabled": true, /* ...everything already there... */ }
+```
+
+### 2. Auto-issuing an invoice server-side for a public cart order
+
+**Why:** a dashboard-created order (see §3 below) is authenticated, so the frontend can call `POST /invoices` itself right after creating one. A guest's public cart order (`POST /public/businesses/:slug/orders`) can't do that — the customer's browser has no owner token to call the invoicing endpoint with. So for `invoicingEnabled` businesses, **please create the `Invoice` row yourself**, server-side, in the same transaction as the order, the moment a public cart order is placed — same shape `POST /invoices` already produces (`amountPaid: 0`, i.e. unpaid/a debt, since nobody at the counter confirmed a payment). No separate ask needed if an invoice is cheap to always construct server-side and only materialize/return when the flag is on.
+
+### 3. An authenticated order-creation endpoint for the dashboard's own "new order" entry
+
+**Why:** every real order today comes from the public guest cart. The dashboard now has its own "+ طلب جديد" dialog (pick items from the real menu, optional customer name/phone, dine-in/pickup/delivery) for a phone-in or walk-in sale the owner/cashier types in themselves — this needs an authenticated equivalent of the public order-placement endpoint, since the public one is tied to a guest + a slug, not a signed-in owner.
+
+```jsonc
+// POST /me/orders — authenticated as the business owner/staff
+{
+  "customerName": "...",           // optional
+  "customerPhone": "...",          // optional
+  "fulfillmentMode": "dineIn",     // "dineIn" | "pickup" | "delivery"
+  "tableNumber": 4,                 // only meaningful for dineIn
+  "deliveryAddress": "...",        // only meaningful for delivery
+  "deliveryFee": 8000,              // only meaningful for delivery
+  "notes": "...",
+  "items": [ { "itemId": "...", "quantity": 2 } ]
+}
+// Response: the created order, same shape as GET /orders/:id — prices/totals
+// resolved from the real menu server-side, never trusted from this body,
+// same rule the public endpoint already follows.
+```
+
+Please also tag these two creation paths distinctly if that's cheap (`source: "platform" | "dashboard"` on the order row) — the frontend has a field ready for it (`Order.source`) but works fine without it too.
+
+### 4. `GET /me/orders` at scale (not urgent yet)
+
+The new history tab filters/searches the same already-fetched `GET /me/orders` response entirely client-side — fine at today's per-business order volume. Flagging now so it's not a surprise later: once a business accumulates enough orders for that to matter, this list will need real pagination and a date-range filter, same `{ items, meta }` contract as every other list in §1.
 
 ---
 

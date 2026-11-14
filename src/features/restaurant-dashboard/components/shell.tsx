@@ -98,8 +98,15 @@ export function RestaurantDashboardShell({
       icon: MessageCircle,
     },
     { href: `${base}/branches`, label: t.dashboard.branches, icon: Building2 },
-    { href: `${base}/invoices`, label: t.dashboard.invoices, icon: Receipt },
-    { href: `${base}/customers`, label: t.dashboard.customers, icon: Users },
+    // invoicing is an owner-level opt-in (Settings → Delivery tab), not a
+    // plan gate — off by default, so these two stay out of the nav rather
+    // than showing locked, same reasoning as Tables being store-only
+    ...(restaurant?.invoicingEnabled
+      ? [
+          { href: `${base}/invoices`, label: t.dashboard.invoices, icon: Receipt },
+          { href: `${base}/customers`, label: t.dashboard.customers, icon: Users },
+        ]
+      : []),
     {
       href: `${base}/analytics`,
       label: t.dashboard.analytics,

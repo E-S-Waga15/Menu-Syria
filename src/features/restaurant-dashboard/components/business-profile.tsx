@@ -25,6 +25,7 @@ import {
   Plus,
   Printer,
   QrCode,
+  Receipt,
   Share2,
   Trash2,
   Truck,
@@ -1592,6 +1593,74 @@ function OpeningHoursSection({
   );
 }
 
+/**
+ * The one on/off choice that decides how every order prints: a plain
+ * receipt (off — right for most restaurants), or a real invoice with
+ * paid/unpaid/debt tracking, issued automatically the moment the order is
+ * placed (on — meant for stores running a debt ledger with regulars). No
+ * extra data to collect either way, so a direct switch is enough — unlike
+ * delivery's own toggle, which always needs a fee in the same request.
+ */
+function InvoicingSection({
+  restaurant,
+  t,
+  save,
+}: {
+  restaurant: Restaurant;
+  t: I18n["t"];
+  save: SaveProfile;
+}) {
+  const [enabled, setEnabled] = useState(!!restaurant.invoicingEnabled);
+  const [saving, setSaving] = useState(false);
+
+  const toggle = async (next: boolean) => {
+    setSaving(true);
+    try {
+      await save({ invoicingEnabled: next });
+      setEnabled(next);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : t.common.saveFailed);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#8b5cf6] text-white">
+            <Receipt className="size-6" />
+          </span>
+          <div>
+            <p className="font-heading text-base font-bold">
+              {t.dashboard.invoicingToggleTitle}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {t.dashboard.invoicingToggleDesc}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <Switch
+            checked={enabled}
+            disabled={saving}
+            onCheckedChange={(v) => void toggle(v)}
+          />
+          <span
+            className={cn(
+              "text-sm font-bold",
+              enabled ? "text-success" : "text-destructive",
+            )}
+          >
+            {enabled ? t.dashboard.modeEnabled : t.dashboard.modeDisabled}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AppearanceSection({
   restaurant,
   t,
@@ -2527,6 +2596,7 @@ export function BusinessProfile() {
                   <PaymentQrSection restaurant={restaurant} t={t} save={save} />
                 </div>
                 <OpeningHoursSection restaurant={restaurant} t={t} save={save} />
+                <InvoicingSection restaurant={restaurant} t={t} save={save} />
               </div>
             </SectionErrorBoundary>
           </TabsContent>
